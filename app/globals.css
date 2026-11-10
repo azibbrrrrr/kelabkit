@@ -7,11 +7,11 @@
    so "Dibayar" is green and "Lewat" is red in every theme. Light only (Phase 0 decision). */
 
 @theme inline {
-  --font-sans: var(--font-poppins), "Poppins", ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-poppins), "Poppins", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-ui), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: var(--font-ui), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-heading: var(--font-display);
   --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
-  /* Collection icons: the platform's colour emoji font, never Poppins' monochrome fallback. */
+  /* Collection icons: the platform's colour emoji font, never the UI font's monochrome fallback. */
   --font-emoji: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Twemoji Mozilla", sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);

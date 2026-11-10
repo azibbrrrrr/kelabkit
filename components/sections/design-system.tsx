@@ -70,12 +70,11 @@ export function DesignSystemPage() {
           </div>
         </SectionCard>
 
-        <SectionCard title="Tipografi" icon={Type} description="Poppins, jelas dan profesional">
+        <SectionCard title="Tipografi" icon={Type} description="Inter, jelas dan profesional">
           <div className="flex gap-5">
             <div className="hidden shrink-0 border-r border-border pr-5 sm:block">
               <p className="text-[54px] leading-none font-bold">Aa</p>
-              <p className="mt-2 text-lg font-semibold">Poppins</p>
-              <p className="text-xs text-muted-foreground">(Utama)</p>
+              <p className="mt-2 text-lg font-semibold">Inter</p>
             </div>
             <dl className="grid flex-1 gap-2.5">
               {type.map(([tag, sample, spec, cls]) => (

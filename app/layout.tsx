@@ -2,14 +2,13 @@ import { PrefsProvider, prefsBootScript } from "@/components/prefs-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import type { Metadata, Viewport } from "next";
-import { Poppins } from "next/font/google";
+import { Inter } from "next/font/google";
 import type { ReactNode } from "react";
 import "./globals.css";
 
-const poppins = Poppins({
+const inter = Inter({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-poppins",
+  variable: "--font-ui",
   display: "swap",
 });
 
@@ -28,7 +27,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="ms" data-accent="rose" data-floral="on" className={poppins.variable} suppressHydrationWarning>
+    <html lang="ms" data-accent="rose" data-floral="on" className={inter.variable} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: prefsBootScript }} />
       </head>
