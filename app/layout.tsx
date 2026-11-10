@@ -1,8 +1,10 @@
 import { PrefsProvider, prefsBootScript } from "@/components/prefs-provider";
+import { isLocale, LOCALE_COOKIE, defaultLocale } from "@/lib/i18n";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 import "./globals.css";
 
@@ -25,14 +27,16 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const saved = (await cookies()).get(LOCALE_COOKIE)?.value;
+  const locale = isLocale(saved) ? saved : defaultLocale;
   return (
-    <html lang="ms" data-accent="rose" data-floral="on" className={inter.variable} suppressHydrationWarning>
+    <html lang={locale} data-accent="rose" data-floral="on" className={inter.variable} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: prefsBootScript }} />
       </head>
       <body>
-        <PrefsProvider>
+        <PrefsProvider initialLocale={locale}>
           <TooltipProvider>{children}</TooltipProvider>
           <Toaster position="top-center" richColors closeButton />
         </PrefsProvider>

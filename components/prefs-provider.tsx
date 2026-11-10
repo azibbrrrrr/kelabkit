@@ -3,7 +3,7 @@
 import { savePrefs } from "@/app/actions/prefs";
 import { readLayout, writeLayout } from "@/components/matrix/view-pref";
 import { browserStorage, readWidths, writeWidths } from "@/components/matrix/column-widths";
-import { isLocale, setCurrentLocale } from "@/lib/i18n";
+import { isLocale, LOCALE_COOKIE, setCurrentLocale, type Locale } from "@/lib/i18n";
 import { createPrefsSaver, isEmptyPrefs, PREFS_SOURCE_ATTR, mergePrefs, samePrefs, type MatrixLayout, type PrefsSaver, type StoredPrefs, type Widths } from "@/lib/prefs";
 import { defaultPreferences, isThemeId, PREFS_KEY, type Preferences } from "@/lib/themes";
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -65,6 +65,12 @@ function mirrorDisplay(prefs: Resolved) {
   } catch {
     // Blocked storage: the choice lasts for this visit.
   }
+  writeLocaleCookie(prefs.locale);
+}
+
+/** The server reads this on the next request, so SSR and the first client render agree on the language. */
+function writeLocaleCookie(locale: Locale) {
+  document.cookie = `${LOCALE_COOKIE}=${locale}; path=/; max-age=31536000; samesite=lax`;
 }
 
 function apply(prefs: Preferences) {
@@ -83,9 +89,12 @@ function apply(prefs: Preferences) {
 /** Runs before paint (inlined in the root layout) so the saved theme and a collapsed sidebar never flash. */
 export const prefsBootScript = `(function(){try{var p=JSON.parse(localStorage.getItem(${JSON.stringify(PREFS_KEY)})||"{}");var r=document.documentElement;if(p.theme)r.dataset.accent=p.theme;if(p.floral===false)r.dataset.floral="off";if(p.locale==="en"||p.locale==="ms")r.lang=p.locale;}catch(e){}if(/(?:^|; )sidebar_state=false(?:;|$)/.test(document.cookie))document.documentElement.dataset.sidebarBoot="collapsed";})();`;
 
-export function PrefsProvider({ children, account }: { children: ReactNode; account?: AccountSeed }) {
+export function PrefsProvider({ children, account, initialLocale }: { children: ReactNode; account?: AccountSeed; initialLocale?: Locale }) {
   // Signed in: seeded synchronously from the server, so the first render already has the right language.
-  const [prefs, setState] = useState<Resolved>(() => resolve(account?.initial ?? {}));
+  // Demo / signed out: the server cannot see localStorage, so it passes the language from the kk_locale
+  // cookie. Without it the effect below would switch the language while a streamed Suspense boundary
+  // is still waiting to hydrate, and that boundary would hydrate against server HTML in another language.
+  const [prefs, setState] = useState<Resolved>(() => resolve(account?.initial ?? (initialLocale ? { locale: initialLocale } : {})));
   const latest = useRef(prefs);
   const saver = useRef<PrefsSaver | null>(null);
   // Keep the non-React locale (labels, errors, formatters) in step before children render.
@@ -102,6 +111,8 @@ export function PrefsProvider({ children, account }: { children: ReactNode; acco
     const stored = resolve(readLocal());
     commit(stored);
     apply(stored);
+    // Browsers that saved a language before the cookie existed: the next load is consistent.
+    writeLocaleCookie(stored.locale);
   }, [account, commit]);
 
   useLayoutEffect(() => {

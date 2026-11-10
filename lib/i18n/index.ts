@@ -12,6 +12,9 @@ export type Locale = "ms" | "en";
 export const LOCALES: readonly Locale[] = ["ms", "en"];
 export const defaultLocale: Locale = "ms";
 
+/** Mirror of the saved language for the server: the first render must match what the browser will show. */
+export const LOCALE_COOKIE = "kk_locale";
+
 export function isLocale(value: unknown): value is Locale {
   return value === "ms" || value === "en";
 }
