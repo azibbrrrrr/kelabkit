@@ -1,7 +1,8 @@
 // Money invariants and tenancy, against the Neon dev branch. Two throwaway clubs
-// ("kk-test-*") hold all fixtures and are deleted afterwards; the demo club is never touched.
+// ("kk-test-<runId>-*") hold all fixtures and are deleted afterwards; the demo club is never touched.
 // Calls are made as the owner except in the RLS tests, which SET ROLE kelabkit_app.
 
+import { runPrefix } from "./guard";
 import { randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "@neondatabase/serverless";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -49,7 +50,7 @@ async function one<T = Record<string, unknown>>(sql: string, params: unknown[] =
 async function newClub(label: string) {
   const row = await one<{ id: string }>(
     "insert into clubs (name, session) values ($1, '2026') returning id",
-    [`kk-test-${label}-${randomUUID()}`],
+    [`${runPrefix()}${label}-${randomUUID()}`],
   );
   return row.id;
 }
@@ -114,9 +115,6 @@ beforeAll(async () => {
   pool.on("connect", (client: PoolClient) => {
     void client.query("select set_config('app.user_id', $1, false)", [testUser]);
   });
-  // Clean up clubs left by an interrupted earlier run.
-  const stale = await pool.query("select id from clubs where name like 'kk-test-%'");
-  for (const { id } of stale.rows) await dropClub(id);
   clubA = await newClub("a");
   clubB = await newClub("b");
   for (const club of [clubA, clubB]) await pool.query("insert into club_members (club_id, user_id, role) values ($1, $2, 'owner')", [club, testUser]);

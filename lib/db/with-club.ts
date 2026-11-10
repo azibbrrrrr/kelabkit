@@ -108,6 +108,19 @@ export function withUser<T>(userId: string, fn: (tx: Tx) => Promise<T>, options:
   return run(userId, null, fn, options);
 }
 
+/** Health probe: one `select 1` on the shared pool, no role or club. Rejects on error or after `timeoutMs`. */
+export async function pingDatabase(timeoutMs = 2000): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error("database ping timed out")), timeoutMs);
+  });
+  try {
+    await Promise.race([pool().query("select 1"), timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /** Tests only: closes the shared pool. */
 export async function closePool() {
   await globalForPool.__kelabPool?.end();

@@ -1,7 +1,8 @@
 // The neon backend end to end, minus Google: neonBackend -> server actions -> service ->
 // withClub -> Postgres (dev branch). Only the session lookup is replaced, with a seeded user
-// id; everything else is the production path. Clubs are named "kk-test-*" and deleted after.
+// id; everything else is the production path. Clubs are named "kk-test-<runId>-*" and deleted after.
 
+import { runPrefix } from "./guard";
 import { randomUUID } from "node:crypto";
 import { DeleteObjectCommand, ListObjectsV2Command, S3Client } from "@aws-sdk/client-s3";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -64,7 +65,7 @@ const myt = today();
 
 async function newClub(user: string, label: string) {
   as(user, null);
-  const result = await createClub({ name: `kk-test-${label}-${randomUUID()}`, session: "2026", school: "SK Ujian", treasurerName: null });
+  const result = await createClub({ name: `${runPrefix()}${label}-${randomUUID()}`, session: "2026", school: "SK Ujian", treasurerName: null });
   if (!result.ok) throw new Error(`createClub failed: ${result.code}`);
   return result.value;
 }
@@ -95,7 +96,6 @@ async function dropClub(club: string) {
 
 beforeAll(async () => {
   admin = createPool();
-  for (const { id } of (await admin.query("select id from clubs where name like 'kk-test-%'")).rows) await dropClub(id);
   clubA = await newClub(userA, "neon-a");
   clubB = await newClub(userB, "neon-b");
   clubC = await newClub(userA, "neon-c");

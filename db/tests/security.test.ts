@@ -1,7 +1,8 @@
 // Auth boundary (migration 0003), against the Neon dev branch. Everything runs as the
 // restricted role `kelabkit_app` with app.user_id / app.club_id set the way lib/db/with-club.ts
-// sets them. Fixtures are throwaway "kk-test-*" clubs, deleted afterwards.
+// sets them. Fixtures are throwaway "kk-test-<runId>-*" clubs, deleted afterwards.
 
+import { runPrefix } from "./guard";
 import { randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "@neondatabase/serverless";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -55,8 +56,7 @@ async function refusedWith(promise: Promise<unknown>) {
 
 beforeAll(async () => {
   pool = createPool();
-  for (const { id } of (await pool.query("select id from clubs where name like 'kk-test-%'")).rows) await dropClub(id);
-  const club = async (label: string) => (await pool.query("insert into clubs (name, session) values ($1, '2026') returning id", [`kk-test-${label}-${randomUUID()}`])).rows[0].id as string;
+  const club = async (label: string) => (await pool.query("insert into clubs (name, session) values ($1, '2026') returning id", [`${runPrefix()}${label}-${randomUUID()}`])).rows[0].id as string;
   clubA = await club("sec-a");
   clubB = await club("sec-b");
   createdClubs.push(clubA, clubB);
@@ -196,10 +196,10 @@ describe("kk_my_clubs and kk_create_club", () => {
 
   it("kk_create_club makes the club and the owner membership together, and seeds nothing", async () => {
     const user = randomUUID();
-    const id = (await asApp(user, null, (c) => c.query("select kk_create_club('  kk-test-new   club ', '2026', null, 'Bendahari Baru') as id"), true)).rows[0].id as string;
+    const id = (await asApp(user, null, (c) => c.query("select kk_create_club($1, '2026', null, 'Bendahari Baru') as id", [`  ${runPrefix()}new   club `]), true)).rows[0].id as string;
     createdClubs.push(id);
     const club = (await pool.query("select name, treasurer_name, created_by_user_id from clubs where id = $1", [id])).rows[0];
-    expect(club).toMatchObject({ name: "kk-test-new club", treasurer_name: "Bendahari Baru", created_by_user_id: user });
+    expect(club).toMatchObject({ name: `${runPrefix()}new club`, treasurer_name: "Bendahari Baru", created_by_user_id: user });
     expect((await pool.query("select user_id, role from club_members where club_id = $1", [id])).rows).toEqual([{ user_id: user, role: "owner" }]);
     for (const table of ["members", "collections", "payments", "charges", "participants"]) {
       expect(Number((await pool.query(`select count(*) n from ${table} where club_id = $1`, [id])).rows[0].n), table).toBe(0);
@@ -211,12 +211,12 @@ describe("kk_my_clubs and kk_create_club", () => {
     expect(await asApp(null, null, (c) => refusedWith(c.query("select kk_create_club('x', '2026', null, null)")))).toMatchObject({ message: "FORBIDDEN" });
     const user = randomUUID();
     expect(await asApp(user, null, (c) => refusedWith(c.query("select kk_create_club('   ', '2026', null, null)")))).toMatchObject({ message: "NAME_REQUIRED" });
-    expect(await asApp(user, null, (c) => refusedWith(c.query("select kk_create_club('kk-test-x', ' ', null, null)")))).toMatchObject({ message: "SESSION_REQUIRED" });
+    expect(await asApp(user, null, (c) => refusedWith(c.query("select kk_create_club($1, ' ', null, null)", [`${runPrefix()}x`])))).toMatchObject({ message: "SESSION_REQUIRED" });
     for (let i = 0; i < 5; i += 1) {
-      const id = (await asApp(user, null, (c) => c.query("select kk_create_club($1, '2026', null, null) as id", [`kk-test-lim-${i}-${randomUUID()}`]), true)).rows[0].id;
+      const id = (await asApp(user, null, (c) => c.query("select kk_create_club($1, '2026', null, null) as id", [`${runPrefix()}lim-${i}-${randomUUID()}`]), true)).rows[0].id;
       createdClubs.push(id);
     }
-    expect(await asApp(user, null, (c) => refusedWith(c.query("select kk_create_club('kk-test-sixth', '2026', null, null)")))).toMatchObject({ message: "CLUB_LIMIT" });
+    expect(await asApp(user, null, (c) => refusedWith(c.query("select kk_create_club($1, '2026', null, null)", [`${runPrefix()}sixth`])))).toMatchObject({ message: "CLUB_LIMIT" });
   });
 });
 
