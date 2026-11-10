@@ -127,6 +127,8 @@ describe("kk_* functions assert club membership", () => {
     ["kk_add_participants", "select kk_add_participants($1, $2, '[]'::jsonb)", (c) => [c, collectionA]],
     ["kk_set_collection_due_date", "select kk_set_collection_due_date($1, $2, current_date)", (c) => [c, collectionA]],
     ["kk_audit", "select kk_audit($1, null, 'x', null, 'forged')", (c) => [c]],
+    ["kk_add_attachment", "select kk_add_attachment($1, $2, $3, 'a.png', 'image/png', 10, $4, $5)", (c) => { const id = randomUUID(); return [c, paymentA, id, "a".repeat(64), `clubs/${c}/payments/${paymentA}/${id}`]; }],
+    ["kk_remove_attachment", "select kk_remove_attachment($1, $2, 'sebab')", (c) => [c, randomUUID()]],
     ["kk_actor_names", "select * from kk_actor_names($1)", (c) => [c]],
   ];
 
@@ -267,5 +269,100 @@ describe("collection writers", () => {
     expect((await pool.query("select due_date::text d from charges where collection_id = $1", [collectionA])).rows.map((r) => r.d)).toEqual(["2026-12-31"]);
     expect(await asApp(ownerA, clubA, (c) => refusedWith(c.query("select kk_set_charge_exempt($1, $2, true, 'x')", [clubA, chargeA])))).toMatchObject({ message: "AMOUNT_BELOW_PAID" });
     expect(await asApp(ownerA, clubA, (c) => refusedWith(c.query("select kk_set_charge_exempt($1, $2, true, '  ')", [clubA, chargeA])))).toMatchObject({ message: "REASON_REQUIRED" });
+  });
+});
+
+describe("attachment writers (migration 0004)", () => {
+  const sha = (n: number) => String(n).repeat(64);
+  const keyOf = (club: string, payment: string, id: string) => `clubs/${club}/payments/${payment}/${id}`;
+  const add = (c: PoolClient, club: string, payment: string, id: string, n = 1, mime = "image/png", size = 10, key = keyOf(club, payment, id)) =>
+    c.query("select kk_add_attachment($1, $2, $3, 'bukti.png', $4, $5, $6, $7) as id", [club, payment, id, mime, size, sha(n), key]);
+
+  it("adds a row with the object key, audits it, and lists it as active", async () => {
+    await asApp(ownerA, clubA, async (c) => {
+      const id = randomUUID();
+      expect((await add(c, clubA, paymentA, id)).rows[0].id).toBe(id);
+      const row = (await c.query("select storage_key, file_name, mime_type, removed_at from attachments where id = $1", [id])).rows[0];
+      expect(row).toMatchObject({ storage_key: keyOf(clubA, paymentA, id), file_name: "bukti.png", mime_type: "image/png", removed_at: null });
+      const audit = (await c.query("select summary from audit_logs where entity_id = $1 and action = 'attachment.add'", [id])).rows;
+      expect(audit).toHaveLength(1);
+      expect(audit[0].summary).toContain("RM 10.00");
+    });
+  });
+
+  it("refuses another club's payment id as FORBIDDEN (same as a stranger), a foreign key shape, and bad input", async () => {
+    // ownerB belongs to clubB; paymentA belongs to clubA.
+    const id = randomUUID();
+    expect(await asApp(ownerB, clubB, (c) => refusedWith(add(c, clubB, paymentA, id)))).toMatchObject({ message: "FORBIDDEN" });
+    // key for another club or payment, or not a uuid at all
+    expect(await asApp(ownerA, clubA, (c) => refusedWith(add(c, clubA, paymentA, id, 1, "image/png", 10, keyOf(clubB, paymentA, id))))).toMatchObject({ message: "FORBIDDEN" });
+    expect(await asApp(ownerA, clubA, (c) => refusedWith(add(c, clubA, paymentA, id, 1, "image/png", 10, `clubs/${clubA}/payments/${paymentA}/../x`)))).toMatchObject({ message: "FORBIDDEN" });
+    expect(await asApp(ownerA, clubA, (c) => refusedWith(add(c, clubA, paymentA, id, 1, "text/html")))).toMatchObject({ message: "ATTACHMENT_TYPE" });
+    expect(await asApp(ownerA, clubA, (c) => refusedWith(add(c, clubA, paymentA, id, 1, "image/png", 0)))).toMatchObject({ message: "ATTACHMENT_EMPTY" });
+    expect(await asApp(ownerA, clubA, (c) => refusedWith(add(c, clubA, paymentA, id, 1, "image/png", 10 * 1024 * 1024 + 1)))).toMatchObject({ message: "ATTACHMENT_TOO_LARGE" });
+    expect(await asApp(ownerA, clubA, (c) => refusedWith(c.query("select kk_add_attachment($1, $2, $3, 'a.png', 'image/png', 10, 'XYZ', $4)", [clubA, paymentA, id, keyOf(clubA, paymentA, id)])))).toMatchObject({ message: "ATTACHMENT_TYPE" });
+  });
+
+  it("refuses the same file twice and a sixth active file; a removed file frees its slot", async () => {
+    await asApp(ownerA, clubA, async (c) => {
+      const first = randomUUID();
+      await add(c, clubA, paymentA, first, 1);
+      await c.query("savepoint s");
+      expect(await refusedWith(add(c, clubA, paymentA, randomUUID(), 1))).toMatchObject({ message: "ATTACHMENT_DUPLICATE" });
+      await c.query("rollback to savepoint s");
+      expect(await (async () => { try { await add(c, clubA, paymentA, first, 2); } catch (e) { return (e as Error).message; } })()).toBe("ATTACHMENT_DUPLICATE");
+      await c.query("rollback to savepoint s");
+      for (let n = 2; n <= 5; n++) await add(c, clubA, paymentA, randomUUID(), n);
+      await c.query("savepoint t");
+      expect(await refusedWith(add(c, clubA, paymentA, randomUUID(), 6))).toMatchObject({ message: "ATTACHMENT_LIMIT" });
+      await c.query("rollback to savepoint t");
+      await c.query("select kk_remove_attachment($1, $2, 'salah fail')", [clubA, first]);
+      await add(c, clubA, paymentA, randomUUID(), 6);
+    });
+  });
+
+  it("removes softly: keeps the row with removed_at and the reason, returns the key, audits, refuses a second remove and a blank reason", async () => {
+    await asApp(ownerA, clubA, async (c) => {
+      const id = randomUUID();
+      await add(c, clubA, paymentA, id);
+      await c.query("savepoint s");
+      expect(await refusedWith(c.query("select kk_remove_attachment($1, $2, '  ')", [clubA, id]))).toMatchObject({ message: "REASON_REQUIRED" });
+      await c.query("rollback to savepoint s");
+      const key = (await c.query("select kk_remove_attachment($1, $2, 'fail salah') as key", [clubA, id])).rows[0].key;
+      expect(key).toBe(keyOf(clubA, paymentA, id));
+      const row = (await c.query("select removed_at, removed_reason from attachments where id = $1", [id])).rows[0];
+      expect(row.removed_at).not.toBeNull();
+      expect(row.removed_reason).toBe("fail salah");
+      expect((await c.query("select count(*)::int n from audit_logs where entity_id = $1 and action = 'attachment.remove'", [id])).rows[0].n).toBe(1);
+      expect(await refusedWith(c.query("select kk_remove_attachment($1, $2, 'lagi')", [clubA, id]))).toMatchObject({ message: "ATTACHMENT_ALREADY_REMOVED" });
+    });
+  });
+
+  it("another club cannot remove, and a reversed payment takes no add and no remove", async () => {
+    const id = randomUUID();
+    await asApp(ownerA, clubA, async (c) => {
+      await add(c, clubA, paymentA, id);
+      await c.query("select kk_reverse_payment($1, $2, 'salah')", [clubA, paymentA]);
+      await c.query("savepoint s");
+      expect(await refusedWith(add(c, clubA, paymentA, randomUUID(), 2))).toMatchObject({ message: "ATTACHMENT_PAYMENT_REVERSED" });
+      await c.query("rollback to savepoint s");
+      expect(await refusedWith(c.query("select kk_remove_attachment($1, $2, 'x')", [clubA, id]))).toMatchObject({ message: "ATTACHMENT_PAYMENT_REVERSED" });
+    });
+    // ownerB, as a real member of clubB, asks for a club A attachment through clubB: not found there.
+    const other = randomUUID();
+    await asApp(ownerA, clubA, async (c) => {
+      await add(c, clubA, paymentA, other);
+      await c.query("savepoint s");
+    });
+    expect(await asApp(ownerB, clubB, (c) => refusedWith(c.query("select kk_remove_attachment($1, $2, 'x')", [clubB, other])))).toMatchObject({ message: "ATTACHMENT_NOT_FOUND" });
+  });
+
+  it("the app role cannot read another club's attachments through RLS", async () => {
+    // rolled-back insert in A; B's session sees none.
+    await asApp(ownerA, clubA, async (c) => {
+      await add(c, clubA, paymentA, randomUUID());
+      expect((await c.query("select count(*)::int n from attachments")).rows[0].n).toBe(1);
+    });
+    expect((await asApp(ownerB, clubB, (c) => c.query("select count(*)::int n from attachments"))).rows[0].n).toBe(0);
   });
 });

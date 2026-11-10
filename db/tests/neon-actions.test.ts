@@ -3,6 +3,7 @@
 // id; everything else is the production path. Clubs are named "kk-test-*" and deleted after.
 
 import { randomUUID } from "node:crypto";
+import { DeleteObjectCommand, ListObjectsV2Command, S3Client } from "@aws-sdk/client-s3";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { KelabError } from "@/lib/errors";
 import { today } from "@/lib/format";
@@ -67,6 +68,24 @@ async function newClub(user: string, label: string) {
   return result.value;
 }
 
+// Objects the tests wrote. Listed straight from the bucket so a leak shows up as a failure, not silence.
+const storage = () => {
+  const env = process.env;
+  return {
+    bucket: env.NEON_STORAGE_BUCKET!,
+    client: new S3Client({ endpoint: env.NEON_STORAGE_ENDPOINT, region: env.NEON_STORAGE_REGION, forcePathStyle: true, requestChecksumCalculation: "WHEN_REQUIRED", responseChecksumValidation: "WHEN_REQUIRED", credentials: { accessKeyId: env.NEON_STORAGE_ACCESS_KEY_ID!, secretAccessKey: env.NEON_STORAGE_SECRET_ACCESS_KEY! } }),
+  };
+};
+async function storedKeys(prefix: string) {
+  const { client, bucket } = storage();
+  const out = await client.send(new ListObjectsV2Command({ Bucket: bucket, Prefix: prefix }));
+  return (out.Contents ?? []).map((o) => o.Key!).sort();
+}
+async function wipeStored(club: string) {
+  const { client, bucket } = storage();
+  for (const Key of await storedKeys(`clubs/${club}/`)) await client.send(new DeleteObjectCommand({ Bucket: bucket, Key }));
+}
+
 const TABLES = ["audit_logs", "attachments", "payment_allocations", "payments", "charges", "participants", "collection_periods", "collections", "members", "club_settings", "club_members"];
 async function dropClub(club: string) {
   for (const table of TABLES) await admin.query(`delete from ${table} where club_id = $1`, [club]);
@@ -80,6 +99,7 @@ beforeAll(async () => {
   clubB = await newClub(userB, "neon-b");
 });
 afterAll(async () => {
+  for (const club of [clubA, clubB]) if (club) await wipeStored(club);
   for (const club of [clubA, clubB]) if (club) await dropClub(club);
   await admin?.end();
   await closePool();
@@ -231,13 +251,63 @@ describe("full flow as club A's owner", () => {
     expect(snap.audit.every((a) => a.actor && a.summary)).toBe(true);
   });
 
-  it("attachment bytes are not available yet; metadata reads work", async () => {
+  it("proof files: presigned upload, confirm, read back, soft remove deletes the object, history kept", async () => {
     as(userA, clubA);
-    const file = new File([new Uint8Array([1, 2, 3])], "bukti.png", { type: "image/png" });
-    expect(await codeOf(backend.addAttachments("x", [file]))).toBe("NOT_AVAILABLE");
-    expect(await codeOf(backend.removeAttachment("x", "y"))).toBe("NOT_AVAILABLE");
-    expect(await codeOf(backend.getAttachmentBlob("x"))).toBe("NOT_AVAILABLE");
-    expect((await backend.load()).attachments).toEqual([]);
+    const payment = await backend.recordContribution({ idempotencyKey: randomUUID(), memberId: m1, collectionId: voluntary, method: "cash", paidOn: myt, reference: null, note: null, confirmed: true, amount: 700 });
+    const bytes = new Uint8Array([137, 80, 78, 71, 1, 2, 3, 4]);
+    const png = new File([bytes], "bukti.png", { type: "image/png" });
+    const pdf = new File([new Uint8Array([37, 80, 68, 70, 9])], "resit.pdf", { type: "application/pdf" });
+
+    const [id, pdfId] = await backend.addAttachments(payment, [png, pdf]);
+    let snap = await backend.load();
+    const row = snap.attachments.find((a) => a.id === id)!;
+    expect(row).toMatchObject({ paymentId: payment, fileName: "bukti.png", mimeType: "image/png", sizeBytes: 8, removedAt: null });
+    expect(snap.audit.some((a) => a.summary.includes('Bukti "bukti.png" dilampirkan'))).toBe(true);
+    const key = `clubs/${clubA}/payments/${payment}/${id}`;
+    expect((await admin.query("select storage_key from attachments where id = $1", [id])).rows[0].storage_key).toBe(key);
+    expect(await storedKeys(`clubs/${clubA}/payments/${payment}/`)).toEqual([key, `clubs/${clubA}/payments/${payment}/${pdfId}`].sort());
+
+    const blob = await backend.getAttachmentBlob(id);
+    expect(blob.type).toBe("image/png");
+    expect([...new Uint8Array(await blob.arrayBuffer())]).toEqual([...bytes]);
+
+    // refusals: same file twice, wrong type, sixth file
+    expect(await codeOf(backend.addAttachments(payment, [png]))).toBe("ATTACHMENT_DUPLICATE");
+    expect(await codeOf(backend.addAttachments(payment, [new File([new Uint8Array([1])], "a.xlsx", { type: "application/vnd.ms-excel" })]))).toBe("ATTACHMENT_TYPE");
+    const more = [3, 4, 5].map((n) => new File([new Uint8Array([n, n])], `f${n}.png`, { type: "image/png" }));
+    await backend.addAttachments(payment, more);
+    expect(await codeOf(backend.addAttachments(payment, [new File([new Uint8Array([9, 9, 9])], "g.png", { type: "image/png" })]))).toBe("ATTACHMENT_LIMIT");
+    expect(await storedKeys(`clubs/${clubA}/payments/${payment}/`)).toHaveLength(5);
+
+    // soft remove: row stays with reason, object is gone, viewing is refused
+    await backend.removeAttachment(id, "fail salah");
+    snap = await backend.load();
+    expect(snap.attachments.find((a) => a.id === id)).toMatchObject({ removedReason: "fail salah" });
+    expect(snap.attachments.find((a) => a.id === id)!.removedAt).not.toBeNull();
+    expect(await storedKeys(key)).toEqual([]);
+    expect(await codeOf(backend.getAttachmentBlob(id))).toBe("ATTACHMENT_ALREADY_REMOVED");
+    expect(await codeOf(backend.removeAttachment(id, "lagi"))).toBe("ATTACHMENT_ALREADY_REMOVED");
+    expect(await codeOf(backend.removeAttachment(pdfId, "  "))).toBe("REASON_REQUIRED");
+    expect(await storedKeys(`clubs/${clubA}/payments/${payment}/${pdfId}`)).toHaveLength(1);
+  });
+
+  it("an upload whose bytes differ from what was approved is refused and leaves no object or row", async () => {
+    as(userA, clubA);
+    const payment = await backend.recordContribution({ idempotencyKey: randomUUID(), memberId: m2, collectionId: voluntary, method: "cash", paidOn: myt, reference: null, note: null, confirmed: true, amount: 300 });
+    const { prepareAttachmentUploads, confirmAttachmentUploads } = await import("@/app/actions/attachments");
+    const prep = await prepareAttachmentUploads(payment, [{ fileName: "a.png", mimeType: "image/png", sizeBytes: 4 }]);
+    if (!prep.ok) throw new Error(prep.code);
+    const [{ attachmentId, url }] = prep.value;
+    const meta = { attachmentId, fileName: "a.png", mimeType: "image/png", sizeBytes: 4, sha256: "b".repeat(64) };
+    // nothing uploaded yet
+    expect(await confirmAttachmentUploads(payment, [meta])).toMatchObject({ ok: false, code: "ATTACHMENT_UPLOAD_FAILED" });
+    // a different size than approved: the store itself refuses
+    expect((await fetch(url, { method: "PUT", headers: { "Content-Type": "image/png" }, body: new Uint8Array(5) })).ok).toBe(false);
+    // right size, wrong content type: stored, then confirm refuses and removes it
+    expect((await fetch(url, { method: "PUT", headers: { "Content-Type": "text/html" }, body: new Uint8Array(4) })).ok).toBe(true);
+    expect(await confirmAttachmentUploads(payment, [meta])).toMatchObject({ ok: false, code: "ATTACHMENT_UPLOAD_FAILED" });
+    expect(await storedKeys(`clubs/${clubA}/payments/${payment}/`)).toEqual([]);
+    expect(Number((await admin.query("select count(*) n from attachments where payment_id = $1", [payment])).rows[0].n)).toBe(0);
   });
 });
 
@@ -267,6 +337,15 @@ describe("cross-club isolation through the action layer", () => {
     expect(await codeOf(backend.confirmPayment(payB))).toBe("PAYMENT_NOT_FOUND");
     expect(await codeOf(backend.reversePayment(payB, "x"))).toBe("PAYMENT_NOT_FOUND");
     expect(await codeOf(backend.updateMember(mb, { name: "Dirampas" }))).toBe("MEMBER_NOT_FOUND");
+    // proof: A cannot attach to, read or remove B's proof
+    expect(await codeOf(backend.addAttachments(payB, [new File([new Uint8Array([1, 2])], "x.png", { type: "image/png" })]))).toBe("FORBIDDEN");
+    expect(await storedKeys(`clubs/${clubA}/payments/${payB}`)).toEqual([]);
+    as(userB, clubB);
+    const [bProof] = await backend.addAttachments(payB, [new File([new Uint8Array([7, 7, 7])], "b.png", { type: "image/png" })]);
+    as(userA, clubA);
+    expect(await codeOf(backend.getAttachmentBlob(bProof))).toBe("ATTACHMENT_NOT_FOUND");
+    expect(await codeOf(backend.removeAttachment(bProof, "x"))).toBe("ATTACHMENT_NOT_FOUND");
+    expect(await storedKeys(`clubs/${clubB}/payments/${payB}/${bProof}`)).toHaveLength(1);
     expect(await codeOf(backend.addParticipants(col, []))).toBe("COLLECTION_NOT_FOUND");
     const snapA = await backend.load();
     expect(JSON.stringify(snapA)).not.toContain(mb);

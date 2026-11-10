@@ -14,6 +14,8 @@
     "db:test": "vitest run --config vitest.db.config.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1166.0",
+    "@aws-sdk/s3-request-presigner": "^3.1166.0",
     "@neondatabase/auth": "^0.7.0-beta",
     "@neondatabase/serverless": "^1.2.0",
     "@tanstack/react-table": "^8.21.3",

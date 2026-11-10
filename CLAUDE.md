@@ -47,6 +47,7 @@ Phase 2 database and auth: `db/schema.ts`, `db/migrations/`, `docs/design/phase-
 - Server timing: `next dev` (or `KELABKIT_TIMING=1`) logs `[kk-timing] <label> roundTrips=… total=…ms` per transaction. A change is `actMutation()`: one transaction that also returns the snapshot; the club id comes from the `kk_club` cookie and is checked inside that transaction. `?kk_delay=2500` (dev only) holds the first load to inspect skeletons.
 - Every server action goes through `act()` (`lib/server/act.ts`): session and club come from the server, never from arguments. Actions return a `Result`; `lib/backend/neon.ts` turns it back into a `KelabError`.
 - Signed-in mode needs `DATABASE_URL`, `NEON_AUTH_BASE_URL`, `NEON_AUTH_COOKIE_SECRET` (`lib/server/env.ts`). Auth is created lazily (`getAuth()`), so `next build` and CI need no secrets; without them `/api/auth` answers 503 and `/masuk` says sign-in is not configured while the demo still works.
+- Payment proof in signed-in mode lives in private Neon Object Storage (`lib/server/storage.ts`, env `NEON_STORAGE_*`, optional: without it attachments answer `ATTACHMENT_STORAGE_UNAVAILABLE`). Key `clubs/<club>/payments/<payment>/<attachment>` from `attachmentKey()`; upload is a presigned PUT then a confirm action, view is a presigned GET after the membership check. Rows are written only by `kk_add_attachment` / `kk_remove_attachment`.
 - Signed-out visitors are redirected to `/masuk` by `proxy.ts`. Browser probes need the `kk_mode=demo` cookie to reach the app without an account.
 
 Commits: Conventional Commits.
