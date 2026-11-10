@@ -967,7 +967,7 @@ function ReviewStep({
         {paying.length === 0 ? (
           <p className="text-sm text-muted-foreground">Tiada ahli dipilih. Kutipan hanya boleh disimpan sebagai draf.</p>
         ) : (
-          <ul className="grid max-h-80 gap-1 overflow-y-auto pr-1">
+          <ul className="grid max-h-80 gap-1 overflow-y-auto overscroll-contain pr-1">
             {paying.map((member) => {
               const amount = amountFor(member.id);
               return (

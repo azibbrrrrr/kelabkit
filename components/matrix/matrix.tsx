@@ -226,7 +226,7 @@ export function MatrixPage() {
               type="button"
               aria-pressed={!showGrid}
               onClick={() => setLayout("cards")}
-              className={cn("flex h-8 items-center gap-1 rounded-lg px-2.5 text-xs", !showGrid && "bg-primary-light font-semibold text-primary-strong")}
+              className={cn("flex h-8 items-center gap-1 rounded-[7px] px-2.5 text-xs", !showGrid && "bg-primary-light font-semibold text-primary-strong")}
             >
               <Rows3 className="size-3.5" /> Kad
             </button>
@@ -234,7 +234,7 @@ export function MatrixPage() {
               type="button"
               aria-pressed={showGrid}
               onClick={() => setLayout("grid")}
-              className={cn("flex h-8 items-center gap-1 rounded-lg px-2.5 text-xs", showGrid && "bg-primary-light font-semibold text-primary-strong")}
+              className={cn("flex h-8 items-center gap-1 rounded-[7px] px-2.5 text-xs", showGrid && "bg-primary-light font-semibold text-primary-strong")}
             >
               <LayoutGrid className="size-3.5" /> Jadual
             </button>
@@ -798,7 +798,7 @@ function MemberCards({ rows, columns }: { rows: Member[]; columns: MatrixColumn[
                     const cells = group.map((column) => view.cell(member, column));
                     if (cells.every((cell) => cell.kind === "na")) return null;
                     return (
-                      <div key={collection.id} className="rounded-xl bg-primary-tint/60 p-2">
+                      <div key={collection.id} className="rounded-[20px] bg-primary-tint/60 p-2">
                         <p className="mb-1.5 text-xs font-medium">{collection.name}</p>
                         <div className="grid grid-cols-6 gap-1">
                           {cells.map((cell) => (
