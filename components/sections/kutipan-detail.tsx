@@ -701,7 +701,7 @@ function ChargeTable({
         const ledger = ledgerOf(row.cell);
         if (!ledger) return "—";
         return (
-          <span className={cn(ledger.overdue && "font-semibold text-st-overdue", ledger.remaining === 0 && "text-muted-foreground")}>
+          <span className={cn(ledger.overdue && "font-semibold text-st-unpaid", ledger.remaining === 0 && "text-muted-foreground")}>
             {formatMoney(ledger.remaining)}
           </span>
         );
@@ -717,11 +717,11 @@ function ChargeTable({
           <ChargeStatusChips status="na" compact />
         ),
     },
-    { key: "last", header: "Bayaran terakhir", hideBelow: "lg", cell: (row) => formatDay(ledgerOf(row.cell)?.lastPaidOn) },
+    { key: "last", header: "Bayaran terakhir", hideBelow: "2xl", cell: (row) => formatDay(ledgerOf(row.cell)?.lastPaidOn) },
     {
       key: "note",
       header: "Nota",
-      hideBelow: "xl",
+      hideBelow: "2xl",
       className: "max-w-48",
       cell: (row) => <span className="line-clamp-2 text-xs text-muted-foreground">{note(row) || "—"}</span>,
     },
@@ -846,7 +846,7 @@ function AllMonthsTable({
       header: "Baki semasa",
       align: "right",
       cell: (row) => (
-        <span className={cn(row.totals.counts.overdue > 0 && "font-semibold text-st-overdue", row.totals.dueNow === 0 && "text-muted-foreground")}>
+        <span className={cn(row.totals.counts.overdue > 0 && "font-semibold text-st-unpaid", row.totals.dueNow === 0 && "text-muted-foreground")}>
           {formatMoney(row.totals.dueNow)}
         </span>
       ),
@@ -993,7 +993,7 @@ function VoluntaryTable({
     {
       key: "note",
       header: "Nota",
-      hideBelow: "xl",
+      hideBelow: "2xl",
       className: "max-w-48",
       cell: (row) => <span className="line-clamp-2 text-xs text-muted-foreground">{row.participant.note || "—"}</span>,
     },

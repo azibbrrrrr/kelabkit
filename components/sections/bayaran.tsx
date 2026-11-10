@@ -185,14 +185,16 @@ export function BayaranPage() {
       </div>
 
       <Tabs value={tab} onValueChange={(value) => setTab(value as Tab)}>
-        <TabsList className="h-10! rounded-xl bg-primary-tint p-1">
-          <TabsTrigger value="semua" className="rounded-lg px-3">
+        {/* Three tabs fit at 320px: the long label shortens below sm, and the triggers tighten. */}
+        <TabsList className="h-10! w-full rounded-xl bg-primary-tint p-1 sm:w-fit">
+          <TabsTrigger value="semua" className="gap-1 rounded-lg px-2 text-[13px] sm:gap-1.5 sm:px-3 sm:text-sm">
             Semua <span className="text-muted-foreground tabular-nums">{data.payments.length}</span>
           </TabsTrigger>
-          <TabsTrigger value="semakan" className="rounded-lg px-3">
-            Menunggu Semakan <span className="text-muted-foreground tabular-nums">{pending.length}</span>
+          <TabsTrigger value="semakan" className="gap-1 rounded-lg px-2 text-[13px] sm:gap-1.5 sm:px-3 sm:text-sm">
+            <span className="hidden sm:inline">Menunggu Semakan</span>
+            <span className="sm:hidden">Semakan</span> <span className="text-muted-foreground tabular-nums">{pending.length}</span>
           </TabsTrigger>
-          <TabsTrigger value="dibatalkan" className="rounded-lg px-3">
+          <TabsTrigger value="dibatalkan" className="gap-1 rounded-lg px-2 text-[13px] sm:gap-1.5 sm:px-3 sm:text-sm">
             Dibatalkan <span className="text-muted-foreground tabular-nums">{reversed.length}</span>
           </TabsTrigger>
         </TabsList>
