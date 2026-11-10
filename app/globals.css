@@ -393,18 +393,70 @@
   }
 }
 
-/* Floral artwork is painted pink; other accents shift its hue toward their own colour. */
-[data-accent="lavender"] .floral-tint {
-  filter: hue-rotate(-75deg) saturate(0.85);
+/* Floral artwork: each accent has its own set under public/floral/<accent>/. <html data-accent> is
+   set before first paint (prefsBootScript), so selection is pure CSS: the matching rule defines the
+   --floral-* URLs and only those images are ever requested. Rose is the default. */
+:root,
+[data-accent="rose"] {
+  --floral-blossom: url(/floral/rose/blossom.webp);
+  --floral-corner-bottom-left: url(/floral/rose/corner-bottom-left.webp);
+  --floral-corner-top-right: url(/floral/rose/corner-top-right.webp);
+  --floral-header-spray: url(/floral/rose/header-spray.webp);
+  --floral-sidebar-sprig: url(/floral/rose/sidebar-sprig.webp);
 }
-[data-accent="teal"] .floral-tint {
-  filter: hue-rotate(-170deg) saturate(0.7);
+[data-accent="lavender"] {
+  --floral-blossom: url(/floral/lavender/blossom.webp);
+  --floral-corner-bottom-left: url(/floral/lavender/corner-bottom-left.webp);
+  --floral-corner-top-right: url(/floral/lavender/corner-top-right.webp);
+  --floral-header-spray: url(/floral/lavender/header-spray.webp);
+  --floral-sidebar-sprig: url(/floral/lavender/sidebar-sprig.webp);
 }
-[data-accent="peach"] .floral-tint {
-  filter: hue-rotate(35deg) saturate(0.95);
+[data-accent="teal"] {
+  --floral-blossom: url(/floral/teal/blossom.webp);
+  --floral-corner-bottom-left: url(/floral/teal/corner-bottom-left.webp);
+  --floral-corner-top-right: url(/floral/teal/corner-top-right.webp);
+  --floral-header-spray: url(/floral/teal/header-spray.webp);
+  --floral-sidebar-sprig: url(/floral/teal/sidebar-sprig.webp);
 }
-[data-accent="sage"] .floral-tint {
-  filter: hue-rotate(-150deg) saturate(0.45);
+[data-accent="peach"] {
+  --floral-blossom: url(/floral/peach/blossom.webp);
+  --floral-corner-bottom-left: url(/floral/peach/corner-bottom-left.webp);
+  --floral-corner-top-right: url(/floral/peach/corner-top-right.webp);
+  --floral-header-spray: url(/floral/peach/header-spray.webp);
+  --floral-sidebar-sprig: url(/floral/peach/sidebar-sprig.webp);
+}
+[data-accent="sage"] {
+  --floral-blossom: url(/floral/sage/blossom.webp);
+  --floral-corner-bottom-left: url(/floral/sage/corner-bottom-left.webp);
+  --floral-corner-top-right: url(/floral/sage/corner-top-right.webp);
+  --floral-header-spray: url(/floral/sage/header-spray.webp);
+  --floral-sidebar-sprig: url(/floral/sage/sidebar-sprig.webp);
+}
+
+.floral {
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-position: center;
+}
+.floral-blossom {
+  aspect-ratio: 1;
+  background-image: var(--floral-blossom);
+}
+.floral-corner-bottom-left {
+  aspect-ratio: 1;
+  background-image: var(--floral-corner-bottom-left);
+}
+.floral-corner-top-right {
+  aspect-ratio: 1;
+  background-image: var(--floral-corner-top-right);
+}
+.floral-header-spray {
+  aspect-ratio: 760 / 507;
+  background-image: var(--floral-header-spray);
+}
+.floral-sidebar-sprig {
+  aspect-ratio: 760 / 1140;
+  background-image: var(--floral-sidebar-sprig);
 }
 
 /* Collapsed sidebar before hydration (see RestoreCollapsedSidebar in components/shell/workspace.tsx):
