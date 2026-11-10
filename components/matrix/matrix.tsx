@@ -601,7 +601,7 @@ const Grid = memo(function Grid({
     <div ref={frame} className="relative min-w-0 rounded-2xl border border-border bg-card shadow-[0_1px_2px_rgba(0,0,0,.03)]">
       {/* Accent guide on the edge being dragged; its height is the scroller's, so it stops above the hints bar. */}
       <div ref={guide} aria-hidden className={cn("pointer-events-none absolute top-0 left-0 z-40 w-0.5 bg-primary", !resizing && "hidden")} />
-      <div ref={scroller} data-matrix-scroller className="group/grid max-h-[calc(100svh-18rem)] min-h-64 overflow-auto overscroll-contain rounded-2xl">
+      <div ref={scroller} data-matrix-scroller className="group/grid max-h-[max(16rem,calc(100svh-18rem))] overflow-auto overscroll-contain rounded-2xl">
         {/* All rows and columns are rendered, so the counts equal the DOM: header rows + members + footer. */}
         <table
           role="grid"
