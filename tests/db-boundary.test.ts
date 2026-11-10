@@ -36,13 +36,13 @@ describe("database access boundary", () => {
     expect(users.filter((file) => !file.startsWith("lib/server/"))).toEqual([]);
   });
 
-  it("every file in app/actions is a 'use server' module and goes through act() or guard()", () => {
+  it("every file in app/actions is a 'use server' module and goes through act(), actMutation() or guard()", () => {
     const actions = files.filter((f) => f.file.startsWith("app/actions/"));
     expect(actions.length).toBeGreaterThan(3);
     for (const f of actions) {
       expect(f.text.startsWith('"use server";'), f.file).toBe(true);
       const exported = f.text.match(/export async function \w+/g) ?? [];
-      const wrapped = f.text.match(/return (act|guard)\(/g) ?? [];
+      const wrapped = f.text.match(/return (act|actMutation|guard)\(/g) ?? [];
       expect(wrapped.length, f.file).toBe(exported.length);
     }
   });

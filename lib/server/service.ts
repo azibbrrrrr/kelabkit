@@ -29,7 +29,15 @@ import { normaliseName } from "@/lib/names";
 import { loadSnapshot } from "@/lib/server/snapshot";
 import type { AuditAction, CollectionStatus, Sen, Snapshot } from "@/lib/types";
 
-export type Ctx = { userId: string; clubId: string; userName: string };
+export type Ctx = {
+  userId: string;
+  clubId: string;
+  userName: string;
+  /** True when the club came from the kk_club cookie and has not been checked against the database yet. */
+  fromCookie?: boolean;
+  /** Set by actMutation: the operation's transaction ends by reading the snapshot, which lands here. */
+  collect?: { snapshot?: Snapshot };
+};
 export type ClubSummary = { id: string; name: string; session: string; school: string | null; treasurerName: string | null; role: "owner" | "committee" };
 
 // ---- clubs -------------------------------------------------------------------------------
@@ -38,7 +46,7 @@ export async function listClubs(userId: string): Promise<ClubSummary[]> {
   return withUser(userId, async (tx) => {
     const { rows } = await tx.query("select id, name, session, school, treasurer_name, role from kk_my_clubs()");
     return rows.map((r) => ({ id: r.id, name: r.name, session: r.session, school: r.school, treasurerName: r.treasurer_name, role: r.role }));
-  });
+  }, { label: "my_clubs" });
 }
 
 export async function createClub(
@@ -53,7 +61,28 @@ export async function createClub(
 
 // ---- helpers -----------------------------------------------------------------------------
 
-const db = <T>(ctx: Ctx, fn: (tx: Tx) => Promise<T>) => withClub(ctx.userId, ctx.clubId, fn);
+/**
+ * One transaction for a change. When the caller wants the result back (ctx.collect), the same
+ * transaction ends by reading the snapshot, so the browser needs no second request. A failure to
+ * read never undoes the change: the client just refetches.
+ */
+const db = <T>(ctx: Ctx, fn: (tx: Tx) => Promise<T>, label = "change") =>
+  withClub(
+    ctx.userId,
+    ctx.clubId,
+    async (tx) => {
+      const value = await fn(tx);
+      if (ctx.collect) {
+        try {
+          ctx.collect.snapshot = await loadSnapshot(tx, ctx.userName);
+        } catch {
+          ctx.collect.snapshot = undefined;
+        }
+      }
+      return value;
+    },
+    { label },
+  );
 
 async function audit(tx: Tx, ctx: Ctx, action: AuditAction, entityId: string, summary: string, reason: string | null = null) {
   await tx.query("select kk_audit($1::uuid, null::uuid, $2, $3::uuid, $4, $5)", [ctx.clubId, action, entityId, summary, reason]);
@@ -73,7 +102,7 @@ const participantJson = (list: NewParticipant[]) =>
 // ---- reads -------------------------------------------------------------------------------
 
 export function load(ctx: Ctx): Promise<Snapshot> {
-  return withClub(ctx.userId, ctx.clubId, (tx) => loadSnapshot(tx, ctx.userName), { readOnlySnapshot: true });
+  return withClub(ctx.userId, ctx.clubId, (tx) => loadSnapshot(tx, ctx.userName), { readOnlySnapshot: true, label: "load" });
 }
 
 // ---- members -----------------------------------------------------------------------------

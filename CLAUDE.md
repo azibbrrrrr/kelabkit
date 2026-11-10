@@ -44,6 +44,7 @@ npm run db:test       # money + tenancy tests against the dev database (not part
 Phase 2 database and auth: `db/schema.ts`, `db/migrations/`, `docs/design/phase-2-backend.md`. Copy `.env.example` to `.env.local`.
 
 - Only `lib/db/with-club.ts` may touch Postgres (`tests/db-boundary.test.ts`). Server code uses `withClub`/`withUser`; money tables are written only by `kk_*` SQL functions, never by direct SQL.
+- Server timing: `next dev` (or `KELABKIT_TIMING=1`) logs `[kk-timing] <label> roundTrips=… total=…ms` per transaction. A change is `actMutation()`: one transaction that also returns the snapshot; the club id comes from the `kk_club` cookie and is checked inside that transaction. `?kk_delay=2500` (dev only) holds the first load to inspect skeletons.
 - Every server action goes through `act()` (`lib/server/act.ts`): session and club come from the server, never from arguments. Actions return a `Result`; `lib/backend/neon.ts` turns it back into a `KelabError`.
 - Signed-in mode needs `DATABASE_URL`, `NEON_AUTH_BASE_URL`, `NEON_AUTH_COOKIE_SECRET` (`lib/server/env.ts`). Auth is created lazily (`getAuth()`), so `next build` and CI need no secrets; without them `/api/auth` answers 503 and `/masuk` says sign-in is not configured while the demo still works.
 - Signed-out visitors are redirected to `/masuk` by `proxy.ts`. Browser probes need the `kk_mode=demo` cookie to reach the app without an account.

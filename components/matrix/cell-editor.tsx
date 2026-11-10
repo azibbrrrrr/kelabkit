@@ -14,7 +14,9 @@ import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import type { ContributionInput, PaymentInput } from "@/lib/backend/types";
 import { messageFor } from "@/lib/errors";
+import { optimisticContribution, optimisticPayment } from "@/lib/optimistic";
 import { useT } from "@/lib/i18n/react";
 import { cellStatusLabels, methodLabels, pendingLabel } from "@/lib/labels";
 import { formatDay, formatMoney, formatMonthLong, today } from "@/lib/format";
@@ -348,21 +350,32 @@ function PayForm({
     if (result.error !== null) return fail(result.error);
     if (result.sen === 0) return fail(t("editor.zeroAmount"));
     if (result.sen > ledger.payable) return fail(t("editor.overBalance", { max: formatMoney(ledger.payable) }));
+    const input: PaymentInput = {
+      idempotencyKey: form.attemptKey.current,
+      memberId: cell.member.id,
+      method: form.method,
+      paidOn: form.paidOn,
+      reference: form.reference || null,
+      note: null,
+      confirmed: form.received,
+      allocations: [{ chargeId: ledger.charge.id, amount: result.sen }],
+    };
+    // No attachments: the cell shows the new value at once and the editor closes; a refusal comes back as a toast.
+    if (form.staged.length === 0) {
+      onDirtyChange?.(false);
+      onDone();
+      try {
+        await run((backend) => backend.recordPayment(input), { optimistic: optimisticPayment(input) });
+        toast.success(t("editor.recordedFor", { amount: formatMoney(result.sen), name: cell.member.name }));
+      } catch (error) {
+        toast.error(messageFor(error));
+      }
+      return;
+    }
     form.setBusy(true);
     form.setError(null);
     try {
-      const paymentId = await run((backend) =>
-        backend.recordPayment({
-          idempotencyKey: form.attemptKey.current,
-          memberId: cell.member.id,
-          method: form.method,
-          paidOn: form.paidOn,
-          reference: form.reference || null,
-          note: null,
-          confirmed: form.received,
-          allocations: [{ chargeId: ledger.charge.id, amount: result.sen }],
-        }),
-      );
+      const paymentId = await run((backend) => backend.recordPayment(input));
       toast.success(t("editor.recordedFor", { amount: formatMoney(result.sen), name: cell.member.name }));
       const warning = await attachStaged(run, [paymentId], form.staged);
       if (warning) toast.warning(warning, { duration: 10000 });
@@ -636,22 +649,32 @@ function VoluntaryEditor({
     const result = parseMoney(form.amount);
     if (result.error !== null) return fail(result.error);
     if (result.sen === 0) return fail(t("editor.zeroAmount"));
+    const input: ContributionInput = {
+      idempotencyKey: form.attemptKey.current,
+      memberId: cell.member.id,
+      collectionId: cell.column.collection.id,
+      amount: result.sen,
+      method: form.method,
+      paidOn: form.paidOn,
+      reference: form.reference || null,
+      note: null,
+      confirmed: form.received,
+    };
+    if (form.staged.length === 0) {
+      onDirtyChange?.(false);
+      onDone();
+      try {
+        await run((backend) => backend.recordContribution(input), { optimistic: optimisticContribution(input) });
+        toast.success(t("editor.contributionRecorded", { amount: formatMoney(result.sen) }));
+      } catch (error) {
+        toast.error(messageFor(error));
+      }
+      return;
+    }
     form.setBusy(true);
     form.setError(null);
     try {
-      const paymentId = await run((backend) =>
-        backend.recordContribution({
-          idempotencyKey: form.attemptKey.current,
-          memberId: cell.member.id,
-          collectionId: cell.column.collection.id,
-          amount: result.sen,
-          method: form.method,
-          paidOn: form.paidOn,
-          reference: form.reference || null,
-          note: null,
-          confirmed: form.received,
-        }),
-      );
+      const paymentId = await run((backend) => backend.recordContribution(input));
       toast.success(t("editor.contributionRecorded", { amount: formatMoney(result.sen) }));
       const warning = await attachStaged(run, [paymentId], form.staged);
       if (warning) toast.warning(warning, { duration: 10000 });

@@ -10,8 +10,16 @@ import { updateClub } from "@/app/actions/club";
 import { loadSnapshot } from "@/app/actions/data";
 import type { KelabBackend } from "@/lib/backend/types";
 import { KelabError, type ErrorCode } from "@/lib/errors";
+import type { Snapshot } from "@/lib/types";
 
-type Result<T> = { ok: true; value: T } | { ok: false; code: ErrorCode; detail?: string };
+type Result<T> = { ok: true; value: T; snapshot?: Snapshot } | { ok: false; code: ErrorCode; detail?: string };
+
+// A change comes back with the snapshot its own transaction read. It is handed to whoever
+// registered here (the data provider), so a change costs one request instead of two.
+let snapshotSink: ((snapshot: Snapshot) => void) | null = null;
+export function setSnapshotSink(sink: ((snapshot: Snapshot) => void) | null) {
+  snapshotSink = sink;
+}
 
 async function call<T>(action: Promise<Result<T>>): Promise<T> {
   let result: Result<T>;
@@ -21,7 +29,10 @@ async function call<T>(action: Promise<Result<T>>): Promise<T> {
     // The request itself failed (offline, deploy in progress): nothing reached the database.
     throw new KelabError("NETWORK");
   }
-  if (result.ok) return result.value;
+  if (result.ok) {
+    if (result.snapshot) snapshotSink?.(result.snapshot);
+    return result.value;
+  }
   if (result.code === "UNAUTHENTICATED" && typeof window !== "undefined") window.location.assign("/masuk/");
   throw new KelabError(result.code, result.detail);
 }

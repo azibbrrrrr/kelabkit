@@ -32,12 +32,31 @@ export function pickClub(clubs: ClubSummary[], preferred: string | undefined): C
   return clubs.find((club) => club.id === preferred) ?? clubs[0] ?? null;
 }
 
-/** Session user plus active club, resolved server-side for every action. Nothing here comes from the request body. */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export async function setClubCookie(clubId: string) {
+  (await cookies()).set(CLUB_COOKIE, clubId, { path: "/", httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", maxAge: 60 * 60 * 24 * 365 });
+}
+
+/** The user's club looked up in the database (their oldest), remembered in the cookie. Only for actions: cookies are writable there. */
+export async function resolveClub(user: SessionUser): Promise<Ctx> {
+  const club = pickClub(await listClubs(user.id), undefined);
+  if (!club) throw new KelabError("NO_CLUB");
+  await setClubCookie(club.id);
+  return { userId: user.id, clubId: club.id, userName: user.name };
+}
+
+/**
+ * Session user plus active club, resolved server-side for every action. Nothing here comes from the
+ * request body. The club id in the cookie is a hint, never proof: it is used without a lookup of its
+ * own because withClub checks membership in the same transaction as the operation (FORBIDDEN if it
+ * is stale), and `act` then falls back to resolveClub. That keeps a normal action to one transaction.
+ */
 export async function requireCtx(): Promise<Ctx> {
   const user = await requireUser();
-  const club = pickClub(await listClubs(user.id), (await cookies()).get(CLUB_COOKIE)?.value);
-  if (!club) throw new KelabError("NO_CLUB");
-  return { userId: user.id, clubId: club.id, userName: user.name };
+  const hint = (await cookies()).get(CLUB_COOKIE)?.value;
+  if (hint && UUID.test(hint)) return { userId: user.id, clubId: hint, userName: user.name, fromCookie: true };
+  return resolveClub(user);
 }
 
 export type AppContext =
