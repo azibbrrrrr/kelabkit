@@ -119,7 +119,7 @@ function PendingBell() {
         {pending.length === 0 ? (
           <p className="px-4 py-6 text-center text-sm text-muted-foreground">Tiada bayaran menunggu semakan.</p>
         ) : (
-          <ul className="max-h-72 overflow-y-auto p-1.5">
+          <ul className="max-h-72 overflow-y-auto overscroll-contain p-1.5">
             {pending.map((payment) => (
               <li key={payment.id}>
                 <Link
