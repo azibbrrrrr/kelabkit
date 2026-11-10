@@ -1,0 +1,313 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/* KelabKit theme, Concept 04 "Rose Floral". Components read these tokens, never raw hex.
+   An accent theme ([data-accent]) swaps only the brand palette. Status colours are fixed
+   so "Dibayar" is green and "Lewat" is red in every theme. Light only (Phase 0 decision). */
+
+@theme inline {
+  --font-sans: var(--font-poppins), "Poppins", ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-poppins), "Poppins", ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-display);
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-strong: var(--primary-strong);
+  --color-primary-light: var(--primary-light);
+  --color-primary-tint: var(--primary-tint);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-subtle: var(--subtle);
+  --color-st-paid: var(--st-paid);
+  --color-st-paid-bg: var(--st-paid-bg);
+  --color-st-partial: var(--st-partial);
+  --color-st-partial-bg: var(--st-partial-bg);
+  --color-st-unpaid: var(--st-unpaid);
+  --color-st-unpaid-bg: var(--st-unpaid-bg);
+  --color-st-overdue: var(--st-overdue);
+  --color-st-overdue-bg: var(--st-overdue-bg);
+  --color-st-exempt: var(--st-exempt);
+  --color-st-exempt-bg: var(--st-exempt-bg);
+  --color-st-pending: var(--st-pending);
+  --color-st-pending-bg: var(--st-pending-bg);
+  --color-st-na: var(--st-na);
+  --color-st-na-bg: var(--st-na-bg);
+  --color-st-future: var(--st-future);
+  --color-st-future-bg: var(--st-future-bg);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/* Rose (default). Values from the Concept 04 colour tokens. */
+:root {
+  --radius: 0.75rem;
+  --background: #fff7f9;
+  --foreground: #1f2937;
+  --card: #ffffff;
+  --card-foreground: #1f2937;
+  --popover: #ffffff;
+  --popover-foreground: #1f2937;
+  --primary: #e75480;
+  --primary-foreground: #ffffff;
+  /* Brand colour for text on white: #E75480 is 3.5:1, this is 5.9:1. */
+  --primary-strong: #c2185b;
+  --primary-light: #fce4ec;
+  --primary-tint: #fff1f6;
+  --secondary: #fce4ec;
+  --secondary-foreground: #b0234f;
+  --muted: #f9eef2;
+  --muted-foreground: #6b7280;
+  --subtle: #9ca3af;
+  --accent: #fff1f6;
+  --accent-foreground: #b0234f;
+  --destructive: #ef4444;
+  --border: #f5d6df;
+  --input: #f0cdd8;
+  --ring: #e75480;
+  --success: #16a34a;
+  --warning: #f59e0b;
+  --info: #8b5cf6;
+  --chart-1: #e75480;
+  --chart-2: #f48fb1;
+  --chart-3: #f8bbd0;
+  --chart-4: #fce4ec;
+  --chart-5: #c2185b;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #374151;
+  --sidebar-primary: #e75480;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #fff1f6;
+  --sidebar-accent-foreground: #b0234f;
+  --sidebar-border: #f5d6df;
+  --sidebar-ring: #e75480;
+  --brand-gradient: linear-gradient(135deg, #f27aa0 0%, #e75480 100%);
+  --page-glow: #fde3ec;
+
+  /* Payment status: fixed across themes. Text colours meet 4.5:1 on their backgrounds. */
+  --st-paid: #15803d;
+  --st-paid-bg: #dcfce7;
+  --st-partial: #b45309;
+  --st-partial-bg: #fef3c7;
+  --st-unpaid: #b91c1c;
+  --st-unpaid-bg: #fee2e2;
+  --st-overdue: #ffffff;
+  --st-overdue-bg: #dc2626;
+  --st-exempt: #6d28d9;
+  --st-exempt-bg: #ede9fe;
+  --st-pending: #c2410c;
+  --st-pending-bg: #ffedd5;
+  --st-na: #6b7280;
+  --st-na-bg: #f3f4f6;
+  --st-future: #475569;
+  --st-future-bg: #f1f5f9;
+}
+
+[data-accent="lavender"] {
+  --background: #faf8ff;
+  --primary: #8e6bd8;
+  --primary-strong: #6340b5;
+  --primary-light: #ede7fb;
+  --primary-tint: #f6f2fe;
+  --secondary: #ede7fb;
+  --secondary-foreground: #5b3aa8;
+  --muted: #f3effc;
+  --accent: #f6f2fe;
+  --accent-foreground: #5b3aa8;
+  --border: #e2d9f7;
+  --input: #d9cdf3;
+  --ring: #8e6bd8;
+  --chart-1: #8e6bd8;
+  --chart-2: #b39ae8;
+  --chart-3: #d3c5f3;
+  --chart-4: #ede7fb;
+  --chart-5: #6340b5;
+  --sidebar-primary: #8e6bd8;
+  --sidebar-accent: #f6f2fe;
+  --sidebar-accent-foreground: #5b3aa8;
+  --sidebar-border: #e2d9f7;
+  --sidebar-ring: #8e6bd8;
+  --brand-gradient: linear-gradient(135deg, #ab8ee6 0%, #8e6bd8 100%);
+  --page-glow: #ece4fc;
+}
+
+[data-accent="teal"] {
+  --background: #f6fcfb;
+  --primary: #1e9e91;
+  --primary-strong: #0f6e64;
+  --primary-light: #d7f2ee;
+  --primary-tint: #effaf8;
+  --secondary: #d7f2ee;
+  --secondary-foreground: #0f6e64;
+  --muted: #eaf6f4;
+  --accent: #effaf8;
+  --accent-foreground: #0f6e64;
+  --border: #cdebe6;
+  --input: #bfe3dd;
+  --ring: #1e9e91;
+  --chart-1: #1e9e91;
+  --chart-2: #5cc2b7;
+  --chart-3: #a5e0d9;
+  --chart-4: #d7f2ee;
+  --chart-5: #0f6e64;
+  --sidebar-primary: #1e9e91;
+  --sidebar-accent: #effaf8;
+  --sidebar-accent-foreground: #0f6e64;
+  --sidebar-border: #cdebe6;
+  --sidebar-ring: #1e9e91;
+  --brand-gradient: linear-gradient(135deg, #3fb9ac 0%, #1e9e91 100%);
+  --page-glow: #d9f3ef;
+}
+
+[data-accent="peach"] {
+  --background: #fff9f5;
+  --primary: #ee8455;
+  --primary-strong: #b4501f;
+  --primary-light: #fde5d8;
+  --primary-tint: #fff3ec;
+  --secondary: #fde5d8;
+  --secondary-foreground: #a3461a;
+  --muted: #fdf0e8;
+  --accent: #fff3ec;
+  --accent-foreground: #a3461a;
+  --border: #f8dacb;
+  --input: #f4cdb9;
+  --ring: #ee8455;
+  --chart-1: #ee8455;
+  --chart-2: #f4a882;
+  --chart-3: #f9cbb3;
+  --chart-4: #fde5d8;
+  --chart-5: #b4501f;
+  --sidebar-primary: #ee8455;
+  --sidebar-accent: #fff3ec;
+  --sidebar-accent-foreground: #a3461a;
+  --sidebar-border: #f8dacb;
+  --sidebar-ring: #ee8455;
+  --brand-gradient: linear-gradient(135deg, #f6a27c 0%, #ee8455 100%);
+  --page-glow: #fde3d4;
+}
+
+[data-accent="sage"] {
+  --background: #f8fbf7;
+  --primary: #6e9e78;
+  --primary-strong: #456f4e;
+  --primary-light: #e2eee2;
+  --primary-tint: #f2f7f1;
+  --secondary: #e2eee2;
+  --secondary-foreground: #3f6647;
+  --muted: #eef4ed;
+  --accent: #f2f7f1;
+  --accent-foreground: #3f6647;
+  --border: #d8e6d6;
+  --input: #cbdcc9;
+  --ring: #6e9e78;
+  --chart-1: #6e9e78;
+  --chart-2: #95ba9c;
+  --chart-3: #bfd6c2;
+  --chart-4: #e2eee2;
+  --chart-5: #456f4e;
+  --sidebar-primary: #6e9e78;
+  --sidebar-accent: #f2f7f1;
+  --sidebar-accent-foreground: #3f6647;
+  --sidebar-border: #d8e6d6;
+  --sidebar-ring: #6e9e78;
+  --brand-gradient: linear-gradient(135deg, #8fb898 0%, #6e9e78 100%);
+  --page-glow: #e1eee0;
+}
+
+@utility brand-gradient {
+  background: var(--brand-gradient);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    color-scheme: light;
+  }
+  body {
+    @apply bg-background font-sans text-sm leading-relaxed text-foreground antialiased;
+  }
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--primary) 30%, transparent);
+    color: var(--foreground);
+  }
+  /* Keeps 16px inputs on phones so iOS does not zoom while the treasurer types. */
+  @media (max-width: 767px) {
+    input,
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
+  }
+}
+
+@layer components {
+  .page-glow {
+    background:
+      radial-gradient(900px 380px at 100% -10%, var(--page-glow), transparent 60%),
+      radial-gradient(700px 320px at -10% 110%, var(--page-glow), transparent 60%), var(--background);
+  }
+  /* Floral decoration hides entirely when the treasurer turns it off in Tetapan. */
+  [data-floral="off"] .floral {
+    display: none !important;
+  }
+}
+
+/* Floral artwork is painted pink; other accents shift its hue toward their own colour. */
+[data-accent="lavender"] .floral-tint {
+  filter: hue-rotate(-75deg) saturate(0.85);
+}
+[data-accent="teal"] .floral-tint {
+  filter: hue-rotate(-170deg) saturate(0.7);
+}
+[data-accent="peach"] .floral-tint {
+  filter: hue-rotate(35deg) saturate(0.95);
+}
+[data-accent="sage"] .floral-tint {
+  filter: hue-rotate(-150deg) saturate(0.45);
+}

@@ -1,0 +1,40 @@
+@AGENTS.md
+
+# KelabKit
+
+Collection and payment tracker for a Malaysian Kelab Guru dan Kakitangan (KGK) treasurer (Bendahari). Bahasa Melayu UI, MYR, Asia/Kuala_Lumpur.
+
+## Status
+
+Phase 1 (UI on demo data). No backend yet: `lib/backend/demo.ts` keeps data in the browser's localStorage. Phase 2 adds Neon Postgres behind the same `KelabBackend` interface. Engineering conventions follow Growlink Admin (`Growlink-Project/growlink-admin`), never its branding or business logic.
+
+## Rules
+
+- Money is integer sen. Parse with `parseRinggit` (`lib/money/amount.ts`), format with `lib/format.ts`. Never use floats for amounts.
+- Payment status is derived in `lib/money/ledger.ts` from charges and confirmed allocations. Nothing stores or edits a status.
+- Pending payments never count as received. Reversed payments stay in history with a reason; nothing is deleted.
+- Three different operations, never mixed: record a payment (new row), change what a member owes (`setChargeAmount`, refused below what is paid), correct a payment (`reversePayment` with a reason).
+- A new member joins no collection unless the treasurer picks it.
+- Voluntary collections have no charges and never create debt.
+- Monthly periods are separate charges; future months are "Akan Datang", never overdue.
+- Every change goes through `run((backend) => …)` from `useKelab()`, which reloads afterwards. Add a method to `KelabBackend` and implement it in `demo.ts` with the same rules the server will enforce. Give every new error code a message in `lib/errors.ts`.
+- Colours come from tokens in `app/globals.css`. Accent themes (`[data-accent]`) change only brand colours; status colours (`st-*`) are fixed.
+
+## Structure
+
+- `app/(kelab)/<section>/page.tsx`: thin server page with metadata → `components/sections/<section>.tsx` (client).
+- `components/shell/`: sidebar, top bar, mobile bottom nav, data gate. `lib/nav.ts` lists sections.
+- `components/shared.tsx`: PageShell, PageHeader, SectionCard, StatCard, StatusChip, ChargeStatusChips, DataTable, FilterPills, EmptyState…
+- `components/matrix/`: the Excel-like member × collection grid and its cell editor.
+- `lib/view.ts`: per-snapshot read model (ledgers, totals, matrix columns and cells).
+
+## Commands
+
+```sh
+npm run dev        # http://localhost:3000
+npm run typecheck
+npm test           # vitest: lib/money
+npm run build
+```
+
+Commits: Conventional Commits.
