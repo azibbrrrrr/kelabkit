@@ -2,6 +2,7 @@
 
 import { Brand, BrandMark } from "@/components/brand";
 import { useKelab } from "@/components/data-provider";
+import { useIsiPantas } from "@/components/isi-pantas/provider";
 import { Floral } from "@/components/floral";
 import {
   Sidebar,
@@ -19,7 +20,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { isActive, navItems } from "@/lib/nav";
-import { ChevronsUpDown, School } from "lucide-react";
+import { ChevronsUpDown, School, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -27,6 +28,7 @@ export function AppSidebar() {
   const pathname = usePathname();
   const { setOpenMobile, state, isMobile } = useSidebar();
   const { data } = useKelab();
+  const isiPantas = useIsiPantas();
   const pendingCount = data?.payments.filter((payment) => payment.state === "pending").length ?? 0;
   const close = () => setOpenMobile(false);
   const clubName = data?.club.name ?? "Kelab KGK";
@@ -78,6 +80,22 @@ export function AppSidebar() {
                   </SidebarMenuItem>
                 );
               })}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  tooltip="Isi Pantas (/)"
+                  aria-keyshortcuts="/"
+                  aria-expanded={isiPantas.open}
+                  onClick={(event) => {
+                    close();
+                    // On phones the menu closes, so focus returns to the page rather than this item.
+                    isiPantas.openSheet(isMobile ? null : event.currentTarget);
+                  }}
+                  className="h-11 gap-3 rounded-xl px-4 group-data-[collapsible=icon]:size-9! group-data-[collapsible=icon]:rounded-lg group-data-[collapsible=icon]:p-[9px]! text-[14px] font-medium text-sidebar-foreground [&_svg]:size-[18px] [&_svg]:text-primary-strong"
+                >
+                  <Sparkles />
+                  <span>Isi Pantas</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

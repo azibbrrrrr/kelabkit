@@ -2,6 +2,8 @@
 
 import { KelabDataProvider, useKelab } from "@/components/data-provider";
 import { Floral } from "@/components/floral";
+import { IsiPantasProvider } from "@/components/isi-pantas/provider";
+import { IsiPantasButton, IsiPantasPill, IsiPantasSheet } from "@/components/isi-pantas/sheet";
 import { AppSidebar } from "@/components/shell/app-sidebar";
 import { GlobalSearch } from "@/components/shell/global-search";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -29,18 +31,22 @@ import { useEffect, useLayoutEffect, useRef, type CSSProperties, type ReactNode 
 export function Workspace({ children }: { children: ReactNode }) {
   return (
     <KelabDataProvider>
-      <SidebarProvider style={{ "--sidebar-width-icon": "3.5rem" } as CSSProperties}>
-        <RestoreCollapsedSidebar />
-        <AppSidebar />
-        <SidebarInset className="page-glow relative min-w-0 overflow-x-clip md:peer-data-[variant=inset]:overflow-clip md:peer-data-[variant=inset]:rounded-2xl md:peer-data-[variant=inset]:border md:peer-data-[variant=inset]:border-border/70 md:peer-data-[variant=inset]:shadow-[0_1px_2px_color-mix(in_srgb,var(--foreground)_4%,transparent),0_8px_24px_-16px_color-mix(in_srgb,var(--primary)_22%,transparent)] print:m-0! print:rounded-none! print:border-0! print:shadow-none!">
-          <Floral asset="corner-top-right" className="top-0 right-0 z-0 hidden w-[260px] opacity-80 lg:block" />
-          <TopBar />
-          <main className="relative z-10 flex flex-1 flex-col pb-24 md:pb-0 print:pb-0">
-            <DataGate>{children}</DataGate>
-          </main>
-          <MobileNav />
-        </SidebarInset>
-      </SidebarProvider>
+      <IsiPantasProvider>
+        <SidebarProvider style={{ "--sidebar-width-icon": "3.5rem" } as CSSProperties}>
+          <RestoreCollapsedSidebar />
+          <AppSidebar />
+          <SidebarInset className="page-glow relative min-w-0 overflow-x-clip md:peer-data-[variant=inset]:overflow-clip md:peer-data-[variant=inset]:rounded-2xl md:peer-data-[variant=inset]:border md:peer-data-[variant=inset]:border-border/70 md:peer-data-[variant=inset]:shadow-[0_1px_2px_color-mix(in_srgb,var(--foreground)_4%,transparent),0_8px_24px_-16px_color-mix(in_srgb,var(--primary)_22%,transparent)] print:m-0! print:rounded-none! print:border-0! print:shadow-none!">
+            <Floral asset="corner-top-right" className="top-0 right-0 z-0 hidden w-[260px] opacity-80 lg:block" />
+            <TopBar />
+            <main className="relative z-10 flex flex-1 flex-col pb-24 md:pb-0 print:pb-0">
+              <DataGate>{children}</DataGate>
+            </main>
+            <MobileNav />
+            <IsiPantasPill />
+            <IsiPantasSheet />
+          </SidebarInset>
+        </SidebarProvider>
+      </IsiPantasProvider>
     </KelabDataProvider>
   );
 }
@@ -83,6 +89,7 @@ function TopBar() {
         </span>
       )}
       <div className="ml-auto flex items-center gap-1.5">
+        <IsiPantasButton />
         <PendingBell />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
