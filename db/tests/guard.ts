@@ -59,6 +59,7 @@ type Queryable = { query: (sql: string, params?: unknown[]) => Promise<{ rows: R
 
 /** Deletes one club and everything under it, children first. */
 export async function dropClubCascade(pool: Queryable, clubId: string): Promise<void> {
+  await pool.query("delete from rate_limits where bucket in (select 'mutation:' || user_id::text from club_members where club_id = $1)", [clubId]);
   for (const table of CLUB_TABLES) await pool.query(`delete from ${table} where club_id = $1`, [clubId]);
   await pool.query("delete from clubs where id = $1", [clubId]);
 }

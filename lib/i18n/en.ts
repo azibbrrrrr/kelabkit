@@ -181,6 +181,7 @@ export const en: Messages = {
     SCHOOL_TOO_LONG: "The school name is too long (120 characters at most).",
     CLUB_LIMIT: "You have reached the limit of five clubs.",
     PREFS_INVALID: "Those preferences could not be saved.",
+    RATE_LIMITED: "Too many actions in a short time. Wait a minute, then try again.",
     INTERNAL: "Something went wrong. Try again.",
     NOT_AVAILABLE: "This action is not available for real accounts.",
   },

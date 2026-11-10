@@ -183,6 +183,7 @@ export const ms = {
     SCHOOL_TOO_LONG: "Nama sekolah terlalu panjang (maksimum 120 aksara).",
     CLUB_LIMIT: "Anda sudah mencapai had lima kelab.",
     PREFS_INVALID: "Tetapan paparan itu tidak dapat disimpan.",
+    RATE_LIMITED: "Terlalu banyak tindakan dalam masa singkat. Tunggu seminit, kemudian cuba lagi.",
     INTERNAL: "Sesuatu tidak kena. Cuba lagi.",
     NOT_AVAILABLE: "Tindakan ini belum tersedia untuk akaun sebenar.",
   },

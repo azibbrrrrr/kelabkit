@@ -47,3 +47,26 @@ export async function buildHealth(
     report: { status: ok ? "ok" : "degraded", version: options.version ?? appVersion(), checks: { database, storage } },
   };
 }
+
+/**
+ * Bounds how often the probes run, whatever the request rate. /api/health is public, so every hit would
+ * otherwise cost a database query and a bucket HEAD. Concurrent callers share one in-flight run, and a
+ * finished result is reused for `ttlMs` (per warm instance; serverless has no shared memory, and a few
+ * instances each probing once per window is the bound we want). Time is injected for tests.
+ */
+export function memoizeHealth<T>(run: () => Promise<T>, ttlMs: number, now: () => number = Date.now): () => Promise<T> {
+  let inflight: Promise<T> | null = null;
+  let cached: { at: number; value: T } | null = null;
+  return () => {
+    if (cached && now() - cached.at < ttlMs) return Promise.resolve(cached.value);
+    inflight ??= run()
+      .then((value) => {
+        cached = { at: now(), value };
+        return value;
+      })
+      .finally(() => {
+        inflight = null;
+      });
+    return inflight;
+  };
+}
