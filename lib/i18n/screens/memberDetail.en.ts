@@ -1,0 +1,73 @@
+import type { DeepStringify } from "../types";
+import type { memberDetailMs } from "./memberDetail.ms";
+
+// English: memberDetail. Typed from the Bahasa Melayu file, so a missing or extra key fails the type check.
+export const memberDetailEn: DeepStringify<typeof memberDetailMs> = {
+  backToList: "Member list",
+  notFound: {
+    title: "Member not found",
+    emptyTitle: "This member is not in the records",
+    emptyDescription: "The link may be old, or the demo data was reset.",
+    back: "Back to member list",
+  },
+  since: "Member since {date}",
+  deactivate: "Deactivate",
+  reactivate: "Reactivate",
+  editProfile: "Edit profile",
+  recordPayment: "Record payment",
+  inactiveNote: {
+    before: "This member is ",
+    bold: "inactive",
+    after: ". Payment history and collection membership are kept; unsettled balances still count in their collections.",
+  },
+  stats: {
+    required: "Due now",
+    requiredHint: "Charges that have fallen due",
+    received: "Received",
+    receivedHint: "Confirmed money only",
+    balance: "Current balance",
+    upcomingHint: "Upcoming {amount}",
+    overdueHint: "{count} overdue",
+    noUpcomingHint: "No upcoming balance",
+    pending: "Awaiting review",
+    pendingHint: "Not counted as received yet",
+    noPendingHint: "No pending payments",
+  },
+  profile: {
+    title: "Profile",
+    edit: "Edit",
+    name: "Name",
+    category: "Category",
+    phone: "Phone",
+    whatsapp: "WhatsApp",
+    notes: "Notes",
+    status: "Status",
+    since: "Member since",
+    updated: "Updated",
+  },
+  history: {
+    title: "Payment history",
+    description: "Every transaction for this member, newest first. Reversed payments stay with their reason.",
+    empty: "No payments for this member yet.",
+  },
+  participation: {
+    title: "Collections joined",
+    description: "Click a charge to record a payment, change the amount or see its history.",
+    none: "This member has not joined any collection. Add them from the collection page or the Matrix.",
+    confirmedGifts: "Confirmed contributions",
+    transactions: "{count} transactions",
+    noRequired: "No set amount; never creates debt.",
+    dueDate: "Due {date}",
+    monthsPaid: "{paid}/{total} months paid",
+  },
+  figures: {
+    required: "Due",
+    exempt: "Exempt",
+    received: "Received",
+    balance: "Balance",
+    balanceCurrent: "Current balance",
+    pending: "Awaiting review {amount}.",
+    upcoming: "Upcoming {amount}.",
+  },
+  discardChanges: "Discard unsaved changes?",
+};

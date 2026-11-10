@@ -2,6 +2,23 @@
 // English rather than a literal translation of the Bahasa Melayu.
 
 import type { Messages } from "./types";
+import { dashboardEn } from "./screens/dashboard.en";
+import { collectionsEn } from "./screens/collections.en";
+import { wizardEn } from "./screens/wizard.en";
+import { collectionDetailEn } from "./screens/collectionDetail.en";
+import { membersEn } from "./screens/members.en";
+import { memberDetailEn } from "./screens/memberDetail.en";
+import { paymentsPageEn } from "./screens/paymentsPage.en";
+import { paymentNewEn } from "./screens/paymentNew.en";
+import { remindersEn } from "./screens/reminders.en";
+import { reportsEn } from "./screens/reports.en";
+import { settingsEn } from "./screens/settings.en";
+import { startEn } from "./screens/start.en";
+import { designSystemEn } from "./screens/designSystem.en";
+import { attachmentsEn } from "./screens/attachments.en";
+import { emojiEn } from "./screens/emoji.en";
+import { quickFillEn } from "./screens/quickFill.en";
+import { brandEn } from "./screens/brand.en";
 
 export const en: Messages = {
   common: {
@@ -425,4 +442,22 @@ export const en: Messages = {
     keepEditing: "Keep editing",
     discard: "Discard",
   },
+
+  dashboard: dashboardEn,
+  collections: collectionsEn,
+  wizard: wizardEn,
+  collectionDetail: collectionDetailEn,
+  members: membersEn,
+  memberDetail: memberDetailEn,
+  paymentsPage: paymentsPageEn,
+  paymentNew: paymentNewEn,
+  reminders: remindersEn,
+  reports: reportsEn,
+  settings: settingsEn,
+  start: startEn,
+  designSystem: designSystemEn,
+  attachments: attachmentsEn,
+  emoji: emojiEn,
+  quickFill: quickFillEn,
+  brand: brandEn,
 };

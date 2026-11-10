@@ -7,6 +7,7 @@ import { CardLink, LabelChip, PageShell, ProgressBar, SectionCard, StatCard } fr
 import { Button } from "@/components/ui/button";
 import { formatDayShort, formatMoney, formatMonth, formatNumber, formatPercent } from "@/lib/format";
 import { methodLabels, paymentStateLabels } from "@/lib/labels";
+import { useT } from "@/lib/i18n/react";
 import { totalsOf } from "@/lib/money/ledger";
 import { addMonths, monthOf } from "@/lib/money/months";
 import type { Collection, Payment } from "@/lib/types";
@@ -38,6 +39,7 @@ import { useMemo, useState } from "react";
 // ratio or a link to the manual workflow instead (Phase 0 decision Q1).
 
 export function Dashboard() {
+  const t = useT();
   const { data, view } = useSnapshot();
   const firstName = data.club.treasurerName.split(" ").slice(0, 2).join(" ");
 
@@ -72,27 +74,27 @@ export function Dashboard() {
       <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div className="min-w-0 xl:max-w-[520px]">
           <h1 className="text-[24px] leading-tight font-bold tracking-[-.02em] md:text-[28px]">
-            Selamat datang, {firstName}! <Blossom />
+            {t("dashboard.hero.welcome", { name: firstName })} <Blossom />
           </h1>
-          <p className="mt-1.5 text-[13px] text-muted-foreground">Papan pemuka kutipan KGK — pantau bayaran, ahli dan peringatan dengan mudah.</p>
+          <p className="mt-1.5 text-[13px] text-muted-foreground">{t("dashboard.hero.subtitle")}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2 xl:flex-nowrap">
           <span className="inline-flex h-9 items-center gap-2 rounded-[10px] border border-border bg-card px-3 text-[13px] font-medium whitespace-nowrap">
-            <CalendarDays className="size-4 text-muted-foreground" /> Sesi {data.club.session}
+            <CalendarDays className="size-4 text-muted-foreground" /> {t("dashboard.hero.session", { session: data.club.session })}
           </span>
           <Button variant="outline" asChild>
             <Link href="/ahli/">
-              <Search /> Cari Ahli
+              <Search /> {t("dashboard.hero.findMember")}
             </Link>
           </Button>
           <Button variant="brand" asChild>
             <Link href="/kutipan/baru/">
-              <Plus /> Tambah Kutipan
+              <Plus /> {t("dashboard.hero.addCollection")}
             </Link>
           </Button>
           <Button asChild>
             <Link href="/bayaran/baru/">
-              <Plus /> Rekod Bayaran
+              <Plus /> {t("dashboard.hero.recordPayment")}
             </Link>
           </Button>
         </div>
@@ -101,19 +103,19 @@ export function Dashboard() {
       <div className="relative z-10 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           icon={Database}
-          label="Jumlah Kutipan"
+          label={t("dashboard.stats.totalLabel")}
           value={formatMoney(totals.expected)}
-          hint={totals.upcoming > 0 ? <>termasuk {formatMoney(totals.upcoming)} bulan akan datang</> : "dijangka untuk kutipan sesi ini"}
+          hint={totals.upcoming > 0 ? t("dashboard.stats.totalUpcoming", { amount: formatMoney(totals.upcoming) }) : t("dashboard.stats.totalExpected")}
           href="/kutipan/"
         />
         <StatCard
           icon={BadgeCheck}
           tone="paid"
-          label="Telah Dibayar"
+          label={t("dashboard.stats.paidLabel")}
           value={formatMoney(totals.received)}
           hint={
             <>
-              <b className="text-st-paid">{formatPercent(totals.received, totals.expected)}</b> daripada jumlah
+              <b className="text-st-paid">{formatPercent(totals.received, totals.expected)}</b> {t("dashboard.stats.paidOfTotal")}
             </>
           }
           className="bg-st-paid-bg/35"
@@ -121,22 +123,18 @@ export function Dashboard() {
         <StatCard
           icon={Clock3}
           tone="partial"
-          label="Belum Dibayar"
+          label={t("dashboard.stats.unpaidLabel")}
           value={formatMoney(totals.dueNow)}
-          hint={
-            <>
-              {formatPercent(totals.dueNow, totals.expected)} ({memberStatus.owing} ahli)
-            </>
-          }
+          hint={t("dashboard.stats.unpaidHint", { percent: formatPercent(totals.dueNow, totals.expected), count: memberStatus.owing })}
           href="/peringatan/"
           className="bg-st-partial-bg/35"
         />
         <StatCard
           icon={UsersRound}
           tone="exempt"
-          label="Jumlah Ahli"
+          label={t("dashboard.stats.membersLabel")}
           value={formatNumber(activeMembers.length)}
-          hint={<>{data.members.length - activeMembers.length} tidak aktif · rekod dikekalkan</>}
+          hint={t("dashboard.stats.membersInactive", { count: data.members.length - activeMembers.length })}
           href="/ahli/"
           className="bg-st-exempt-bg/35"
         />
@@ -149,24 +147,24 @@ export function Dashboard() {
       </div>
 
       <div className="relative z-10 grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
-        <SectionCard title="Lejar Pembayaran Terkini" icon={ReceiptText} action={<CardLink href="/bayaran/">Lihat Semua</CardLink>} contentClassName="px-0 md:px-0">
+        <SectionCard title={t("dashboard.recent.title")} icon={ReceiptText} action={<CardLink href="/bayaran/">{t("dashboard.recent.viewAll")}</CardLink>} contentClassName="px-0 md:px-0">
           <RecentPayments payments={recent} />
         </SectionCard>
-        <SectionCard title="Status Ahli" icon={UsersRound} action={<CardLink href="/matriks/">Lihat Semua</CardLink>}>
+        <SectionCard title={t("dashboard.memberStatus.title")} icon={UsersRound} action={<CardLink href="/matriks/">{t("dashboard.memberStatus.viewAll")}</CardLink>}>
           <table className="w-full text-[13px]">
             <thead>
               <tr className="text-left text-xs text-muted-foreground">
-                <th className="rounded-l-lg bg-primary-tint px-3 py-2 font-semibold">Status</th>
-                <th className="bg-primary-tint px-3 py-2 text-right font-semibold">Bil. Ahli</th>
-                <th className="rounded-r-lg bg-primary-tint px-3 py-2 text-right font-semibold">Peratus</th>
+                <th className="rounded-l-lg bg-primary-tint px-3 py-2 font-semibold">{t("dashboard.memberStatus.status")}</th>
+                <th className="bg-primary-tint px-3 py-2 text-right font-semibold">{t("dashboard.memberStatus.count")}</th>
+                <th className="rounded-r-lg bg-primary-tint px-3 py-2 text-right font-semibold">{t("dashboard.memberStatus.percent")}</th>
               </tr>
             </thead>
             <tbody>
               {(
                 [
-                  ["Tiada baki", memberStatus.settled, "bg-success"],
-                  ["Ada baki", memberStatus.owing, "bg-warning"],
-                  ["Tiada caj / dikecualikan", memberStatus.none, "bg-subtle"],
+                  [t("dashboard.memberStatus.settled"), memberStatus.settled, "bg-success"],
+                  [t("dashboard.memberStatus.owing"), memberStatus.owing, "bg-warning"],
+                  [t("dashboard.memberStatus.none"), memberStatus.none, "bg-subtle"],
                 ] as const
               ).map(([label, count, dot]) => (
                 <tr key={label} className="border-b border-border/60">
@@ -179,13 +177,13 @@ export function Dashboard() {
                 </tr>
               ))}
               <tr className="font-semibold">
-                <td className="rounded-l-lg bg-primary-tint px-3 py-2.5">Jumlah</td>
+                <td className="rounded-l-lg bg-primary-tint px-3 py-2.5">{t("dashboard.memberStatus.total")}</td>
                 <td className="bg-primary-tint px-3 py-2.5 text-right tabular-nums">{activeMembers.length}</td>
                 <td className="rounded-r-lg bg-primary-tint px-3 py-2.5 text-right">100%</td>
               </tr>
             </tbody>
           </table>
-          <p className="mt-2 text-[11px] text-muted-foreground">Ahli aktif, caj yang sudah sampai tempoh sahaja.</p>
+          <p className="mt-2 text-[11px] text-muted-foreground">{t("dashboard.memberStatus.note")}</p>
         </SectionCard>
       </div>
     </PageShell>
@@ -193,11 +191,12 @@ export function Dashboard() {
 }
 
 function CollectionsCard({ collections }: { collections: Collection[] }) {
+  const t = useT();
   const { view } = useSnapshot();
   return (
-    <SectionCard title="Kategori Kutipan" action={<CardLink href="/kutipan/">Urus Kutipan</CardLink>}>
+    <SectionCard title={t("dashboard.collections.title")} action={<CardLink href="/kutipan/">{t("dashboard.collections.manage")}</CardLink>}>
       {collections.length === 0 ? (
-        <p className="py-6 text-center text-sm text-muted-foreground">Belum ada kutipan aktif.</p>
+        <p className="py-6 text-center text-sm text-muted-foreground">{t("dashboard.collections.empty")}</p>
       ) : (
         <ul className="grid grid-cols-1 gap-3">
           {collections.slice(0, 5).map((collection) => {
@@ -218,10 +217,10 @@ function CollectionsCard({ collections }: { collections: Collection[] }) {
                       {voluntary ? (
                         <span className="h-2 flex-1 rounded-full bg-[repeating-linear-gradient(90deg,var(--primary-light)_0_6px,transparent_6px_10px)]" aria-hidden />
                       ) : (
-                        <ProgressBar value={totals.received} max={totals.expected} label={`${collection.name} diterima`} className="flex-1" />
+                        <ProgressBar value={totals.received} max={totals.expected} label={t("dashboard.collections.progressLabel", { name: collection.name })} className="flex-1" />
                       )}
                       <span className="w-14 shrink-0 text-right text-[11px] text-muted-foreground tabular-nums">
-                        {voluntary ? "sukarela" : `${view.collectionProgress(collection.id).settled}/${view.collectionProgress(collection.id).total}`}
+                        {voluntary ? t("dashboard.collections.voluntary") : `${view.collectionProgress(collection.id).settled}/${view.collectionProgress(collection.id).total}`}
                       </span>
                     </span>
                   </span>
@@ -236,32 +235,33 @@ function CollectionsCard({ collections }: { collections: Collection[] }) {
 }
 
 function ActionsCard({ owing, pending }: { owing: number; pending: Payment[] }) {
+  const t = useT();
   const items: { icon: LucideIcon; title: string; sub: string; href: string; cta: string; primary?: boolean }[] = [
     {
       icon: HandCoins,
-      title: `${owing} ahli belum menjelaskan bayaran`,
-      sub: "Sediakan mesej peringatan sekarang?",
+      title: t(owing === 1 ? "dashboard.actions.owingOne" : "dashboard.actions.owingMany", { count: owing }),
+      sub: t("dashboard.actions.owingSub"),
       href: "/peringatan/",
-      cta: "Sediakan",
+      cta: t("dashboard.actions.owingCta"),
       primary: true,
     },
     {
       icon: BadgeCheck,
-      title: `${pending.length} bayaran menunggu semakan`,
-      sub: pending.length ? "Sahkan setelah wang diterima" : "Tiada yang perlu disemak",
+      title: t(pending.length === 1 ? "dashboard.actions.pendingOne" : "dashboard.actions.pendingMany", { count: pending.length }),
+      sub: pending.length ? t("dashboard.actions.pendingSub") : t("dashboard.actions.pendingNone"),
       href: "/bayaran/?tab=semakan",
-      cta: "Semak",
+      cta: t("dashboard.actions.pendingCta"),
     },
     {
       icon: MessageCircle,
-      title: "Hantar peringatan melalui WhatsApp",
-      sub: "Salin mesej atau buka WhatsApp ahli",
+      title: t("dashboard.actions.whatsappTitle"),
+      sub: t("dashboard.actions.whatsappSub"),
       href: "/peringatan/",
-      cta: "Buka",
+      cta: t("dashboard.actions.whatsappCta"),
     },
   ];
   return (
-    <SectionCard title="Tindakan Peringatan" icon={BellRing} action={<CardLink href="/peringatan/">Lihat Semua</CardLink>}>
+    <SectionCard title={t("dashboard.actions.title")} icon={BellRing} action={<CardLink href="/peringatan/">{t("dashboard.actions.viewAll")}</CardLink>}>
       <ul className="grid grid-cols-1 gap-2.5">
         {items.map((item) => (
           <li key={item.title} className="flex items-center gap-3 rounded-xl border border-border bg-card px-3 py-2.5">
@@ -284,6 +284,7 @@ function ActionsCard({ owing, pending }: { owing: number; pending: Payment[] }) 
 
 /** Confirmed money received per calendar month (by payment date), last four months. */
 function MonthlyCard({ payments }: { payments: Payment[] }) {
+  const t = useT();
   const { view, data } = useSnapshot();
   const thisMonth = monthOf(view.today);
   const [month, setMonth] = useState(thisMonth);
@@ -297,21 +298,21 @@ function MonthlyCard({ payments }: { payments: Payment[] }) {
   const value = values[3];
 
   return (
-    <SectionCard title="Ringkasan Bulanan" icon={ChartColumn} className="lg:col-span-2 xl:col-span-1">
+    <SectionCard title={t("dashboard.monthly.title")} icon={ChartColumn} className="lg:col-span-2 xl:col-span-1">
       <div className="flex items-center justify-between gap-2 rounded-xl border border-border px-1.5 py-1">
-        <Button variant="ghost" size="icon-sm" aria-label="Bulan sebelum" onClick={() => setMonth(addMonths(month, -1))}>
+        <Button variant="ghost" size="icon-sm" aria-label={t("dashboard.monthly.previous")} onClick={() => setMonth(addMonths(month, -1))}>
           <ChevronLeft />
         </Button>
         <span className="text-[13px] font-semibold">{formatMonth(month)}</span>
-        <Button variant="ghost" size="icon-sm" aria-label="Bulan seterusnya" onClick={() => setMonth(addMonths(month, 1))} disabled={month >= thisMonth}>
+        <Button variant="ghost" size="icon-sm" aria-label={t("dashboard.monthly.next")} onClick={() => setMonth(addMonths(month, 1))} disabled={month >= thisMonth}>
           <ChevronRight />
         </Button>
       </div>
       <p className="mt-4 text-center text-[24px] font-bold tracking-[-.02em] tabular-nums">{formatMoney(value)}</p>
       <p className="text-center text-[11.5px] text-muted-foreground">
-        diterima · {dueThisMonth > 0 ? <>caj bertarikh akhir bulan ini {formatMoney(dueThisMonth)}</> : "tiada caj bertarikh akhir bulan ini"}
+        {t("dashboard.monthly.received")} · {dueThisMonth > 0 ? t("dashboard.monthly.dueThisMonth", { amount: formatMoney(dueThisMonth) }) : t("dashboard.monthly.noDueThisMonth")}
       </p>
-      <div className="mt-4 flex h-28 items-end justify-around gap-3 px-2" role="img" aria-label={`Kutipan diterima ${months.map((m, i) => `${formatMonth(m, false)} ${formatMoney(values[i])}`).join(", ")}`}>
+      <div className="mt-4 flex h-28 items-end justify-around gap-3 px-2" role="img" aria-label={t("dashboard.monthly.chartLabel", { summary: months.map((m, i) => `${formatMonth(m, false)} ${formatMoney(values[i])}`).join(", ") })}>
         {months.map((m, i) => (
           <div key={m} className="flex flex-1 flex-col items-center gap-1.5">
             <div
@@ -328,6 +329,7 @@ function MonthlyCard({ payments }: { payments: Payment[] }) {
 }
 
 function RecentPayments({ payments }: { payments: Payment[] }) {
+  const t = useT();
   const { data, view } = useSnapshot();
   const target = (payment: Payment) => {
     if (payment.collectionId) return view.collectionsById.get(payment.collectionId)?.name ?? "—";
@@ -339,19 +341,19 @@ function RecentPayments({ payments }: { payments: Payment[] }) {
     );
     return [...names].join(", ");
   };
-  if (!payments.length) return <p className="px-5 py-6 text-center text-sm text-muted-foreground">Belum ada bayaran direkod.</p>;
+  if (!payments.length) return <p className="px-5 py-6 text-center text-sm text-muted-foreground">{t("dashboard.recent.empty")}</p>;
   return (
     <>
       <div className="@container/ledger hidden overflow-x-auto px-4 md:block md:px-5">
         <table className="w-full text-[13px]">
           <thead>
             <tr className="text-left text-xs text-muted-foreground">
-              <th className="rounded-l-lg bg-primary-tint px-3 py-2 font-semibold">Tarikh</th>
-              <th className="bg-primary-tint px-3 py-2 font-semibold">Ahli</th>
-              <th className="bg-primary-tint px-3 py-2 font-semibold">Kutipan</th>
-              <th className="bg-primary-tint px-3 py-2 text-right font-semibold">Jumlah</th>
-              <th className="hidden bg-primary-tint px-3 py-2 font-semibold @2xl/ledger:table-cell">Kaedah</th>
-              <th className="rounded-r-lg bg-primary-tint px-3 py-2 font-semibold">Status</th>
+              <th className="rounded-l-lg bg-primary-tint px-3 py-2 font-semibold">{t("dashboard.recent.date")}</th>
+              <th className="bg-primary-tint px-3 py-2 font-semibold">{t("dashboard.recent.member")}</th>
+              <th className="bg-primary-tint px-3 py-2 font-semibold">{t("dashboard.recent.collection")}</th>
+              <th className="bg-primary-tint px-3 py-2 text-right font-semibold">{t("dashboard.recent.amount")}</th>
+              <th className="hidden bg-primary-tint px-3 py-2 font-semibold @2xl/ledger:table-cell">{t("dashboard.recent.method")}</th>
+              <th className="rounded-r-lg bg-primary-tint px-3 py-2 font-semibold">{t("dashboard.recent.status")}</th>
             </tr>
           </thead>
           <tbody>

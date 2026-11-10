@@ -9,6 +9,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { t as translate } from "@/lib/i18n";
+import { useT } from "@/lib/i18n/react";
 import { formatDay, formatMoney, formatMonth, formatMonthLong, formatNumber } from "@/lib/format";
 import { methodLabels, paymentStateLabels } from "@/lib/labels";
 import { monthOf } from "@/lib/money/months";
@@ -38,7 +40,7 @@ export function paymentTargets(data: Snapshot) {
     byPayment.set(allocation.paymentId, list);
   }
   return (payment: Payment) => {
-    if (payment.collectionId) return collections.get(payment.collectionId)?.name ?? "Sumbangan";
+    if (payment.collectionId) return collections.get(payment.collectionId)?.name ?? translate("paymentsPage.targetFallbackDonation");
     const grouped = new Map<string, string[]>();
     for (const chargeId of byPayment.get(payment.id) ?? []) {
       const charge = charges.get(chargeId);
@@ -49,7 +51,7 @@ export function paymentTargets(data: Snapshot) {
       grouped.set(charge.collectionId, months);
     }
     const parts = [...grouped.entries()].map(([collectionId, months]) => {
-      const name = collections.get(collectionId)?.name ?? "Kutipan";
+      const name = collections.get(collectionId)?.name ?? translate("paymentsPage.targetFallbackCollection");
       if (!months.length) return name;
       months.sort();
       return `${name} (${months.map((month) => formatMonth(month, false)).join(", ")})`;
@@ -59,6 +61,7 @@ export function paymentTargets(data: Snapshot) {
 }
 
 export function BayaranPage() {
+  const t = useT();
   const { data, view } = useSnapshot();
   const params = useSearchParams();
   const router = useRouter();
@@ -128,21 +131,21 @@ export function BayaranPage() {
   const selectedPayment = selected ? data.payments.find((payment) => payment.id === selected) ?? null : null;
 
   const columns: Column<Payment>[] = [
-    { key: "date", header: "Tarikh", cell: (payment) => <span className="whitespace-nowrap tabular-nums">{formatDay(payment.paidOn)}</span> },
+    { key: "date", header: t("paymentsPage.columns.date"), cell: (payment) => <span className="whitespace-nowrap tabular-nums">{formatDay(payment.paidOn)}</span> },
     {
       key: "member",
-      header: "Ahli",
-      cell: (payment) => <span className="block max-w-[220px] truncate font-medium">{view.membersById.get(payment.memberId)?.name ?? "Ahli"}</span>,
+      header: t("paymentsPage.columns.member"),
+      cell: (payment) => <span className="block max-w-[220px] truncate font-medium">{view.membersById.get(payment.memberId)?.name ?? t("paymentsPage.memberFallback")}</span>,
     },
     {
       key: "target",
-      header: "Kutipan",
+      header: t("paymentsPage.columns.collection"),
       hideBelow: "lg",
       cell: (payment) => <span className="line-clamp-2 max-w-[280px] text-muted-foreground">{targetOf(payment)}</span>,
     },
     {
       key: "amount",
-      header: "Jumlah",
+      header: t("paymentsPage.columns.amount"),
       align: "right",
       cell: (payment) => (
         <span className={cn("font-semibold whitespace-nowrap", payment.state === "reversed" && "text-muted-foreground line-through")}>
@@ -150,19 +153,19 @@ export function BayaranPage() {
         </span>
       ),
     },
-    { key: "method", header: "Kaedah", hideBelow: "lg", cell: (payment) => <span className="text-muted-foreground">{methodLabels[payment.method]}</span> },
-    { key: "state", header: "Status", cell: (payment) => <LabelChip entry={paymentStateLabels[payment.state]} compact /> },
+    { key: "method", header: t("paymentsPage.columns.method"), hideBelow: "lg", cell: (payment) => <span className="text-muted-foreground">{methodLabels[payment.method]}</span> },
+    { key: "state", header: t("paymentsPage.columns.status"), cell: (payment) => <LabelChip entry={paymentStateLabels[payment.state]} compact /> },
   ];
 
   return (
     <PageShell>
       <PageHeader
-        title="Rekod Bayaran"
-        description="Semua transaksi bayaran dan sumbangan. Bayaran tidak pernah dipadam atau diubah; pembetulan dibuat dengan membatalkan bersama sebab."
+        title={t("paymentsPage.header.title")}
+        description={t("paymentsPage.header.description")}
         actions={
           <Button asChild>
             <Link href="/bayaran/baru/">
-              <Plus /> Rekod Bayaran
+              <Plus /> {t("paymentsPage.header.record")}
             </Link>
           </Button>
         }
@@ -170,35 +173,35 @@ export function BayaranPage() {
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <StatCard
-          label="Diterima bulan ini"
+          label={t("paymentsPage.stats.receivedLabel")}
           value={formatMoney(receivedThisMonth)}
           icon={BadgeCheck}
           tone="paid"
-          hint={`${formatMonthLong(thisMonth)} · disahkan sahaja`}
+          hint={t("paymentsPage.stats.receivedHint", { month: formatMonthLong(thisMonth) })}
         />
         <StatCard
-          label="Menunggu semakan"
+          label={t("paymentsPage.stats.pendingLabel")}
           value={formatMoney(pendingTotal)}
           icon={Hourglass}
           tone="pending"
-          hint={pending.length ? `${pending.length} bayaran belum disahkan` : "Tiada bayaran tertunda"}
+          hint={pending.length ? t("paymentsPage.stats.pendingHint", { count: pending.length }) : t("paymentsPage.stats.pendingNone")}
           href={pending.length ? "/bayaran/?tab=semakan" : undefined}
         />
-        <StatCard label="Transaksi bulan ini" value={formatNumber(monthCount)} icon={ReceiptText} hint="Tidak termasuk yang dibatalkan" />
+        <StatCard label={t("paymentsPage.stats.countLabel")} value={formatNumber(monthCount)} icon={ReceiptText} hint={t("paymentsPage.stats.countHint")} />
       </div>
 
       <Tabs value={tab} onValueChange={(value) => setTab(value as Tab)}>
         {/* Three tabs fit at 320px: the long label shortens below sm, and the triggers tighten. */}
         <TabsList className="h-10! w-full rounded-xl bg-primary-tint p-1 sm:w-fit">
           <TabsTrigger value="semua" className="gap-1 rounded-lg px-2 text-[13px] sm:gap-1.5 sm:px-3 sm:text-sm">
-            Semua <span className="text-muted-foreground tabular-nums">{data.payments.length}</span>
+            {t("paymentsPage.tabs.all")} <span className="text-muted-foreground tabular-nums">{data.payments.length}</span>
           </TabsTrigger>
           <TabsTrigger value="semakan" className="gap-1 rounded-lg px-2 text-[13px] sm:gap-1.5 sm:px-3 sm:text-sm">
-            <span className="hidden sm:inline">Menunggu Semakan</span>
-            <span className="sm:hidden">Semakan</span> <span className="text-muted-foreground tabular-nums">{pending.length}</span>
+            <span className="hidden sm:inline">{t("paymentsPage.tabs.reviewLong")}</span>
+            <span className="sm:hidden">{t("paymentsPage.tabs.reviewShort")}</span> <span className="text-muted-foreground tabular-nums">{pending.length}</span>
           </TabsTrigger>
           <TabsTrigger value="dibatalkan" className="gap-1 rounded-lg px-2 text-[13px] sm:gap-1.5 sm:px-3 sm:text-sm">
-            Dibatalkan <span className="text-muted-foreground tabular-nums">{reversed.length}</span>
+            {t("paymentsPage.tabs.reversed")} <span className="text-muted-foreground tabular-nums">{reversed.length}</span>
           </TabsTrigger>
         </TabsList>
       </Tabs>
@@ -207,14 +210,15 @@ export function BayaranPage() {
         pending.length === 0 ? (
           <EmptyState
             icon={BadgeCheck}
-            title="Tiada bayaran menunggu semakan"
-            description="Bayaran yang direkod tanpa tanda “Wang sudah diterima” akan muncul di sini untuk disahkan."
+            title={t("paymentsPage.review.emptyTitle")}
+            description={t("paymentsPage.review.emptyDescription")}
           />
         ) : (
           <div className="grid gap-3">
             <p className="rounded-2xl bg-st-pending-bg px-4 py-3 text-sm text-st-pending">
-              {pending.length} bayaran berjumlah <b>{formatMoney(pendingTotal)}</b> belum dikira sebagai diterima. Sahkan setelah wang
-              masuk ke akaun atau tangan anda; batalkan jika tidak diterima.
+              {t("paymentsPage.review.bannerBefore", { count: pending.length })}
+              <b>{formatMoney(pendingTotal)}</b>
+              {t("paymentsPage.review.bannerAfter")}
             </p>
             <PaymentList payments={pending} showMember />
           </div>
@@ -222,16 +226,16 @@ export function BayaranPage() {
       ) : (
         <>
           <div className="grid gap-2.5">
-            <SearchInput id="payment-search" value={query} onChange={setQuery} placeholder="Cari nama ahli atau rujukan…" className="sm:max-w-sm" />
+            <SearchInput id="payment-search" value={query} onChange={setQuery} placeholder={t("paymentsPage.filters.searchPlaceholder")} className="sm:max-w-sm" />
             <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-end">
               <div className="grid gap-1">
-                <Label className="text-xs text-muted-foreground">Kaedah</Label>
+                <Label className="text-xs text-muted-foreground">{t("paymentsPage.filters.method")}</Label>
                 <Select value={method} onValueChange={(value) => setMethod(value as PaymentMethod | "all")}>
-                  <SelectTrigger aria-label="Tapis kaedah" className="w-full sm:w-40">
+                  <SelectTrigger aria-label={t("paymentsPage.filters.methodAria")} className="w-full sm:w-40">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Semua kaedah</SelectItem>
+                    <SelectItem value="all">{t("paymentsPage.filters.allMethods")}</SelectItem>
                     {(Object.keys(methodLabels) as PaymentMethod[]).map((key) => (
                       <SelectItem key={key} value={key}>
                         {methodLabels[key]}
@@ -242,13 +246,13 @@ export function BayaranPage() {
               </div>
               {tab === "semua" && (
                 <div className="grid gap-1">
-                  <Label className="text-xs text-muted-foreground">Status</Label>
+                  <Label className="text-xs text-muted-foreground">{t("paymentsPage.filters.status")}</Label>
                   <Select value={state} onValueChange={(value) => setState(value as PaymentState | "all")}>
-                    <SelectTrigger aria-label="Tapis status" className="w-full sm:w-44">
+                    <SelectTrigger aria-label={t("paymentsPage.filters.statusAria")} className="w-full sm:w-44">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Semua status</SelectItem>
+                      <SelectItem value="all">{t("paymentsPage.filters.allStatuses")}</SelectItem>
                       {(Object.keys(paymentStateLabels) as PaymentState[]).map((key) => (
                         <SelectItem key={key} value={key}>
                           {paymentStateLabels[key][0]}
@@ -260,19 +264,19 @@ export function BayaranPage() {
               )}
               <div className="grid min-w-0 gap-1">
                 <Label htmlFor="pay-from" className="text-xs text-muted-foreground">
-                  Dari
+                  {t("paymentsPage.filters.from")}
                 </Label>
-                <DatePicker id="pay-from" value={from} max={to || view.today} onChange={setFrom} clearable emptyLabel="Mana-mana" clearLabel="Kosongkan" className="h-10 px-2.5 sm:w-40" />
+                <DatePicker id="pay-from" value={from} max={to || view.today} onChange={setFrom} clearable emptyLabel={t("paymentsPage.filters.anyDate")} clearLabel={t("paymentsPage.filters.clearDate")} className="h-10 px-2.5 sm:w-40" />
               </div>
               <div className="grid min-w-0 gap-1">
                 <Label htmlFor="pay-to" className="text-xs text-muted-foreground">
-                  Hingga
+                  {t("paymentsPage.filters.to")}
                 </Label>
-                <DatePicker id="pay-to" value={to} min={from || undefined} max={view.today} onChange={setTo} clearable emptyLabel="Mana-mana" clearLabel="Kosongkan" className="h-10 px-2.5 sm:w-40" />
+                <DatePicker id="pay-to" value={to} min={from || undefined} max={view.today} onChange={setTo} clearable emptyLabel={t("paymentsPage.filters.anyDate")} clearLabel={t("paymentsPage.filters.clearDate")} className="h-10 px-2.5 sm:w-40" />
               </div>
               {filtersOn && (
                 <Button variant="outline" onClick={clearFilters} className="col-span-2 h-10 justify-self-start rounded-xl sm:col-span-1">
-                  <FilterX /> Kosongkan penapis
+                  <FilterX /> {t("paymentsPage.filters.clear")}
                 </Button>
               )}
             </div>
@@ -281,16 +285,16 @@ export function BayaranPage() {
           {data.payments.length === 0 ? (
             <EmptyState
               icon={ReceiptText}
-              title="Belum ada bayaran"
-              description="Rekod bayaran pertama apabila ahli menyerahkan wang atau membuat pindahan."
+              title={t("paymentsPage.empty.noneTitle")}
+              description={t("paymentsPage.empty.noneDescription")}
               action={
                 <Button asChild>
-                  <Link href="/bayaran/baru/">Rekod bayaran pertama</Link>
+                  <Link href="/bayaran/baru/">{t("paymentsPage.empty.noneAction")}</Link>
                 </Button>
               }
             />
           ) : tab === "dibatalkan" && reversed.length === 0 ? (
-            <EmptyState icon={Undo2} title="Tiada bayaran dibatalkan" description="Bayaran yang dibatalkan kekal di sini bersama sebabnya untuk jejak audit." />
+            <EmptyState icon={Undo2} title={t("paymentsPage.empty.reversedTitle")} description={t("paymentsPage.empty.reversedDescription")} />
           ) : (
             <>
               <DataTable
@@ -301,18 +305,18 @@ export function BayaranPage() {
                 empty={
                   <EmptyState
                     icon={FilterX}
-                    title="Tiada bayaran sepadan"
-                    description="Cuba ubah carian, kaedah, status atau julat tarikh."
+                    title={t("paymentsPage.empty.noMatchTitle")}
+                    description={t("paymentsPage.empty.noMatchDescription")}
                     action={
                       <Button variant="outline" onClick={clearFilters}>
-                        Kosongkan penapis
+                        {t("paymentsPage.filters.clear")}
                       </Button>
                     }
                   />
                 }
                 mobileCard={(payment) => (
                   <MobileRow
-                    title={view.membersById.get(payment.memberId)?.name ?? "Ahli"}
+                    title={view.membersById.get(payment.memberId)?.name ?? t("paymentsPage.memberFallback")}
                     amount={<span className={cn(payment.state === "reversed" && "text-muted-foreground line-through")}>{formatMoney(payment.amount)}</span>}
                     meta={`${formatDay(payment.paidOn)} · ${methodLabels[payment.method]} · ${targetOf(payment)}`}
                     status={<LabelChip entry={paymentStateLabels[payment.state]} compact />}
@@ -322,11 +326,11 @@ export function BayaranPage() {
               {rows.length > 0 && (
                 <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
                   <span className="tabular-nums">
-                    Menunjukkan {Math.min(limit, rows.length)} daripada {rows.length} transaksi
+                    {t("paymentsPage.footer.showing", { shown: Math.min(limit, rows.length), total: rows.length })}
                   </span>
                   {rows.length > limit && (
                     <Button variant="outline" size="sm" onClick={() => setLimit(limit + PAGE)}>
-                      Tunjuk lagi
+                      {t("paymentsPage.footer.more")}
                     </Button>
                   )}
                 </div>

@@ -20,6 +20,7 @@ import {
   paymentStateLabels,
   type Tone,
 } from "@/lib/labels";
+import { useLocale, useT, type TFunction } from "@/lib/i18n/react";
 import { senToInput, sum } from "@/lib/money/amount";
 import { totalsOf, voluntaryReceived, type ChargeLedger } from "@/lib/money/ledger";
 import type { Allocation, Collection, Payment, PaymentState, Sen, Snapshot } from "@/lib/types";
@@ -51,12 +52,12 @@ type Report = {
   footnote?: string;
 };
 
-const REPORTS: { value: ReportKind; label: string }[] = [
-  { value: "kutipan", label: "Ringkasan kutipan" },
-  { value: "ahli", label: "Ringkasan ahli" },
-  { value: "belum", label: "Ahli belum bayar / sebahagian" },
-  { value: "bulanan", label: "Laporan bulanan" },
-  { value: "sejarah", label: "Sejarah bayaran" },
+const reportOptions = (t: TFunction): { value: ReportKind; label: string }[] => [
+  { value: "kutipan", label: t("reports.kinds.kutipan") },
+  { value: "ahli", label: t("reports.kinds.ahli") },
+  { value: "belum", label: t("reports.kinds.belum") },
+  { value: "bulanan", label: t("reports.kinds.bulanan") },
+  { value: "sejarah", label: t("reports.kinds.sejarah") },
 ];
 
 const ALL = "all";
@@ -127,13 +128,13 @@ function voluntaryPending(payments: Payment[], collectionId: string, memberId?: 
   );
 }
 
-function memberLabel(view: View, memberId: string) {
+function memberLabel(t: TFunction, view: View, memberId: string) {
   const member = view.membersById.get(memberId);
-  if (!member) return "Ahli";
-  return member.active ? member.name : `${member.name} (tidak aktif)`;
+  if (!member) return t("reports.member.unknown");
+  return member.active ? member.name : t("reports.member.inactive", { name: member.name });
 }
 
-function collectionSummary(data: Snapshot, view: View, collectionId: string | null): Report {
+function collectionSummary(t: TFunction, data: Snapshot, view: View, collectionId: string | null): Report {
   const collections = sortCollections(data.collections).filter((c) => !collectionId || c.id === collectionId);
   const charged: ChargeLedger[] = [];
   let voluntaryIn = 0;
@@ -175,27 +176,27 @@ function collectionSummary(data: Snapshot, view: View, collectionId: string | nu
   });
   const all = totalsOf(charged);
   return {
-    title: "Ringkasan kutipan",
-    scope: collectionId ? collections[0]?.name ?? "—" : "Semua kutipan",
+    title: t("reports.kinds.kutipan"),
+    scope: collectionId ? collections[0]?.name ?? "—" : t("reports.allCollections"),
     columns: [
-      text("name", "Kutipan"),
-      text("type", "Jenis"),
-      status("status", "Status"),
-      count("participants", "Peserta"),
-      money("expected", "Dijangka"),
-      money("received", "Diterima"),
-      money("dueNow", "Tertunggak"),
-      money("upcoming", "Akan datang"),
-      money("pending", "Menunggu semakan"),
-      low(count("paid", "Dibayar")),
-      low(count("partial", "Sebahagian")),
-      low(count("unpaid", "Belum bayar")),
-      low(count("exempt", "Dikecualikan")),
-      low(count("overdue", "Lewat")),
+      text("name", t("reports.col.collection")),
+      text("type", t("reports.col.type")),
+      status("status", t("reports.col.status")),
+      count("participants", t("reports.col.participants")),
+      money("expected", t("reports.col.expected")),
+      money("received", t("reports.col.received")),
+      money("dueNow", t("reports.col.dueNow")),
+      money("upcoming", t("reports.col.upcoming")),
+      money("pending", t("reports.col.pending")),
+      low(count("paid", t("reports.col.paid"))),
+      low(count("partial", t("reports.col.partial"))),
+      low(count("unpaid", t("reports.col.unpaid"))),
+      low(count("exempt", t("reports.col.exempt"))),
+      low(count("overdue", t("reports.col.overdue"))),
     ],
     rows,
     totals: {
-      name: "Jumlah",
+      name: t("reports.total"),
       type: null,
       status: null,
       participants: null,
@@ -211,18 +212,17 @@ function collectionSummary(data: Snapshot, view: View, collectionId: string | nu
       overdue: all.counts.overdue,
     },
     summary: [
-      { label: "Dijangka", sen: all.expected },
-      { label: "Diterima (disahkan)", sen: all.received + voluntaryIn },
-      { label: "Tertunggak", sen: all.dueNow },
-      { label: "Menunggu semakan", sen: all.pending + voluntaryWait },
+      { label: t("reports.col.expected"), sen: all.expected },
+      { label: t("reports.summary.receivedConfirmed"), sen: all.received + voluntaryIn },
+      { label: t("reports.col.dueNow"), sen: all.dueNow },
+      { label: t("reports.col.pending"), sen: all.pending + voluntaryWait },
     ],
-    empty: "Tiada kutipan lagi.",
-    footnote:
-      "Bilangan status dikira bagi setiap caj: kutipan bulanan ada satu caj bagi setiap ahli setiap bulan. Diterima termasuk sumbangan sukarela yang disahkan. Menunggu semakan belum dikira sebagai diterima.",
+    empty: t("reports.collectionSummary.empty"),
+    footnote: t("reports.collectionSummary.footnote"),
   };
 }
 
-function memberSummary(data: Snapshot, view: View, collectionId: string | null): Report {
+function memberSummary(t: TFunction, data: Snapshot, view: View, collectionId: string | null): Report {
   const voluntary = data.collections.filter((c) => c.type === "voluntary");
   const scope: ChargeLedger[] = [];
   let contributionsTotal = 0;
@@ -242,7 +242,7 @@ function memberSummary(data: Snapshot, view: View, collectionId: string | null):
         {
           key: member.id,
           values: {
-            name: memberLabel(view, member.id),
+            name: memberLabel(t, view, member.id),
             category: member.category ? categoryLabels[member.category] : null,
             expected: totals.expected,
             received: totals.received,
@@ -256,22 +256,22 @@ function memberSummary(data: Snapshot, view: View, collectionId: string | null):
     });
   const all = totalsOf(scope);
   const columns = [
-    text("name", "Ahli"),
-    low(text("category", "Kategori")),
-    money("expected", "Dijangka"),
-    money("received", "Diterima"),
-    money("dueNow", "Baki semasa"),
-    money("upcoming", "Akan datang"),
-    money("pending", "Menunggu semakan"),
+    text("name", t("reports.col.member")),
+    low(text("category", t("reports.col.category"))),
+    money("expected", t("reports.col.expected")),
+    money("received", t("reports.col.received")),
+    money("dueNow", t("reports.col.currentBalance")),
+    money("upcoming", t("reports.col.upcoming")),
+    money("pending", t("reports.col.pending")),
   ];
-  if (!collectionId) columns.push(money("contributions", "Sumbangan sukarela"));
+  if (!collectionId) columns.push(money("contributions", t("reports.col.voluntary")));
   return {
-    title: "Ringkasan ahli",
-    scope: collectionId ? view.collectionsById.get(collectionId)?.name ?? "—" : "Semua kutipan",
+    title: t("reports.kinds.ahli"),
+    scope: collectionId ? view.collectionsById.get(collectionId)?.name ?? "—" : t("reports.allCollections"),
     columns,
     rows,
     totals: {
-      name: "Jumlah",
+      name: t("reports.total"),
       category: null,
       expected: all.expected,
       received: all.received,
@@ -281,17 +281,17 @@ function memberSummary(data: Snapshot, view: View, collectionId: string | null):
       contributions: collectionId ? null : contributionsTotal,
     },
     summary: [
-      { label: "Dijangka", sen: all.expected },
-      { label: "Diterima (disahkan)", sen: all.received },
-      { label: "Baki semasa", sen: all.dueNow },
-      ...(collectionId ? [] : [{ label: "Sumbangan sukarela", sen: contributionsTotal }]),
+      { label: t("reports.col.expected"), sen: all.expected },
+      { label: t("reports.summary.receivedConfirmed"), sen: all.received },
+      { label: t("reports.col.currentBalance"), sen: all.dueNow },
+      ...(collectionId ? [] : [{ label: t("reports.col.voluntary"), sen: contributionsTotal }]),
     ],
-    empty: "Tiada ahli dengan caj dalam skop ini.",
-    footnote: "Baki semasa tidak termasuk bulan yang akan datang. Menunggu semakan belum dikira sebagai diterima.",
+    empty: t("reports.memberSummary.empty"),
+    footnote: t("reports.memberSummary.footnote"),
   };
 }
 
-function owingReport(data: Snapshot, view: View, collection: Collection, periodId: string | null): Report {
+function owingReport(t: TFunction, data: Snapshot, view: View, collection: Collection, periodId: string | null): Report {
   const periods = new Map((view.periodsByCollection.get(collection.id) ?? []).map((p) => [p.id, p]));
   const scope = (view.chargesByCollection.get(collection.id) ?? [])
     .filter((charge) => !periodId || charge.periodId === periodId)
@@ -302,24 +302,24 @@ function owingReport(data: Snapshot, view: View, collection: Collection, periodI
     .sort((a, b) => {
       const ma = a.charge.periodId ? periods.get(a.charge.periodId)?.month ?? "" : "";
       const mb = b.charge.periodId ? periods.get(b.charge.periodId)?.month ?? "" : "";
-      return memberLabel(view, a.charge.memberId).localeCompare(memberLabel(view, b.charge.memberId), "ms") || ma.localeCompare(mb);
+      return memberLabel(t, view, a.charge.memberId).localeCompare(memberLabel(t, view, b.charge.memberId), "ms") || ma.localeCompare(mb);
     });
   const monthly = collection.type === "monthly";
   const totals = totalsOf(owing);
   const period = periodId ? periods.get(periodId) : null;
-  const columns = [text("name", "Ahli"), low(text("phone", "Telefon"))];
-  if (monthly) columns.push(text("month", "Bulan"));
+  const columns = [text("name", t("reports.col.member")), low(text("phone", t("reports.col.phone")))];
+  if (monthly) columns.push(text("month", t("reports.col.month")));
   columns.push(
-    money("required", "Amaun"),
-    money("confirmed", "Diterima"),
-    money("remaining", "Baki"),
-    money("pending", "Menunggu semakan"),
-    status("status", "Status"),
-    low(text("due", "Tarikh akhir")),
+    money("required", t("reports.col.amount")),
+    money("confirmed", t("reports.col.received")),
+    money("remaining", t("reports.col.balance")),
+    money("pending", t("reports.col.pending")),
+    status("status", t("reports.col.status")),
+    low(text("due", t("reports.col.dueDate"))),
   );
   return {
-    title: "Ahli belum bayar / sebahagian",
-    scope: `${collection.name}${monthly ? ` · ${period ? formatMonth(period.month) : "Semua bulan setakat ini"}` : ""}`,
+    title: t("reports.kinds.belum"),
+    scope: `${collection.name}${monthly ? ` · ${period ? formatMonth(period.month) : t("reports.filters.allMonths")}` : ""}`,
     columns,
     rows: owing.map((l) => {
       const chips: Chip[] = [cellStatusLabels[cellStatus(l)]];
@@ -329,7 +329,7 @@ function owingReport(data: Snapshot, view: View, collection: Collection, periodI
       return {
         key: l.charge.id,
         values: {
-          name: memberLabel(view, l.charge.memberId),
+          name: memberLabel(t, view, l.charge.memberId),
           phone: view.membersById.get(l.charge.memberId)?.phone ?? null,
           month: p ? formatMonth(p.month) : null,
           required: l.required,
@@ -342,7 +342,7 @@ function owingReport(data: Snapshot, view: View, collection: Collection, periodI
       };
     }),
     totals: {
-      name: "Jumlah",
+      name: t("reports.total"),
       phone: null,
       month: null,
       required: totals.expected,
@@ -353,36 +353,36 @@ function owingReport(data: Snapshot, view: View, collection: Collection, periodI
       due: null,
     },
     summary: [
-      { label: "Baki tertunggak", sen: totals.dueNow },
-      { label: "Menunggu semakan", sen: totals.pending },
+      { label: t("reports.summary.outstanding"), sen: totals.dueNow },
+      { label: t("reports.col.pending"), sen: totals.pending },
     ],
-    empty: "Semua ahli dalam skop ini sudah menjelaskan bayaran.",
-    footnote: "Ahli yang dikecualikan, sudah membayar penuh atau bagi bulan yang akan datang tidak disenaraikan. Menunggu semakan belum dikira sebagai diterima.",
+    empty: t("reports.owing.empty"),
+    footnote: t("reports.owing.footnote"),
   };
 }
 
-function monthlyReport(view: View, collection: Collection): Report {
+function monthlyReport(t: TFunction, view: View, collection: Collection): Report {
   const charges = view.chargesByCollection.get(collection.id) ?? [];
   const periods = view.periodsByCollection.get(collection.id) ?? [];
   const all = view.collectionTotals(collection.id);
   return {
-    title: "Laporan bulanan",
+    title: t("reports.kinds.bulanan"),
     scope: collection.name,
     columns: [
-      text("month", "Bulan"),
-      low(text("due", "Tarikh akhir")),
-      status("state", "Keadaan"),
-      money("expected", "Dijangka"),
-      money("received", "Diterima"),
-      money("dueNow", "Tertunggak"),
-      money("upcoming", "Akan datang"),
-      money("pending", "Menunggu semakan"),
-      low(count("paid", "Dibayar")),
-      low(count("charged", "Ahli dikenakan")),
+      text("month", t("reports.col.month")),
+      low(text("due", t("reports.col.dueDate"))),
+      status("state", t("reports.col.state")),
+      money("expected", t("reports.col.expected")),
+      money("received", t("reports.col.received")),
+      money("dueNow", t("reports.col.dueNow")),
+      money("upcoming", t("reports.col.upcoming")),
+      money("pending", t("reports.col.pending")),
+      low(count("paid", t("reports.col.paid"))),
+      low(count("charged", t("reports.col.charged"))),
     ],
     rows: periods.map((period) => {
       const ledgers = charges.filter((c) => c.periodId === period.id).map((c) => view.ledgers.get(c.id)!);
-      const t = totalsOf(ledgers);
+      const tt = totalsOf(ledgers);
       const future = ledgers.some((l) => l.future);
       return {
         key: period.id,
@@ -391,23 +391,23 @@ function monthlyReport(view: View, collection: Collection): Report {
           due: period.dueDate ? formatDay(period.dueDate) : null,
           state: future
             ? [cellStatusLabels.future]
-            : t.counts.overdue > 0
+            : tt.counts.overdue > 0
               ? [overdueLabel]
-              : t.dueNow === 0
+              : tt.dueNow === 0
                 ? [cellStatusLabels.paid]
-                : [["Dalam kutipan", "brand"]],
-          expected: t.expected,
-          received: t.received,
-          dueNow: t.dueNow,
-          upcoming: t.upcoming,
-          pending: t.pending,
-          paid: t.counts.paid,
-          charged: ledgers.length - t.counts.exempt,
+                : [[t("reports.collecting"), "brand"]],
+          expected: tt.expected,
+          received: tt.received,
+          dueNow: tt.dueNow,
+          upcoming: tt.upcoming,
+          pending: tt.pending,
+          paid: tt.counts.paid,
+          charged: ledgers.length - tt.counts.exempt,
         },
       };
     }),
     totals: {
-      month: "Jumlah",
+      month: t("reports.total"),
       due: null,
       state: null,
       expected: all.expected,
@@ -419,17 +419,18 @@ function monthlyReport(view: View, collection: Collection): Report {
       charged: null,
     },
     summary: [
-      { label: "Dijangka", sen: all.expected },
-      { label: "Diterima (disahkan)", sen: all.received },
-      { label: "Tertunggak", sen: all.dueNow },
-      { label: "Akan datang", sen: all.upcoming },
+      { label: t("reports.col.expected"), sen: all.expected },
+      { label: t("reports.summary.receivedConfirmed"), sen: all.received },
+      { label: t("reports.col.dueNow"), sen: all.dueNow },
+      { label: t("reports.col.upcoming"), sen: all.upcoming },
     ],
-    empty: "Kutipan ini tiada bulan.",
-    footnote: "Bulan yang akan datang tidak dikira sebagai tertunggak. Dibayar ialah bilangan ahli yang menjelaskan penuh bagi bulan itu.",
+    empty: t("reports.monthly.empty"),
+    footnote: t("reports.monthly.footnote"),
   };
 }
 
 function historyReport(
+  t: TFunction,
   data: Snapshot,
   view: View,
   collectionId: string | null,
@@ -475,48 +476,50 @@ function historyReport(
     .filter((r) => r.inScope)
     .sort((a, b) => b.payment.paidOn.localeCompare(a.payment.paidOn) || b.payment.createdAt.localeCompare(a.payment.createdAt));
   const byState = (s: PaymentState) => sum(rows.filter((r) => r.payment.state === s).map((r) => r.amount));
-  const collectionName = collectionId ? view.collectionsById.get(collectionId)?.name ?? "—" : "Semua kutipan";
+  const collectionName = collectionId ? view.collectionsById.get(collectionId)?.name ?? "—" : t("reports.allCollections");
   return {
-    title: "Sejarah bayaran",
-    scope: `${collectionName} · ${formatDay(from)} hingga ${formatDay(to)}${state === ALL ? "" : ` · ${paymentStateLabels[state][0]}`}`,
+    title: t("reports.kinds.sejarah"),
+    scope: `${t("reports.historyScope", { collection: collectionName, from: formatDay(from), to: formatDay(to) })}${state === ALL ? "" : ` · ${paymentStateLabels[state][0]}`}`,
     columns: [
-      text("date", "Tarikh bayar"),
-      text("member", "Ahli"),
-      text("collection", "Kutipan"),
-      money("amount", "Amaun"),
-      low(text("method", "Kaedah")),
-      low(text("reference", "Rujukan")),
-      status("state", "Status"),
-      text("note", "Catatan / sebab"),
+      text("date", t("reports.col.paidOn")),
+      text("member", t("reports.col.member")),
+      text("collection", t("reports.col.collection")),
+      money("amount", t("reports.col.amount")),
+      low(text("method", t("reports.col.method"))),
+      low(text("reference", t("reports.col.reference"))),
+      status("state", t("reports.col.status")),
+      text("note", t("reports.col.note")),
     ],
     rows: rows.map((r) => ({
       key: r.payment.id,
       values: {
         date: formatDay(r.payment.paidOn),
-        member: memberLabel(view, r.payment.memberId),
+        member: memberLabel(t, view, r.payment.memberId),
         collection: r.label || "—",
         amount: r.amount,
         method: methodLabels[r.payment.method],
         reference: r.payment.reference,
         state: [paymentStateLabels[r.payment.state]],
-        note: r.payment.state === "reversed" ? `Dibatalkan: ${r.payment.reversalReason ?? "—"}` : r.payment.note,
+        note: r.payment.state === "reversed" ? t("reports.reversedNote", { reason: r.payment.reversalReason ?? "—" }) : r.payment.note,
       },
     })),
     // Confirmed, pending and reversed money are never added together.
     totals: null,
     summary: [
-      { label: "Disahkan", sen: byState("confirmed") },
-      { label: "Menunggu semakan", sen: byState("pending") },
-      { label: "Dibatalkan", sen: byState("reversed") },
+      { label: t("reports.summary.confirmed"), sen: byState("confirmed") },
+      { label: t("reports.col.pending"), sen: byState("pending") },
+      { label: t("reports.summary.reversed"), sen: byState("reversed") },
     ],
-    empty: "Tiada bayaran dalam tempoh ini.",
-    footnote: "Hanya bayaran yang disahkan dikira sebagai diterima. Bayaran yang dibatalkan kekal dalam rekod bersama sebabnya.",
+    empty: t("reports.history.empty"),
+    footnote: t("reports.history.footnote"),
   };
 }
 
 // Page ------------------------------------------------------------------------------------
 
 export function ReportsPage() {
+  const t = useT();
+  const locale = useLocale();
   const { data, view } = useSnapshot();
   const [kind, setKind] = useState<ReportKind>("kutipan");
   const [pick, setPick] = useState<string>(ALL);
@@ -546,37 +549,37 @@ export function ReportsPage() {
   const report = useMemo<Report | null>(() => {
     switch (kind) {
       case "kutipan":
-        return collectionSummary(data, view, collection?.id ?? null);
+        return collectionSummary(t, data, view, collection?.id ?? null);
       case "ahli":
-        return memberSummary(data, view, collection?.id ?? null);
+        return memberSummary(t, data, view, collection?.id ?? null);
       case "belum":
-        return collection ? owingReport(data, view, collection, period?.id ?? null) : null;
+        return collection ? owingReport(t, data, view, collection, period?.id ?? null) : null;
       case "bulanan":
-        return collection ? monthlyReport(view, collection) : null;
+        return collection ? monthlyReport(t, view, collection) : null;
       case "sejarah":
-        return rangeInvalid ? null : historyReport(data, view, collection?.id ?? null, from, to, stateFilter);
+        return rangeInvalid ? null : historyReport(t, data, view, collection?.id ?? null, from, to, stateFilter);
     }
-  }, [kind, data, view, collection, period, from, to, stateFilter, rangeInvalid]);
+  }, [kind, data, view, collection, period, from, to, stateFilter, rangeInvalid, t, locale]);
 
   const headerFields = (at: string): [string, string][] => [
-    ["Kelab", data.club.name],
-    ["Sekolah", data.club.school ?? "—"],
-    ["Sesi", data.club.session],
-    ["Skop", report?.scope ?? "—"],
-    ["Tarikh eksport", `${formatDateTime(at)} (waktu Malaysia)`],
-    ["Nota", "Rekod kutipan, bukan penyata perakaunan."],
+    [t("reports.header.club"), data.club.name],
+    [t("reports.header.school"), data.club.school ?? "—"],
+    [t("reports.header.session"), data.club.session],
+    [t("reports.header.scope"), report?.scope ?? "—"],
+    [t("reports.header.exportedAt"), t("reports.header.exportedValue", { date: formatDateTime(at) })],
+    [t("reports.header.note"), t("reports.header.noteValue")],
   ];
 
   const exportCsv = () => {
     if (!report) return;
     const at = new Date().toISOString();
     setStamp(at);
-    const slug = REPORTS.find((r) => r.value === kind)!.label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    const slug = reportOptions(t).find((r) => r.value === kind)!.label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
     try {
       download(`kelabkit-${slug}-${todayDay()}.csv`, buildCsv(report, headerFields(at)));
-      toast.success("Fail CSV dimuat turun.");
+      toast.success(t("reports.csvDownloaded"));
     } catch {
-      toast.error("Fail CSV tidak dapat dihasilkan. Cuba lagi.");
+      toast.error(t("reports.csvFailed"));
     }
   };
 
@@ -591,15 +594,15 @@ export function ReportsPage() {
     <PageShell className="print:max-w-none print:gap-3 print:p-0">
       <div className="print:hidden">
         <PageHeader
-          title="Laporan"
-          description="Ringkasan kutipan dan bayaran untuk mesyuarat atau semakan. Angka sama seperti yang dipaparkan di skrin lain."
+          title={t("reports.title")}
+          description={t("reports.description")}
           actions={
             <>
               <Button variant="outline" onClick={exportCsv} disabled={!report}>
-                <Download /> Muat turun CSV
+                <Download /> {t("reports.actions.csv")}
               </Button>
               <Button onClick={print} disabled={!report}>
-                <Printer /> Cetak / PDF
+                <Printer /> {t("reports.actions.print")}
               </Button>
             </>
           }
@@ -608,17 +611,17 @@ export function ReportsPage() {
 
       <div className="grid gap-3 print:hidden">
         <FilterPills<ReportKind>
-          label="Jenis laporan"
+          label={t("reports.kindLabel")}
           value={kind}
           onChange={(value) => {
             setKind(value);
             setPeriodPick(ALL);
           }}
-          options={REPORTS}
+          options={reportOptions(t)}
         />
         <div className="grid gap-3 sm:flex sm:flex-wrap sm:items-end">
           <div className="grid min-w-0 gap-1.5 sm:w-72">
-            <Label htmlFor="rpt-collection">{kind === "bulanan" ? "Kutipan bulanan" : "Kutipan"}</Label>
+            <Label htmlFor="rpt-collection">{kind === "bulanan" ? t("reports.filters.monthlyCollection") : t("reports.filters.collection")}</Label>
             <Select
               value={collection?.id ?? ALL}
               onValueChange={(value) => {
@@ -628,10 +631,10 @@ export function ReportsPage() {
               disabled={!allowAll && collectionOptions.length === 0}
             >
               <SelectTrigger id="rpt-collection" className="w-full">
-                <SelectValue placeholder="Tiada kutipan yang sesuai" />
+                <SelectValue placeholder={t("reports.filters.collectionPlaceholder")} />
               </SelectTrigger>
               <SelectContent>
-                {allowAll && <SelectItem value={ALL}>Semua kutipan</SelectItem>}
+                {allowAll && <SelectItem value={ALL}>{t("reports.allCollections")}</SelectItem>}
                 {collectionOptions.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     <CollectionName collection={c} />
@@ -642,13 +645,13 @@ export function ReportsPage() {
           </div>
           {periodOptions.length > 0 && (
             <div className="grid min-w-0 gap-1.5 sm:w-56">
-              <Label htmlFor="rpt-month">Bulan</Label>
+              <Label htmlFor="rpt-month">{t("reports.filters.month")}</Label>
               <Select value={period?.id ?? ALL} onValueChange={setPeriodPick}>
                 <SelectTrigger id="rpt-month" className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={ALL}>Semua bulan setakat ini</SelectItem>
+                  <SelectItem value={ALL}>{t("reports.filters.allMonths")}</SelectItem>
                   {periodOptions.map((p) => (
                     <SelectItem key={p.id} value={p.id}>
                       {formatMonth(p.month)}
@@ -661,11 +664,11 @@ export function ReportsPage() {
           {kind === "sejarah" && (
             <>
               <div className="grid min-w-0 gap-1.5 sm:w-44">
-                <Label htmlFor="rpt-from">Dari</Label>
+                <Label htmlFor="rpt-from">{t("reports.filters.from")}</Label>
                 <DatePicker id="rpt-from" value={from} max={to || undefined} onChange={setFrom} className="h-10" />
               </div>
               <div className="grid min-w-0 gap-1.5 sm:w-44">
-                <Label htmlFor="rpt-to">Hingga</Label>
+                <Label htmlFor="rpt-to">{t("reports.filters.to")}</Label>
                 <DatePicker id="rpt-to" value={to} min={from || undefined} onChange={setTo} className="h-10" />
               </div>
             </>
@@ -673,25 +676,25 @@ export function ReportsPage() {
         </div>
         {kind === "sejarah" && (
           <FilterPills<PaymentState | typeof ALL>
-            label="Status bayaran"
+            label={t("reports.filters.stateLabel")}
             value={stateFilter}
             onChange={setStateFilter}
             options={[
-              { value: ALL, label: "Semua status" },
-              { value: "confirmed", label: "Disahkan" },
-              { value: "pending", label: "Menunggu semakan" },
-              { value: "reversed", label: "Dibatalkan" },
+              { value: ALL, label: t("reports.filters.allStates") },
+              { value: "confirmed", label: t("reports.filters.confirmed") },
+              { value: "pending", label: t("reports.filters.pending") },
+              { value: "reversed", label: t("reports.filters.reversed") },
             ]}
           />
         )}
-        {rangeInvalid && <p className="text-xs font-medium text-st-unpaid">Pilih tarikh mula dan tarikh akhir; tarikh mula tidak boleh selepas tarikh akhir.</p>}
+        {rangeInvalid && <p className="text-xs font-medium text-st-unpaid">{t("reports.rangeInvalid")}</p>}
       </div>
 
       {missingCollection ? (
         <EmptyState
           icon={FileText}
-          title={kind === "bulanan" ? "Tiada kutipan bulanan" : "Tiada kutipan wajib"}
-          description={kind === "bulanan" ? "Laporan bulanan hanya untuk kutipan jenis bulanan." : "Laporan ini hanya untuk kutipan sekali bayar atau bulanan."}
+          title={kind === "bulanan" ? t("reports.missing.monthlyTitle") : t("reports.missing.compulsoryTitle")}
+          description={kind === "bulanan" ? t("reports.missing.monthlyDescription") : t("reports.missing.compulsoryDescription")}
         />
       ) : report ? (
         <ReportView report={report} header={headerFields(stamp)} />
@@ -701,6 +704,7 @@ export function ReportsPage() {
 }
 
 function ReportView({ report, header }: { report: Report; header: [string, string][] }) {
+  const t = useT();
   const [club, school, session, scope, exported, note] = header;
   return (
     <SectionCard className="print:rounded-none print:border-0 print:shadow-none" contentClassName="print:px-0">
@@ -710,16 +714,16 @@ function ReportView({ report, header }: { report: Report; header: [string, strin
             <p className="text-xs font-semibold tracking-wide text-primary-strong uppercase">{report.title}</p>
             <h2 className="mt-1 font-display text-lg font-bold break-words">{club[1]}</h2>
             <p className="text-xs text-muted-foreground">
-              {school[1] !== "—" && `${school[1]} · `}Sesi {session[1]}
+              {school[1] !== "—" && `${school[1]} · `}{t("reports.sessionLine", { session: session[1] })}
             </p>
           </div>
           <dl className="grid gap-0.5 text-xs sm:text-right">
             <div>
-              <dt className="inline text-muted-foreground">Skop: </dt>
+              <dt className="inline text-muted-foreground">{t("reports.header.scope")}: </dt>
               <dd className="inline font-medium break-words">{scope[1]}</dd>
             </div>
             <div>
-              <dt className="inline text-muted-foreground">Tarikh eksport: </dt>
+              <dt className="inline text-muted-foreground">{t("reports.header.exportedAt")}: </dt>
               <dd className="inline font-medium">{exported[1]}</dd>
             </div>
           </dl>

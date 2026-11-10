@@ -11,6 +11,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { isSingleEmoji, LUCIDE_PREFIX, lucideIconLabels, type LucideIconName } from "@/lib/collection-icon";
 import { emojiCatalog, emojiCategories, searchEmoji, type EmojiCategoryId, type EmojiEntry } from "@/lib/emoji-catalog";
 import { messageFor } from "@/lib/errors";
+import { useT, type TFunction } from "@/lib/i18n/react";
 import type { Collection } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Clock3, EyeOff, Search, Shuffle } from "lucide-react";
@@ -46,8 +47,11 @@ function pushRecent(icon: string) {
 
 const byEmoji = new Map(emojiCatalog.map((entry) => [entry.emoji, entry]));
 
-function iconLabel(icon: string) {
-  if (icon.startsWith(LUCIDE_PREFIX)) return `Ikon ${lucideIconLabels[icon.slice(LUCIDE_PREFIX.length) as LucideIconName] ?? ""}`.trim();
+function iconLabel(t: TFunction, icon: string) {
+  if (icon.startsWith(LUCIDE_PREFIX)) {
+    const name = icon.slice(LUCIDE_PREFIX.length) as LucideIconName;
+    return (name in lucideIconLabels ? t("emoji.iconLabel", { name: t(`emoji.lucide.${name}`) }) : t("emoji.iconLabel", { name: "" })).trim();
+  }
   return byEmoji.get(icon)?.name ?? icon;
 }
 
@@ -104,6 +108,7 @@ const cellClass =
 type Section = { id: string; title: string; entries: { key: string; icon: string; label: string }[] };
 
 function PickerBody({ value, onPick, onClose, sheet }: { value: string | null; onPick: (icon: string | null) => void; onClose: () => void; sheet: boolean }) {
+  const t = useT();
   const [tab, setTab] = useState<"emoji" | "ikon">(value?.startsWith(LUCIDE_PREFIX) ? "ikon" : "emoji");
   const [query, setQuery] = useState("");
   const [recent] = useState<string[]>(() => readRecent());
@@ -126,13 +131,13 @@ function PickerBody({ value, onPick, onClose, sheet }: { value: string | null; o
   const sections = useMemo<Section[]>(() => {
     const toCell = (prefix: string) => (entry: EmojiEntry) => ({ key: `${prefix}:${entry.emoji}`, icon: entry.emoji, label: entry.name });
     const q = query.trim();
-    if (q) return [{ id: "hasil", title: "Hasil carian", entries: searchEmoji(q).map(toCell("hasil")) }];
+    if (q) return [{ id: "hasil", title: t("emoji.searchResults"), entries: searchEmoji(q).map(toCell("hasil")) }];
     const list: Section[] = [];
-    if (recent.length) list.push({ id: "terkini", title: "Terkini", entries: recent.map((icon) => ({ key: `terkini:${icon}`, icon, label: iconLabel(icon) })) });
+    if (recent.length) list.push({ id: "terkini", title: t("emoji.recent"), entries: recent.map((icon) => ({ key: `terkini:${icon}`, icon, label: iconLabel(t, icon) })) });
     for (const cat of emojiCategories)
-      list.push({ id: cat.id, title: cat.label, entries: emojiCatalog.filter((entry) => entry.category === cat.id).map(toCell(cat.id)) });
+      list.push({ id: cat.id, title: t(`emoji.category.${cat.id}`), entries: emojiCatalog.filter((entry) => entry.category === cat.id).map(toCell(cat.id)) });
     return list;
-  }, [query, recent]);
+  }, [query, recent, t]);
 
   const keys = sections.flatMap((section) => section.entries.map((entry) => entry.key));
   // Roving tab stop: the last focused cell, else the current icon, else the first cell.
@@ -163,23 +168,23 @@ function PickerBody({ value, onPick, onClose, sheet }: { value: string | null; o
 
   const applyPaste = () => {
     const icon = paste.trim();
-    if (!isSingleEmoji(icon)) return setPasteError("Tampal satu emoji sahaja.");
+    if (!isSingleEmoji(icon)) return setPasteError(t("emoji.pasteOne"));
     pick(icon);
   };
 
   return (
     <Tabs value={tab} onValueChange={(next) => setTab(next as "emoji" | "ikon")} className="gap-0">
       <div className="flex items-center justify-between gap-2 border-b border-border px-1">
-        <TabsList variant="line" className="h-10 gap-1 bg-transparent p-0" aria-label="Jenis ikon">
+        <TabsList variant="line" className="h-10 gap-1 bg-transparent p-0" aria-label={t("emoji.tabsLabel")}>
           <TabsTrigger value="emoji" className="px-2.5">
-            Emoji
+            {t("emoji.tabEmoji")}
           </TabsTrigger>
           <TabsTrigger value="ikon" className="px-2.5">
-            Ikon
+            {t("emoji.tabIcons")}
           </TabsTrigger>
         </TabsList>
         <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" disabled={!value} onClick={() => pick(null)}>
-          <EyeOff aria-hidden /> Buang
+          <EyeOff aria-hidden /> {t("emoji.remove")}
         </Button>
       </div>
 
@@ -207,8 +212,8 @@ function PickerBody({ value, onPick, onClose, sheet }: { value: string | null; o
                   if (first) pick(first.icon);
                 }
               }}
-              placeholder="Cari: makan, baju, hadiah…"
-              aria-label="Cari emoji"
+              placeholder={t("emoji.searchPlaceholder")}
+              aria-label={t("emoji.searchLabel")}
               aria-controls={`${ids}-grid`}
               className="h-9 rounded-lg pl-8"
             />
@@ -218,8 +223,8 @@ function PickerBody({ value, onPick, onClose, sheet }: { value: string | null; o
             variant="outline"
             size="icon"
             className="size-9 shrink-0 rounded-lg"
-            aria-label="Pilih emoji rawak"
-            title="Pilih emoji rawak"
+            aria-label={t("emoji.random")}
+            title={t("emoji.random")}
             onClick={() => pick(emojiCatalog[Math.floor(Math.random() * emojiCatalog.length)].emoji)}
           >
             <Shuffle aria-hidden />
@@ -240,7 +245,7 @@ function PickerBody({ value, onPick, onClose, sheet }: { value: string | null; o
               </h3>
               {section.entries.length === 0 ? (
                 <p className="px-1 py-6 text-center text-xs text-muted-foreground">
-                  Tiada emoji untuk &ldquo;{query.trim()}&rdquo;. Cuba perkataan lain atau tampal emoji di bawah.
+                  {t("emoji.noResults", { query: query.trim() })}
                 </p>
               ) : (
                 <div role="group" aria-labelledby={`${ids}-${section.id}`} className="grid grid-cols-8 gap-0.5">
@@ -275,7 +280,7 @@ function PickerBody({ value, onPick, onClose, sheet }: { value: string | null; o
           noValidate
         >
           <label htmlFor={`${ids}-paste`} className="text-xs font-medium text-muted-foreground">
-            Tampal emoji lain
+            {t("emoji.pasteLabel")}
           </label>
           <Input
             id={`${ids}-paste`}
@@ -292,7 +297,7 @@ function PickerBody({ value, onPick, onClose, sheet }: { value: string | null; o
             className="h-8 w-20 rounded-lg text-center font-emoji text-base md:text-base"
           />
           <Button type="submit" size="sm" variant="outline" disabled={!paste.trim()}>
-            Guna
+            {t("emoji.pasteApply")}
           </Button>
           {pasteError && (
             <p id={`${ids}-paste-error`} className="basis-full text-xs font-medium text-st-unpaid">
@@ -301,12 +306,12 @@ function PickerBody({ value, onPick, onClose, sheet }: { value: string | null; o
           )}
         </form>
 
-        <nav aria-label="Kategori emoji" className="flex items-center justify-between gap-0.5 border-t border-border px-1.5 py-1">
+        <nav aria-label={t("emoji.categoriesNav")} className="flex items-center justify-between gap-0.5 border-t border-border px-1.5 py-1">
           {recent.length > 0 && (
             <button
               type="button"
-              aria-label="Terkini"
-              title="Terkini"
+              aria-label={t("emoji.recent")}
+              title={t("emoji.recent")}
               aria-current={!query.trim() && category === "terkini" ? "true" : undefined}
               onClick={() => jumpTo("terkini")}
               className={cn(cellClass, "size-9 text-muted-foreground aria-[current=true]:bg-primary-light aria-[current=true]:text-primary-strong")}
@@ -318,8 +323,8 @@ function PickerBody({ value, onPick, onClose, sheet }: { value: string | null; o
             <button
               key={cat.id}
               type="button"
-              aria-label={cat.label}
-              title={cat.label}
+              aria-label={t(`emoji.category.${cat.id}`)}
+              title={t(`emoji.category.${cat.id}`)}
               aria-current={!query.trim() && category === cat.id ? "true" : undefined}
               onClick={() => jumpTo(cat.id)}
               className={cn(cellClass, "size-9 opacity-70 hover:opacity-100 aria-[current=true]:bg-primary-light aria-[current=true]:opacity-100")}
@@ -331,7 +336,7 @@ function PickerBody({ value, onPick, onClose, sheet }: { value: string | null; o
       </TabsContent>
 
       <TabsContent value="ikon">
-        <div role="group" aria-label="Ikon" onKeyDown={(event) => gridKeyDown(event)} className="grid grid-cols-4 gap-1 p-2.5 min-[380px]:grid-cols-6 md:grid-cols-4">
+        <div role="group" aria-label={t("emoji.iconsGroup")} onKeyDown={(event) => gridKeyDown(event)} className="grid grid-cols-4 gap-1 p-2.5 min-[380px]:grid-cols-6 md:grid-cols-4">
           {(Object.keys(lucideIconLabels) as LucideIconName[]).map((name, i) => {
             const icon = `${LUCIDE_PREFIX}${name}`;
             const Glyph = lucideCollectionIcons[name];
@@ -348,7 +353,7 @@ function PickerBody({ value, onPick, onClose, sheet }: { value: string | null; o
                 className={cn(cellClass, "flex min-h-14 flex-col gap-1 px-1 py-2 text-primary-strong")}
               >
                 <Glyph aria-hidden className="size-5" />
-                <span className="w-full truncate text-center text-[10.5px] text-muted-foreground">{lucideIconLabels[name]}</span>
+                <span className="w-full truncate text-center text-[10.5px] text-muted-foreground">{t(`emoji.lucide.${name}`)}</span>
               </button>
             );
           })}
@@ -358,7 +363,7 @@ function PickerBody({ value, onPick, onClose, sheet }: { value: string | null; o
       {sheet && (
         <div className="border-t border-border px-2.5 py-2">
           <Button type="button" variant="outline" className="w-full" onClick={onClose}>
-            Tutup
+            {t("common.close")}
           </Button>
         </div>
       )}
@@ -393,6 +398,7 @@ export function EmojiPicker({
   onCloseAutoFocus?: (event: Event) => void;
   align?: "start" | "center" | "end";
 }) {
+  const t = useT();
   const mobile = useIsMobile();
   const [openState, setOpenState] = useState(false);
   const open = openProp ?? openState;
@@ -417,7 +423,7 @@ export function EmojiPicker({
         {anchor ? children : <SheetTrigger asChild>{children}</SheetTrigger>}
         <SheetContent side="bottom" className="gap-0 rounded-t-2xl p-0 pb-[env(safe-area-inset-bottom)]" showCloseButton={false} onCloseAutoFocus={onCloseAutoFocus}>
           <SheetHeader className="px-4 pt-3 pb-1">
-            <SheetTitle className="truncate">Ikon kutipan</SheetTitle>
+            <SheetTitle className="truncate">{t("emoji.sheetTitle")}</SheetTitle>
             <SheetDescription className="truncate">{label}</SheetDescription>
           </SheetHeader>
           <PickerBody value={value} onPick={onPick} onClose={() => setOpen(false)} sheet />
@@ -429,7 +435,7 @@ export function EmojiPicker({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       {anchor ? <PopoverAnchor asChild>{children}</PopoverAnchor> : <PopoverTrigger asChild>{children}</PopoverTrigger>}
-      <PopoverContent align={align} className="w-[340px] gap-0 overflow-hidden p-0" aria-label={`Ikon kutipan: ${label}`}
+      <PopoverContent align={align} className="w-[340px] gap-0 overflow-hidden p-0" aria-label={t("emoji.popoverLabel", { label })}
         onCloseAutoFocus={onCloseAutoFocus}
         // Start in the search field, not on the first tab, so typing searches straight away.
         onOpenAutoFocus={(event) => {
@@ -445,18 +451,19 @@ export function EmojiPicker({
 
 /** Saves a collection's icon through the backend, with the toast and error handling every caller wants. */
 export function useSetCollectionIcon() {
+  const t = useT();
   const { run } = useKelab();
   return useCallback(
     async (collection: Collection, icon: string | null) => {
       if (icon === (collection.icon ?? null)) return;
       try {
         await run((backend) => backend.setCollectionIcon(collection.id, icon));
-        toast.success(icon ? "Ikon kutipan dikemas kini." : "Ikon kutipan dibuang.");
+        toast.success(icon ? t("emoji.updated") : t("emoji.removed"));
       } catch (error) {
         toast.error(messageFor(error));
       }
     },
-    [run],
+    [run, t],
   );
 }
 
@@ -473,6 +480,7 @@ export function CollectionIconButton({
   className: string;
   children?: ReactNode;
 }) {
+  const t = useT();
   const save = useSetCollectionIcon();
   const icon = <CollectionIcon collection={collection} size={size} />;
   if (collection.status === "archived")
@@ -486,8 +494,8 @@ export function CollectionIconButton({
     <EmojiPicker value={collection.icon ?? null} onChange={(next) => void save(collection, next)} label={collection.name}>
       <button
         type="button"
-        aria-label={`Tukar ikon: ${collection.name}`}
-        title="Tukar ikon"
+        aria-label={t("emoji.changeIcon", { name: collection.name })}
+        title={t("emoji.changeIconTitle")}
         className={cn(
           "grid shrink-0 cursor-pointer place-items-center outline-none transition-[box-shadow,background-color] hover:ring-2 hover:ring-primary/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background aria-expanded:ring-2 aria-expanded:ring-primary/50",
           className,

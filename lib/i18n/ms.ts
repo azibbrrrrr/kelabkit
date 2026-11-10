@@ -3,6 +3,25 @@
 // methods live under `labels`, and screens reuse them instead of retyping the words.
 // `{name}` marks a value filled in by t(key, { name }). Plurals get their own keys (…One / …Many).
 
+
+import { dashboardMs } from "./screens/dashboard.ms";
+import { collectionsMs } from "./screens/collections.ms";
+import { wizardMs } from "./screens/wizard.ms";
+import { collectionDetailMs } from "./screens/collectionDetail.ms";
+import { membersMs } from "./screens/members.ms";
+import { memberDetailMs } from "./screens/memberDetail.ms";
+import { paymentsPageMs } from "./screens/paymentsPage.ms";
+import { paymentNewMs } from "./screens/paymentNew.ms";
+import { remindersMs } from "./screens/reminders.ms";
+import { reportsMs } from "./screens/reports.ms";
+import { settingsMs } from "./screens/settings.ms";
+import { startMs } from "./screens/start.ms";
+import { designSystemMs } from "./screens/designSystem.ms";
+import { attachmentsMs } from "./screens/attachments.ms";
+import { emojiMs } from "./screens/emoji.ms";
+import { quickFillMs } from "./screens/quickFill.ms";
+import { brandMs } from "./screens/brand.ms";
+
 export const ms = {
   common: {
     cancel: "Batal",
@@ -425,4 +444,22 @@ export const ms = {
     keepEditing: "Teruskan mengubah",
     discard: "Buang",
   },
+
+  dashboard: dashboardMs,
+  collections: collectionsMs,
+  wizard: wizardMs,
+  collectionDetail: collectionDetailMs,
+  members: membersMs,
+  memberDetail: memberDetailMs,
+  paymentsPage: paymentsPageMs,
+  paymentNew: paymentNewMs,
+  reminders: remindersMs,
+  reports: reportsMs,
+  settings: settingsMs,
+  start: startMs,
+  designSystem: designSystemMs,
+  attachments: attachmentsMs,
+  emoji: emojiMs,
+  quickFill: quickFillMs,
+  brand: brandMs,
 } as const;

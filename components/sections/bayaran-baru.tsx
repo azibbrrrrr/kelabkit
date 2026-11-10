@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { messageFor } from "@/lib/errors";
+import { useT } from "@/lib/i18n/react";
 import { formatDay, formatMoney, formatMonthLong, initials } from "@/lib/format";
 import { categoryLabels, collectionTypeLabels, methodLabels, paymentStateLabels } from "@/lib/labels";
 import { senToInput, sum } from "@/lib/money/amount";
@@ -59,6 +60,7 @@ type Saved = {
 };
 
 export function BayaranBaru() {
+  const t = useT();
   const { view } = useSnapshot();
   const params = useSearchParams();
   const router = useRouter();
@@ -78,14 +80,14 @@ export function BayaranBaru() {
   return (
     <PageShell className="pb-28 md:pb-7">
       <PageHeader
-        title="Rekod Bayaran"
-        back={{ href: "/bayaran/", label: "Rekod bayaran" }}
-        description="Pilih ahli, tandakan caj yang dibayar, masukkan amaun dan simpan. Baki dikira semula serta-merta."
+        title={t("paymentNew.title")}
+        back={{ href: "/bayaran/", label: t("paymentNew.back") }}
+        description={t("paymentNew.description")}
       />
       {requested && !member && (
         <p className="flex items-start gap-2 rounded-2xl border border-dashed border-border bg-card/70 px-4 py-3 text-sm text-muted-foreground">
           <TriangleAlert className="mt-0.5 size-4 shrink-0 text-st-partial" aria-hidden />
-          Ahli dalam pautan ini tidak dijumpai. Pilih ahli daripada senarai.
+          {t("paymentNew.memberNotFound")}
         </p>
       )}
       {saved && member ? (
@@ -101,7 +103,7 @@ export function BayaranBaru() {
       ) : member ? (
         <PaymentForm key={`${member.id}:${attempt}`} member={member} onChange={() => choose(null)} onSaved={setSaved} />
       ) : (
-        <Step n={1} title="Pilih ahli" description="Cari nama ahli yang membuat bayaran.">
+        <Step n={1} title={t("paymentNew.picker.title")} description={t("paymentNew.picker.description")}>
           <MemberPicker onSelect={choose} />
         </Step>
       )}
@@ -129,6 +131,7 @@ function Step({ n, title, description, action, children }: { n: number; title: s
 // Step 1: member ---------------------------------------------------------------------------
 
 function MemberPicker({ onSelect }: { onSelect: (id: string) => void }) {
+  const t = useT();
   const { data, view } = useSnapshot();
   const [query, setQuery] = useState("");
   // The heavy filter/render follows the keystroke at lower priority, so typing never waits on it.
@@ -158,10 +161,10 @@ function MemberPicker({ onSelect }: { onSelect: (id: string) => void }) {
   if (!data.members.length)
     return (
       <div className="grid justify-items-start gap-2 text-sm text-muted-foreground">
-        Belum ada ahli.
+        {t("paymentNew.picker.noMembers")}
         <Button asChild variant="brand">
           <Link href="/ahli/">
-            <UsersRound /> Tambah ahli dahulu
+            <UsersRound /> {t("paymentNew.picker.addMembers")}
           </Link>
         </Button>
       </div>
@@ -178,7 +181,7 @@ function MemberPicker({ onSelect }: { onSelect: (id: string) => void }) {
           aria-controls={listId}
           aria-autocomplete="list"
           aria-activedescendant={shown[index] ? `${listId}-${shown[index].member.id}` : undefined}
-          aria-label="Cari ahli"
+          aria-label={t("paymentNew.picker.searchLabel")}
           autoFocus
           value={query}
           onChange={(event) => {
@@ -186,14 +189,14 @@ function MemberPicker({ onSelect }: { onSelect: (id: string) => void }) {
             setActive(0);
           }}
           onKeyDown={onKeyDown}
-          placeholder="Taip nama ahli…"
+          placeholder={t("paymentNew.picker.placeholder")}
           className="pl-9"
         />
       </div>
       {shown.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-border px-3 py-6 text-center text-sm text-muted-foreground">Tiada ahli sepadan dengan &quot;{query}&quot;.</p>
+        <p className="rounded-xl border border-dashed border-border px-3 py-6 text-center text-sm text-muted-foreground">{t("paymentNew.picker.noMatch", { query })}</p>
       ) : (
-        <ul id={listId} role="listbox" aria-label="Ahli" className="grid max-h-[min(420px,55svh)] grid-cols-1 gap-1 overflow-y-auto overscroll-contain rounded-xl border border-border bg-card p-1">
+        <ul id={listId} role="listbox" aria-label={t("paymentNew.picker.listLabel")} className="grid max-h-[min(420px,55svh)] grid-cols-1 gap-1 overflow-y-auto overscroll-contain rounded-xl border border-border bg-card p-1">
           {shown.map(({ member, totals }, i) => (
             <li
               key={member.id}
@@ -216,20 +219,20 @@ function MemberPicker({ onSelect }: { onSelect: (id: string) => void }) {
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-medium" title={member.name}>{member.name}</span>
                 <span className="block truncate text-xs text-muted-foreground">
-                  {[member.category ? categoryLabels[member.category] : null, member.active ? null : "Tidak aktif"].filter(Boolean).join(" · ") || "Ahli"}
+                  {[member.category ? categoryLabels[member.category] : null, member.active ? null : t("paymentNew.picker.inactive")].filter(Boolean).join(" · ") || t("paymentNew.picker.fallbackRole")}
                 </span>
               </span>
               <span className="shrink-0 text-right text-xs whitespace-nowrap">
                 <span className={cn("block font-semibold tabular-nums", totals.dueNow > 0 ? "text-st-unpaid" : "text-st-paid")}>
-                  {totals.dueNow > 0 ? formatMoney(totals.dueNow) : "Tiada baki"}
+                  {totals.dueNow > 0 ? formatMoney(totals.dueNow) : t("paymentNew.picker.noBalance")}
                 </span>
-                {totals.pending > 0 && <span className="block text-st-pending">Menunggu</span>}
+                {totals.pending > 0 && <span className="block text-st-pending">{t("paymentNew.picker.waiting")}</span>}
               </span>
             </li>
           ))}
         </ul>
       )}
-      {options.length > LIMIT && <p className="text-xs text-muted-foreground">{options.length - LIMIT} lagi. Taip untuk menapis.</p>}
+      {options.length > LIMIT && <p className="text-xs text-muted-foreground">{t("paymentNew.picker.more", { count: options.length - LIMIT })}</p>}
     </div>
   );
 }
@@ -243,6 +246,7 @@ const methods = Object.keys(methodLabels) as PaymentMethod[];
 type Mode = "full" | "custom";
 
 function PaymentForm({ member, onChange, onSaved }: { member: Member; onChange: () => void; onSaved: (saved: Saved) => void }) {
+  const t = useT();
   const { data, view } = useSnapshot();
   const { run } = useKelab();
   const totals = view.memberTotals(member.id);
@@ -339,7 +343,7 @@ function PaymentForm({ member, onChange, onSaved }: { member: Member; onChange: 
     if (!raw.trim()) continue;
     const parsed = parseMoney(raw);
     if (parsed.error !== null) lineErrors[id] = parsed.error;
-    else if (parsed.sen > item.ledger.payable) lineErrors[id] = `Melebihi baki. Maksimum ${formatMoney(item.ledger.payable)}.`;
+    else if (parsed.sen > item.ledger.payable) lineErrors[id] = t("paymentNew.errors.exceedsBalance", { amount: formatMoney(item.ledger.payable) });
     else if (parsed.sen > 0) allocations.push({ item, amount: parsed.sen });
   }
   const chargeSum = sum(allocations.map((line) => line.amount));
@@ -352,7 +356,7 @@ function PaymentForm({ member, onChange, onSaved }: { member: Member; onChange: 
       const parsed = parseMoney(totalInput);
       if (parsed.error !== null) totalError = parsed.error;
       else if (parsed.sen > payableSelected)
-        totalError = `Melebihi baki caj dipilih. Maksimum ${formatMoney(payableSelected)}; pilih caj lain atau kurangkan amaun.`;
+        totalError = t("paymentNew.errors.exceedsSelected", { amount: formatMoney(payableSelected) });
       else totalSen = parsed.sen;
     }
   }
@@ -370,13 +374,13 @@ function PaymentForm({ member, onChange, onSaved }: { member: Member; onChange: 
   const giftSum = sum(contributions.map((line) => line.amount));
   const grandTotal = chargeSum + giftSum;
 
-  const dateError = !paidOn ? "Pilih tarikh bayaran." : paidOn > view.today ? "Tarikh bayaran tidak boleh pada masa hadapan." : null;
+  const dateError = !paidOn ? t("paymentNew.errors.pickDate") : paidOn > view.today ? t("paymentNew.errors.futureDate") : null;
   const problems = [
     ...Object.values(lineErrors),
     ...Object.values(giftErrors),
     ...(totalError ? [totalError] : []),
-    ...(mode === "custom" && ordered.length && totalSen === null && !totalError ? ["Masukkan jumlah yang diterima."] : []),
-    ...(difference !== 0 ? [`Jumlah agihan berbeza ${formatMoney(Math.abs(difference))} daripada jumlah diterima.`] : []),
+    ...(mode === "custom" && ordered.length && totalSen === null && !totalError ? [t("paymentNew.errors.enterTotal")] : []),
+    ...(difference !== 0 ? [t("paymentNew.errors.allocDiffers", { amount: formatMoney(Math.abs(difference)) })] : []),
     ...(dateError ? [dateError] : []),
   ];
   const empty = allocations.length === 0 && contributions.length === 0;
@@ -390,7 +394,7 @@ function PaymentForm({ member, onChange, onSaved }: { member: Member; onChange: 
 
   const submit = async () => {
     if (!canSave) {
-      if (!busy) setError(empty ? "Pilih sekurang-kurangnya satu caj atau masukkan sumbangan." : problems[0] ?? null);
+      if (!busy) setError(empty ? t("paymentNew.errors.nothingSelected") : problems[0] ?? null);
       return;
     }
     setBusy(true);
@@ -413,7 +417,7 @@ function PaymentForm({ member, onChange, onSaved }: { member: Member; onChange: 
       confirmed: received,
       lines: [
         ...(done.payment ? allocations.map((line) => ({ label: line.item.label, amount: line.amount })) : []),
-        ...done.contributions.map((line) => ({ label: `Sumbangan · ${line.collection.name}`, amount: line.amount })),
+        ...done.contributions.map((line) => ({ label: `${t("payments.contributionFallback")} · ${line.collection.name}`, amount: line.amount })),
       ],
       total: (done.payment ? chargeSum : 0) + sum(done.contributions.map((line) => line.amount)),
       collectionIds: [
@@ -444,7 +448,7 @@ function PaymentForm({ member, onChange, onSaved }: { member: Member; onChange: 
         }
       });
       attemptKey.current = crypto.randomUUID();
-      toast.success(`${formatMoney(grandTotal)} direkod untuk ${member.name}.`);
+      toast.success(t("paymentNew.toastSaved", { amount: formatMoney(grandTotal), name: member.name }));
       // The money is stored whatever happens to the files; a failure is shown on the success panel.
       onSaved(report(await attachStaged(run, paymentIds, staged)));
     } catch (cause) {
@@ -452,7 +456,7 @@ function PaymentForm({ member, onChange, onSaved }: { member: Member; onChange: 
         // Part of it is stored. Show exactly what was saved rather than pretending all or nothing.
         attemptKey.current = crypto.randomUUID();
         const attachWarning = await attachStaged(run, paymentIds, staged);
-        onSaved(report(`Sebahagian tidak disimpan: ${messageFor(cause)} Rekod semula bahagian yang tinggal.${attachWarning ? ` ${attachWarning}` : ""}`));
+        onSaved(report(`${t("paymentNew.errors.partial", { error: messageFor(cause) })}${attachWarning ? ` ${attachWarning}` : ""}`));
       } else setError(messageFor(cause));
     } finally {
       setBusy(false);
@@ -466,10 +470,10 @@ function PaymentForm({ member, onChange, onSaved }: { member: Member; onChange: 
       <div className="grid min-w-0 gap-5">
         <Step
           n={1}
-          title="Ahli"
+          title={t("paymentNew.member.title")}
           action={
             <Button variant="outline" size="sm" onClick={onChange}>
-              Tukar ahli
+              {t("paymentNew.member.change")}
             </Button>
           }
         >
@@ -482,8 +486,8 @@ function PaymentForm({ member, onChange, onSaved }: { member: Member; onChange: 
                 {member.name}
               </Link>
               <p className="text-xs text-muted-foreground">
-                Baki semasa <b className={totals.dueNow > 0 ? "text-st-unpaid" : "text-st-paid"}>{formatMoney(totals.dueNow)}</b>
-                {totals.pending > 0 && <> · menunggu semakan {formatMoney(totals.pending)}</>}
+                {t("paymentNew.member.balance")} <b className={totals.dueNow > 0 ? "text-st-unpaid" : "text-st-paid"}>{formatMoney(totals.dueNow)}</b>
+                {totals.pending > 0 && <> · {t("paymentNew.member.pendingReview", { amount: formatMoney(totals.pending) })}</>}
               </p>
             </div>
             {!member.active && <MemberStatus active={false} />}
@@ -492,17 +496,17 @@ function PaymentForm({ member, onChange, onSaved }: { member: Member; onChange: 
 
         <Step
           n={2}
-          title="Caj yang dibayar"
-          description="Tandakan satu atau lebih. Bulan akan datang hanya dibayar jika anda pilih."
+          title={t("paymentNew.charges.title")}
+          description={t("paymentNew.charges.description")}
           action={
             hasCharges ? (
               selected.length ? (
                 <Button variant="outline" size="sm" onClick={() => setSelected([])}>
-                  Kosongkan
+                  {t("paymentNew.charges.clear")}
                 </Button>
               ) : items.some((item) => !item.ledger.future && item.ledger.payable > 0) ? (
                 <Button variant="outline" size="sm" onClick={selectAllDue}>
-                  Pilih semua baki
+                  {t("paymentNew.charges.selectAll")}
                 </Button>
               ) : undefined
             ) : undefined
@@ -510,8 +514,8 @@ function PaymentForm({ member, onChange, onSaved }: { member: Member; onChange: 
         >
           {!hasCharges ? (
             <p className="rounded-xl bg-st-paid-bg px-3 py-3 text-sm text-st-paid">
-              Tiada baki tertunggak untuk {member.name}.{" "}
-              {voluntary.length ? "Anda masih boleh merekod sumbangan di bawah." : "Tiada apa-apa untuk dibayar sekarang."}
+              {t("paymentNew.charges.noneOwing", { name: member.name })}{" "}
+              {voluntary.length ? t("paymentNew.charges.stillGift") : t("paymentNew.charges.nothingToPay")}
             </p>
           ) : (
             <div className="grid gap-3">
@@ -535,10 +539,10 @@ function PaymentForm({ member, onChange, onSaved }: { member: Member; onChange: 
         </Step>
 
         {ordered.length > 0 && (
-          <Step n={3} title="Amaun diterima">
+          <Step n={3} title={t("paymentNew.amount.title")}>
             <div className="grid gap-3">
               <ChoiceCards
-                label="Cara bayaran"
+                label={t("paymentNew.amount.modeLabel")}
                 value={mode}
                 onChange={(next) => {
                   setMode(next);
@@ -547,13 +551,13 @@ function PaymentForm({ member, onChange, onSaved }: { member: Member; onChange: 
                 }}
                 className="grid gap-2 sm:grid-cols-2"
               >
-                <ModeOption value="full" checked={mode === "full"} title="Bayar penuh untuk dipilih" hint={formatMoney(payableSelected)} />
-                <ModeOption value="custom" checked={mode === "custom"} title="Masukkan jumlah diterima" hint="Diagih ikut caj tertua dahulu" />
+                <ModeOption value="full" checked={mode === "full"} title={t("paymentNew.amount.modeFull")} hint={formatMoney(payableSelected)} />
+                <ModeOption value="custom" checked={mode === "custom"} title={t("paymentNew.amount.modeCustom")} hint={t("paymentNew.amount.modeCustomHint")} />
               </ChoiceCards>
               {mode === "custom" && (
                 <div className="grid gap-1.5">
                   <Label htmlFor="pay-total" className="text-xs text-muted-foreground">
-                    Jumlah diterima untuk caj dipilih
+                    {t("paymentNew.amount.totalLabel")}
                   </Label>
                   <MoneyInput
                     id="pay-total"
@@ -571,7 +575,7 @@ function PaymentForm({ member, onChange, onSaved }: { member: Member; onChange: 
                     <p className="text-xs font-medium text-st-unpaid">{totalError}</p>
                   ) : (
                     <p className="text-xs text-muted-foreground">
-                      Boleh dibayar maksimum {formatMoney(payableSelected)}. Ubah amaun setiap caj di atas jika perlu.
+                      {t("paymentNew.amount.maxHint", { amount: formatMoney(payableSelected) })}
                     </p>
                   )}
                   {totalSen !== null && (
@@ -581,12 +585,11 @@ function PaymentForm({ member, onChange, onSaved }: { member: Member; onChange: 
                         difference === 0 ? "bg-st-paid-bg text-st-paid" : "bg-st-partial-bg text-st-partial",
                       )}
                     >
-                      Agihan {formatMoney(chargeSum)} daripada {formatMoney(totalSen)}
                       {difference === 0
-                        ? " · sepadan"
+                        ? t("paymentNew.amount.allocMatch", { sum: formatMoney(chargeSum), total: formatMoney(totalSen) })
                         : difference > 0
-                          ? ` · kurang ${formatMoney(difference)} belum diagih`
-                          : ` · lebih ${formatMoney(-difference)}`}
+                          ? t("paymentNew.amount.allocShort", { sum: formatMoney(chargeSum), total: formatMoney(totalSen), diff: formatMoney(difference) })
+                          : t("paymentNew.amount.allocOver", { sum: formatMoney(chargeSum), total: formatMoney(totalSen), diff: formatMoney(-difference) })}
                     </p>
                   )}
                 </div>
@@ -596,7 +599,7 @@ function PaymentForm({ member, onChange, onSaved }: { member: Member; onChange: 
         )}
 
         {voluntary.length > 0 && (
-          <SectionCard title="Sumbangan" icon={HandCoins} description="Sukarela: amaun bebas, tiada baki atau hutang. Kosongkan jika tiada.">
+          <SectionCard title={t("paymentNew.gifts.title")} icon={HandCoins} description={t("paymentNew.gifts.description")}>
             <div className="grid gap-3">
               {voluntary.map((collection) => {
                 const cell = view.cell(member, view.columns([collection])[0]);
@@ -608,7 +611,7 @@ function PaymentForm({ member, onChange, onSaved }: { member: Member; onChange: 
                       </Label>
                       {cell.kind === "voluntary" && (
                         <span className="text-xs text-muted-foreground">
-                          Setakat ini <Money sen={cell.received} />
+                          {t("paymentNew.gifts.sofar")} <Money sen={cell.received} />
                         </span>
                       )}
                     </div>
@@ -627,10 +630,10 @@ function PaymentForm({ member, onChange, onSaved }: { member: Member; onChange: 
           </SectionCard>
         )}
 
-        <Step n={ordered.length > 0 ? 4 : 3} title="Butiran bayaran">
+        <Step n={ordered.length > 0 ? 4 : 3} title={t("paymentNew.details.title")}>
           <div className="grid gap-3">
             <SegmentedChoice
-              label="Kaedah bayaran"
+              label={t("paymentNew.details.methodLabel")}
               value={method}
               options={methods.map((value) => ({ value, label: methodLabels[value] }))}
               onChange={(value) => {
@@ -642,38 +645,36 @@ function PaymentForm({ member, onChange, onSaved }: { member: Member; onChange: 
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="grid min-w-0 gap-1">
                 <Label htmlFor="pay-date" className="text-xs text-muted-foreground">
-                  Tarikh bayar
+                  {t("paymentNew.details.date")}
                 </Label>
                 <DatePicker id="pay-date" value={paidOn} max={view.today} onChange={setPaidOn} invalid={Boolean(dateError)} className="px-2.5" />
                 {dateError && <p className="text-xs font-medium text-st-unpaid">{dateError}</p>}
               </div>
               <div className="grid min-w-0 gap-1">
                 <Label htmlFor="pay-ref" className="text-xs text-muted-foreground">
-                  Rujukan (pilihan)
+                  {t("paymentNew.details.reference")}
                 </Label>
                 <Input
                   id="pay-ref"
                   value={reference}
                   onChange={(event) => setReference(event.target.value)}
-                  placeholder={method === "transfer" ? "cth. DuitNow 1234" : "cth. Resit 015"}
+                  placeholder={method === "transfer" ? t("paymentNew.details.referenceTransfer") : t("paymentNew.details.referenceOther")}
                 />
               </div>
             </div>
             <div className="grid gap-1">
               <Label htmlFor="pay-note" className="text-xs text-muted-foreground">
-                Catatan (pilihan)
+                {t("paymentNew.details.note")}
               </Label>
-              <Textarea id="pay-note" rows={2} value={note} onChange={(event) => setNote(event.target.value)} placeholder="cth. Diserahkan semasa mesyuarat guru" />
+              <Textarea id="pay-note" rows={2} value={note} onChange={(event) => setNote(event.target.value)} placeholder={t("paymentNew.details.notePlaceholder")} />
             </div>
             <ProofField staged={staged} onChange={setStaged} />
             <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-border bg-card px-3 py-2.5">
               <Checkbox checked={received} onCheckedChange={(value) => setReceived(value === true)} className="mt-0.5" />
               <span className="text-xs leading-snug">
-                <span className="block font-medium text-foreground">Wang sudah diterima</span>
+                <span className="block font-medium text-foreground">{t("paymentNew.details.receivedTitle")}</span>
                 <span className="text-muted-foreground">
-                  {received
-                    ? "Dikira sebagai kutipan serta-merta."
-                    : "Disimpan sebagai Menunggu Semakan. Tidak dikira sebagai diterima dan baki tidak berkurang sehingga anda sahkan dalam Rekod Bayaran."}
+                  {received ? t("paymentNew.details.receivedYes") : t("paymentNew.details.receivedNo")}
                 </span>
               </span>
             </label>
@@ -698,21 +699,21 @@ function PaymentForm({ member, onChange, onSaved }: { member: Member; onChange: 
         )}
         <Button size="lg" className="hidden w-full md:inline-flex" onClick={() => void submit()} disabled={busy || empty}>
           {busy && <Spinner className="size-4" />}
-          {busy ? "Menyimpan…" : `Simpan ${formatMoney(grandTotal)}`}
+          {busy ? t("paymentNew.saving") : t("paymentNew.saveAmount", { amount: formatMoney(grandTotal) })}
         </Button>
         {!empty && problems.length > 0 && <p className="hidden text-xs text-st-partial md:block">{problems[0]}</p>}
       </div>
 
-      {/* Phones: the total and Simpan stay in reach above the bottom navigation. */}
+      {/* Phones: the total and Save stay in reach above the bottom navigation. */}
       <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-30 border-t border-border bg-card/95 px-4 py-2.5 backdrop-blur-xl md:hidden">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[11px] text-muted-foreground">{received ? "Jumlah diterima" : "Jumlah (menunggu semakan)"}</p>
+            <p className="text-[11px] text-muted-foreground">{received ? t("paymentNew.mobileTotal") : t("paymentNew.mobileTotalPending")}</p>
             <p className="truncate text-[17px] font-bold tabular-nums">{formatMoney(grandTotal)}</p>
           </div>
           <Button size="lg" className="shrink-0" onClick={() => void submit()} disabled={busy || empty}>
             {busy && <Spinner className="size-4" />}
-            {busy ? "Menyimpan…" : "Simpan"}
+            {busy ? t("paymentNew.saving") : t("paymentNew.save")}
           </Button>
         </div>
         {!empty && problems.length > 0 && <p className="mt-1 truncate text-[11px] text-st-partial">{problems[0]}</p>}
@@ -749,6 +750,7 @@ function ChargeGroup({
   errors: Record<string, string>;
   onPart: (id: string, value: string) => void;
 }) {
+  const t = useT();
   const futureSelected = group.future.some((item) => selected.includes(item.ledger.charge.id));
   const [showFuture, setShowFuture] = useState(futureSelected);
   const futureId = useId();
@@ -782,7 +784,7 @@ function ChargeGroup({
             className="h-auto min-h-10 w-full justify-between gap-2 rounded-lg px-2 text-left text-xs font-medium whitespace-normal text-st-future hover:bg-st-future-bg hover:text-st-future aria-expanded:bg-transparent aria-expanded:text-st-future disabled:opacity-100"
           >
             <span>
-              Akan datang — bayar awal ({group.future.length} bulan)
+              {t(group.future.length === 1 ? "paymentNew.charges.futureOne" : "paymentNew.charges.futureMany", { count: group.future.length })}
             </span>
             <ChevronDown className={cn("size-4 transition-transform", (showFuture || futureSelected) && "rotate-180")} aria-hidden />
           </Button>
@@ -814,10 +816,11 @@ function ChargeRow({
   error?: string;
   onPart: (id: string, value: string) => void;
 }) {
+  const t = useT();
   const { ledger } = item;
   const id = ledger.charge.id;
   const blocked = ledger.payable === 0;
-  const title = item.month ? formatMonthLong(item.month) : ledger.charge.dueDate ? `Tarikh akhir ${formatDay(ledger.charge.dueDate)}` : "Caj sekali bayar";
+  const title = item.month ? formatMonthLong(item.month) : ledger.charge.dueDate ? t("paymentNew.charges.dueDate", { date: formatDay(ledger.charge.dueDate) }) : t("paymentNew.charges.oneOff");
   return (
     <li className={cn("rounded-lg border bg-card", checked ? "border-primary" : "border-border", blocked && "opacity-75")}>
       <label className={cn("flex items-start gap-3 px-3 py-2.5", blocked ? "cursor-not-allowed" : "cursor-pointer")}>
@@ -834,13 +837,13 @@ function ChargeRow({
             <ChargeStatusChips status={cellStatus(ledger)} overdue={ledger.overdue} pending={ledger.pending > 0} compact />
           </span>
           <span className="text-xs text-muted-foreground tabular-nums">
-            Perlu {formatMoney(ledger.required)} · Diterima {formatMoney(ledger.confirmed)} ·{" "}
-            <b className="font-semibold text-foreground">Baki {formatMoney(ledger.remaining)}</b>
-            {ledger.pending > 0 && <> · Menunggu {formatMoney(ledger.pending)}</>}
+            {t("paymentNew.charges.required", { amount: formatMoney(ledger.required) })} · {t("paymentNew.charges.received", { amount: formatMoney(ledger.confirmed) })} ·{" "}
+            <b className="font-semibold text-foreground">{t("paymentNew.charges.balance", { amount: formatMoney(ledger.remaining) })}</b>
+            {ledger.pending > 0 && <> · {t("paymentNew.charges.pending", { amount: formatMoney(ledger.pending) })}</>}
           </span>
-          {blocked && <span className="text-xs text-st-pending">Baki penuh sedang menunggu semakan. Sahkan atau batalkan bayaran itu dahulu.</span>}
+          {blocked && <span className="text-xs text-st-pending">{t("paymentNew.charges.blocked")}</span>}
           {!blocked && ledger.pending > 0 && (
-            <span className="text-xs text-muted-foreground">Boleh dibayar sekarang {formatMoney(ledger.payable)} (selepas tolak yang menunggu semakan).</span>
+            <span className="text-xs text-muted-foreground">{t("paymentNew.charges.payableNow", { amount: formatMoney(ledger.payable) })}</span>
           )}
         </span>
       </label>
@@ -848,9 +851,9 @@ function ChargeRow({
         <div className="grid gap-1 border-t border-dashed border-border px-3 py-2.5">
           <div className="flex items-center justify-between gap-2">
             <Label htmlFor={`part-${id}`} className="text-xs text-muted-foreground">
-              Amaun untuk caj ini
+              {t("paymentNew.charges.partLabel")}
             </Label>
-            <TextAction onClick={() => onPart(id, senToInput(ledger.payable))}>Penuh {formatMoney(ledger.payable)}</TextAction>
+            <TextAction onClick={() => onPart(id, senToInput(ledger.payable))}>{t("paymentNew.charges.full", { amount: formatMoney(ledger.payable) })}</TextAction>
           </div>
           <MoneyInput id={`part-${id}`} value={value} onChange={(event) => onPart(id, event.target.value)} placeholder="0.00" invalid={Boolean(error)} />
           {error && <p className="text-xs font-medium text-st-unpaid">{error}</p>}
@@ -877,11 +880,12 @@ function Review({
   after: { dueNow: Sen; upcoming: Sen; pending: Sen };
   total: Sen;
 }) {
+  const t = useT();
   const empty = !allocations.length && !contributions.length;
   return (
-    <SectionCard title="Semak sebelum simpan" icon={ReceiptText} className="bg-card">
+    <SectionCard title={t("paymentNew.review.title")} icon={ReceiptText} className="bg-card">
       {empty ? (
-        <p className="text-sm text-muted-foreground">Pilih caj atau masukkan sumbangan untuk melihat ringkasan.</p>
+        <p className="text-sm text-muted-foreground">{t("paymentNew.review.empty")}</p>
       ) : (
         <div className="grid gap-3">
           <ul className="grid gap-2">
@@ -894,7 +898,7 @@ function Review({
                     <b className="shrink-0 tabular-nums">{formatMoney(amount)}</b>
                   </span>
                   <span className="flex items-center gap-1 text-xs text-muted-foreground tabular-nums">
-                    Baki {formatMoney(item.ledger.remaining)} <ArrowRight className="size-3" aria-hidden />
+                    {t("paymentNew.review.balance", { amount: formatMoney(item.ledger.remaining) })} <ArrowRight className="size-3" aria-hidden />
                     <span className={cn("font-medium", left === 0 ? "text-st-paid" : "text-foreground")}>{formatMoney(left)}</span>
                   </span>
                 </li>
@@ -902,26 +906,26 @@ function Review({
             })}
             {contributions.map(({ collection, amount }) => (
               <li key={collection.id} className="flex items-start justify-between gap-2 text-sm">
-                <span className="min-w-0 break-words">Sumbangan · {collection.name}</span>
+                <span className="min-w-0 break-words">{t("payments.contributionFallback")} · {collection.name}</span>
                 <b className="shrink-0 tabular-nums">{formatMoney(amount)}</b>
               </li>
             ))}
           </ul>
           <div className="flex items-center justify-between border-t border-border pt-2.5">
-            <span className="text-sm font-medium">Jumlah</span>
+            <span className="text-sm font-medium">{t("paymentNew.review.total")}</span>
             <span className="text-lg font-bold tabular-nums">{formatMoney(total)}</span>
           </div>
           {!received && (
             <p className="flex items-start gap-1.5 rounded-lg bg-st-pending-bg px-2.5 py-2 text-xs text-st-pending">
               <Hourglass className="mt-px size-3.5 shrink-0" aria-hidden />
-              Disimpan sebagai Menunggu Semakan. Baki tidak berkurang sehingga disahkan.
+              {t("paymentNew.review.pendingNote")}
             </p>
           )}
           <dl className="grid gap-1.5 rounded-xl bg-primary-tint/70 p-2.5 text-xs">
-            <p className="text-[11px] font-semibold text-muted-foreground">{member.name}: sebelum → selepas</p>
-            <BeforeAfter label="Baki semasa" before={before.dueNow} after={after.dueNow} />
-            {(before.upcoming > 0 || after.upcoming !== before.upcoming) && <BeforeAfter label="Akan datang" before={before.upcoming} after={after.upcoming} />}
-            {(before.pending > 0 || after.pending !== before.pending) && <BeforeAfter label="Menunggu semakan" before={before.pending} after={after.pending} />}
+            <p className="text-[11px] font-semibold text-muted-foreground">{t("paymentNew.review.beforeAfter", { name: member.name })}</p>
+            <BeforeAfter label={t("paymentNew.review.currentBalance")} before={before.dueNow} after={after.dueNow} />
+            {(before.upcoming > 0 || after.upcoming !== before.upcoming) && <BeforeAfter label={t("paymentNew.review.upcoming")} before={before.upcoming} after={after.upcoming} />}
+            {(before.pending > 0 || after.pending !== before.pending) && <BeforeAfter label={t("paymentNew.review.pending")} before={before.pending} after={after.pending} />}
           </dl>
         </div>
       )}
@@ -944,6 +948,7 @@ function BeforeAfter({ label, before, after }: { label: string; before: Sen; aft
 // Step 6: done -------------------------------------------------------------------------------
 
 function SuccessPanel({ saved, member, onAgain, onOther }: { saved: Saved; member: Member; onAgain: () => void; onOther: () => void }) {
+  const t = useT();
   const { view } = useSnapshot();
   const now = view.memberTotals(member.id);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -959,11 +964,11 @@ function SuccessPanel({ saved, member, onAgain, onOther }: { saved: Saved; membe
           </span>
           <div>
             <h2 ref={heading} tabIndex={-1} className="font-display text-xl font-bold tracking-[-.01em] outline-none">
-              {formatMoney(saved.total)} direkod
+              {t("paymentNew.success.recorded", { amount: formatMoney(saved.total) })}
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              untuk {member.name} ·{" "}
-              {saved.confirmed ? "dikira sebagai diterima" : "menunggu semakan, belum dikira sebagai diterima"}
+              {t("paymentNew.success.forMember", { name: member.name })} ·{" "}
+              {saved.confirmed ? t("paymentNew.success.counted") : t("paymentNew.success.notCounted")}
             </p>
           </div>
           <LabelChip entry={paymentStateLabels[saved.confirmed ? "confirmed" : "pending"]} />
@@ -982,28 +987,28 @@ function SuccessPanel({ saved, member, onAgain, onOther }: { saved: Saved; membe
           ))}
         </ul>
         <dl className="mt-4 grid gap-1.5 rounded-xl bg-primary-tint/70 p-3 text-sm">
-          <p className="text-xs font-semibold text-muted-foreground">Baki {member.name} dikemas kini</p>
-          <BeforeAfter label="Baki semasa" before={saved.before.dueNow} after={now.dueNow} />
-          <BeforeAfter label="Diterima (disahkan)" before={saved.before.received} after={now.received} />
-          {(saved.before.pending > 0 || now.pending > 0) && <BeforeAfter label="Menunggu semakan" before={saved.before.pending} after={now.pending} />}
-          {(saved.before.upcoming > 0 || now.upcoming > 0) && <BeforeAfter label="Akan datang" before={saved.before.upcoming} after={now.upcoming} />}
+          <p className="text-xs font-semibold text-muted-foreground">{t("paymentNew.success.updated", { name: member.name })}</p>
+          <BeforeAfter label={t("paymentNew.review.currentBalance")} before={saved.before.dueNow} after={now.dueNow} />
+          <BeforeAfter label={t("paymentNew.success.receivedConfirmed")} before={saved.before.received} after={now.received} />
+          {(saved.before.pending > 0 || now.pending > 0) && <BeforeAfter label={t("paymentNew.review.pending")} before={saved.before.pending} after={now.pending} />}
+          {(saved.before.upcoming > 0 || now.upcoming > 0) && <BeforeAfter label={t("paymentNew.review.upcoming")} before={saved.before.upcoming} after={now.upcoming} />}
         </dl>
       </SectionCard>
       <div className="grid gap-2 sm:grid-cols-2">
         <Button size="lg" onClick={onAgain}>
-          <ReceiptText /> Rekod lagi untuk ahli ini
+          <ReceiptText /> {t("paymentNew.success.again")}
         </Button>
         <Button size="lg" variant="brand" onClick={onOther}>
-          <UserRound /> Ahli lain
+          <UserRound /> {t("paymentNew.success.other")}
         </Button>
         <Button size="lg" variant="outline" asChild>
           <Link href="/matriks/">
-            <SheetIcon /> Lihat dalam Matriks
+            <SheetIcon /> {t("paymentNew.success.matrix")}
           </Link>
         </Button>
         <Button size="lg" variant="outline" asChild>
           <Link href={kutipanHref}>
-            <WalletCards /> Kembali ke kutipan
+            <WalletCards /> {t("paymentNew.success.backToCollection")}
           </Link>
         </Button>
       </div>
@@ -1011,11 +1016,11 @@ function SuccessPanel({ saved, member, onAgain, onOther }: { saved: Saved; membe
         <p className="flex items-start gap-2 text-xs text-muted-foreground">
           <BadgeCheck className="mt-px size-4 shrink-0 text-st-pending" aria-hidden />
           <span>
-            Sahkan bayaran ini dalam{" "}
+            {t("paymentNew.success.confirmBefore")}{" "}
             <Link href="/bayaran/?tab=semakan" className="font-medium text-primary-strong hover:underline">
-              Rekod Bayaran → Menunggu Semakan
+              {t("paymentNew.success.confirmLink")}
             </Link>{" "}
-            setelah wang diterima.
+            {t("paymentNew.success.confirmAfter")}
           </span>
         </p>
       )}

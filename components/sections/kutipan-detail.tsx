@@ -46,6 +46,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Spinner } from "@/components/ui/spinner";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useT, type TFunction } from "@/lib/i18n/react";
 import { errorMessages, messageFor } from "@/lib/errors";
 import { formatDateTime, formatDay, formatMoney, formatMonth, formatMonthLong, formatPercent } from "@/lib/format";
 import { categoryLabels, collectionStatusLabels, collectionTypeLabels } from "@/lib/labels";
@@ -81,19 +82,20 @@ import { toast } from "sonner";
 // Recording a payment opens the matrix's CellEditor, so there is one payment form.
 
 export function KutipanDetail({ id }: { id: string }) {
+  const t = useT();
   const { view } = useSnapshot();
   const collection = view.collectionsById.get(id);
   if (!collection) {
     return (
       <PageShell>
-        <PageHeader title="Kutipan tidak dijumpai" back={{ href: "/kutipan/", label: "Kutipan KGK" }} />
+        <PageHeader title={t("collectionDetail.notFound.title")} back={{ href: "/kutipan/", label: t("nav.collections") }} />
         <EmptyState
           icon={SearchX}
-          title="Kutipan ini tiada dalam rekod"
-          description="Pautan mungkin salah, atau data demo telah ditetapkan semula."
+          title={t("collectionDetail.notFound.emptyTitle")}
+          description={t("collectionDetail.notFound.emptyDescription")}
           action={
             <Button asChild>
-              <Link href="/kutipan/">Kembali ke senarai kutipan</Link>
+              <Link href="/kutipan/">{t("collectionDetail.notFound.backToList")}</Link>
             </Button>
           }
         />
@@ -106,6 +108,7 @@ export function KutipanDetail({ id }: { id: string }) {
 type Editing = { memberId: string; columnKey: string };
 
 function CollectionDetail({ collection }: { collection: Collection }) {
+  const t = useT();
   const { data, view } = useSnapshot();
   const archived = collection.status === "archived";
   const voluntary = collection.type === "voluntary";
@@ -139,12 +142,12 @@ function CollectionDetail({ collection }: { collection: Collection }) {
   const totals = totalsOf(scopeLedgers);
   const contributions = voluntary ? voluntarySummary(data.payments, collection.id) : null;
   const selectedPeriod = periods.find((period) => period.id === month) ?? null;
-  const scopeLabel = monthly ? (selectedPeriod ? formatMonthLong(selectedPeriod.month) : "Semua bulan") : null;
+  const scopeLabel = monthly ? (selectedPeriod ? formatMonthLong(selectedPeriod.month) : t("collectionDetail.allMonths")) : null;
 
   return (
     <PageShell>
       <PageHeader
-        back={{ href: "/kutipan/", label: "Kutipan KGK" }}
+        back={{ href: "/kutipan/", label: t("nav.collections") }}
         title={<TitleEditor collection={collection} />}
         description={collection.description ?? undefined}
         actions={<StatusActions collection={collection} dueNow={view.collectionTotals(collection.id).dueNow} onAddParticipants={() => setAddOpen(true)} />}
@@ -162,7 +165,8 @@ function CollectionDetail({ collection }: { collection: Collection }) {
 
       {archived && (
         <p className="rounded-2xl border border-dashed border-border bg-card/70 px-4 py-3 text-sm text-muted-foreground">
-          <b className="text-foreground">Diarkib.</b> Semua caj dan bayaran dikekalkan untuk rujukan. Kutipan ini tidak menerima bayaran baharu.
+          <b className="text-foreground">{t("collectionDetail.archived.bold")}</b>
+          {t("collectionDetail.archived.text")}
         </p>
       )}
 
@@ -170,60 +174,60 @@ function CollectionDetail({ collection }: { collection: Collection }) {
 
       {voluntary ? (
         <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 xl:grid-cols-4">
-          <StatCard label="Jumlah terkumpul" value={formatMoney(contributions!.received)} icon={CircleCheck} tone="paid" hint="Sumbangan disahkan sahaja" />
-          <StatCard label="Penyumbang" value={contributions!.contributors} icon={Users} hint={`daripada ${participants.length} ahli dijemput`} />
-          <StatCard label="Menunggu semakan" value={formatMoney(contributions!.pending)} icon={Hourglass} tone="pending" hint="Belum dikira sebagai diterima" />
-          <StatCard label="Peserta" value={participants.length} icon={WalletCards} hint="Tiada hutang untuk sumbangan sukarela" />
+          <StatCard label={t("collectionDetail.voluntaryStats.raised")} value={formatMoney(contributions!.received)} icon={CircleCheck} tone="paid" hint={t("collectionDetail.voluntaryStats.raisedHint")} />
+          <StatCard label={t("collectionDetail.voluntaryStats.contributors")} value={contributions!.contributors} icon={Users} hint={t("collectionDetail.voluntaryStats.contributorsHint", { count: participants.length })} />
+          <StatCard label={t("collectionDetail.voluntaryStats.pending")} value={formatMoney(contributions!.pending)} icon={Hourglass} tone="pending" hint={t("collectionDetail.voluntaryStats.pendingHint")} />
+          <StatCard label={t("collectionDetail.voluntaryStats.participants")} value={participants.length} icon={WalletCards} hint={t("collectionDetail.voluntaryStats.participantsHint")} />
         </div>
       ) : (
         // Six cards for monthly fill a 3-column grid; one-off has five, laid out as 2 wide + 3.
         <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 lg:grid-cols-6">
           <StatCard
-            label="Dijangka"
+            label={t("collectionDetail.stats.expected")}
             value={formatMoney(totals.expected)}
             icon={WalletCards}
-            hint={scopeLabel ?? "Jumlah caj tidak dikecualikan"}
+            hint={scopeLabel ?? t("collectionDetail.stats.expectedHint")}
             className={monthly ? "lg:col-span-2" : "lg:col-span-3"}
           />
           <StatCard
-            label="Diterima"
+            label={t("collectionDetail.stats.received")}
             value={formatMoney(totals.received)}
             icon={CircleCheck}
             tone="paid"
-            hint={`${formatPercent(totals.received, totals.expected)} daripada dijangka`}
+            hint={t("collectionDetail.stats.receivedHint", { percent: formatPercent(totals.received, totals.expected) })}
             className={monthly ? "lg:col-span-2" : "lg:col-span-3"}
           />
           <StatCard
-            label="Baki semasa"
+            label={t("collectionDetail.stats.balance")}
             value={formatMoney(totals.dueNow)}
             icon={CircleAlert}
             tone="unpaid"
-            hint={totals.counts.overdue > 0 ? `${totals.counts.overdue} caj lewat` : "Tiada caj lewat"}
+            hint={totals.counts.overdue > 0 ? t("collectionDetail.stats.overdueHint", { count: totals.counts.overdue }) : t("collectionDetail.stats.noOverdue")}
             className="lg:col-span-2"
           />
           {monthly && (
             <StatCard
-              label="Akan datang"
+              label={t("collectionDetail.stats.upcoming")}
               value={formatMoney(totals.upcoming)}
               icon={CalendarClock}
               tone="exempt"
-              hint="Bulan hadapan, belum perlu dibayar"
+              hint={t("collectionDetail.stats.upcomingHint")}
               className="lg:col-span-2"
             />
           )}
           <StatCard
-            label="Menunggu semakan"
+            label={t("collectionDetail.stats.pending")}
             value={formatMoney(totals.pending)}
             icon={Hourglass}
             tone="pending"
-            hint={totals.counts.pendingReview > 0 ? `${totals.counts.pendingReview} caj · belum dikira diterima` : "Belum dikira sebagai diterima"}
+            hint={totals.counts.pendingReview > 0 ? t("collectionDetail.stats.pendingHint", { count: totals.counts.pendingReview }) : t("collectionDetail.stats.pendingNone")}
             className="lg:col-span-2"
           />
           <StatCard
-            label="Peserta"
+            label={t("collectionDetail.stats.participants")}
             value={participants.length}
             icon={Users}
-            hint={totals.counts.exempt > 0 ? `${totals.counts.exempt} caj dikecualikan` : "Tiada pengecualian"}
+            hint={totals.counts.exempt > 0 ? t("collectionDetail.stats.exemptHint", { count: totals.counts.exempt }) : t("collectionDetail.stats.noExempt")}
             className="lg:col-span-2"
           />
         </div>
@@ -233,7 +237,7 @@ function CollectionDetail({ collection }: { collection: Collection }) {
         <InfoCard collection={collection} />
       ) : (
         <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
-          <SectionCard title="Kemajuan kutipan" icon={CircleCheck} description={scopeLabel ? `Paparan: ${scopeLabel}` : undefined}>
+          <SectionCard title={t("collectionDetail.progress.title")} icon={CircleCheck} description={scopeLabel ? t("collectionDetail.progress.view", { scope: scopeLabel }) : undefined}>
             <div className="grid gap-3">
               <div className="flex flex-wrap items-baseline justify-between gap-x-3 text-sm">
                 <span>
@@ -242,12 +246,12 @@ function CollectionDetail({ collection }: { collection: Collection }) {
                 </span>
                 <span className="font-medium text-primary-strong tabular-nums">{formatPercent(totals.received, totals.expected)}</span>
               </div>
-              <ProgressBar value={totals.received} max={totals.expected} label="Diterima berbanding dijangka" className="h-2.5" />
+              <ProgressBar value={totals.received} max={totals.expected} label={t("collectionDetail.progress.aria")} className="h-2.5" />
               <StatusCounts
                 counts={totals.counts}
                 future={scopeLedgers.filter((ledger) => ledger.future && ledger.status === "unpaid" && ledger.pending === 0).length}
               />
-              {monthly && month === "all" && <p className="text-[11px] text-muted-foreground">Kiraan ikut caj (ahli × bulan).</p>}
+              {monthly && month === "all" && <p className="text-[11px] text-muted-foreground">{t("collectionDetail.progress.countNote")}</p>}
             </div>
           </SectionCard>
           <InfoCard collection={collection} />
@@ -276,6 +280,7 @@ function CollectionDetail({ collection }: { collection: Collection }) {
 // Header pieces ------------------------------------------------------------------------------
 
 function TitleEditor({ collection }: { collection: Collection }) {
+  const t = useT();
   const { run } = useKelab();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(collection.name);
@@ -292,7 +297,7 @@ function TitleEditor({ collection }: { collection: Collection }) {
             variant="ghost"
             size="icon-sm"
             className="mt-1 shrink-0 text-muted-foreground"
-            aria-label="Namakan semula kutipan"
+            aria-label={t("collectionDetail.title.renameAria")}
             onClick={() => {
               setValue(collection.name);
               setError(null);
@@ -315,7 +320,7 @@ function TitleEditor({ collection }: { collection: Collection }) {
     setError(null);
     try {
       await run((backend) => backend.updateCollection(collection.id, { name }));
-      toast.success(`Kutipan dinamakan semula kepada "${name}".`);
+      toast.success(t("collectionDetail.title.renamed", { name }));
       setEditing(false);
     } catch (cause) {
       setError(messageFor(cause));
@@ -332,17 +337,17 @@ function TitleEditor({ collection }: { collection: Collection }) {
           value={value}
           onChange={(event) => setValue(event.target.value)}
           onKeyDown={(event) => event.key === "Escape" && setEditing(false)}
-          aria-label="Nama kutipan"
+          aria-label={t("collectionDetail.title.nameAria")}
           aria-invalid={Boolean(error)}
           maxLength={140}
           className="h-11 min-w-0 rounded-xl text-base font-semibold sm:w-96"
         />
         <div className="flex gap-2">
           <Button type="submit" size="lg" disabled={busy}>
-            {busy ? <Spinner className="size-4" /> : <Check />} Simpan
+            {busy ? <Spinner className="size-4" /> : <Check />} {t("common.save")}
           </Button>
           <Button type="button" variant="outline" size="lg" onClick={() => setEditing(false)} disabled={busy}>
-            <X /> Batal
+            <X /> {t("common.cancel")}
           </Button>
         </div>
       </div>
@@ -354,6 +359,7 @@ function TitleEditor({ collection }: { collection: Collection }) {
 type StatusChange = { status: CollectionStatus; title: string; body: string; confirm: string; success: string };
 
 function StatusActions({ collection, dueNow, onAddParticipants }: { collection: Collection; dueNow: Sen; onAddParticipants: () => void }) {
+  const t = useT();
   const { run } = useKelab();
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState<StatusChange | null>(null);
@@ -378,53 +384,53 @@ function StatusActions({ collection, dueNow, onAddParticipants }: { collection: 
     title: "Aktifkan kutipan",
     body: "",
     confirm: "Aktifkan",
-    success: `"${collection.name}" kini aktif.`,
+    success: t("collectionDetail.actions.activated", { name: collection.name }),
   };
   const complete: StatusChange = {
     status: "completed",
     title: "Tandakan selesai?",
     body: `Masih ada baki semasa ${formatMoney(dueNow)}. Baki itu kekal direkod dan bayaran masih boleh direkod selepas ini.`,
     confirm: "Tandakan selesai",
-    success: `"${collection.name}" ditanda selesai.`,
+    success: t("collectionDetail.actions.completed", { name: collection.name }),
   };
   const archive: StatusChange = {
     status: "archived",
     title: "Arkibkan kutipan ini?",
     body: "Semua caj, bayaran dan log audit dikekalkan dan masih boleh dilihat. Kutipan diarkib disembunyikan daripada Matriks dan tidak menerima bayaran baharu. Anda boleh memulihkannya kemudian.",
     confirm: "Arkibkan",
-    success: `"${collection.name}" diarkib. Semua rekod dikekalkan.`,
+    success: t("collectionDetail.actions.archivedDone", { name: collection.name }),
   };
   return (
     // display: contents keeps the buttons laid out by PageHeader; the ref gives restore a focus target.
     <div ref={actions} className="contents">
       {collection.status !== "archived" && (
         <Button variant="brand" onClick={onAddParticipants}>
-          <UserPlus /> Tambah peserta
+          <UserPlus /> {t("collectionDetail.actions.addParticipants")}
         </Button>
       )}
       {(collection.status === "draft" || collection.status === "completed") && (
         <Button onClick={() => void change(activate)} disabled={busy}>
-          {busy ? <Spinner className="size-4" /> : <Play />} {collection.status === "draft" ? "Aktifkan" : "Aktifkan semula"}
+          {busy ? <Spinner className="size-4" /> : <Play />} {collection.status === "draft" ? t("collectionDetail.actions.activate") : t("collectionDetail.actions.reactivate")}
         </Button>
       )}
       {collection.status === "active" && (
         <Button onClick={() => (dueNow > 0 ? setConfirming(complete) : void change(complete))} disabled={busy}>
-          {busy ? <Spinner className="size-4" /> : <Check />} Tandakan selesai
+          {busy ? <Spinner className="size-4" /> : <Check />} {t("collectionDetail.actions.markComplete")}
         </Button>
       )}
       {collection.status === "archived" ? (
         <Button onClick={() => setRestoring(true)} disabled={busy}>
-          <ArchiveRestore /> Pulihkan
+          <ArchiveRestore /> {t("collectionDetail.actions.restore")}
         </Button>
       ) : (
         <>
           <Button variant="outline" asChild>
             <Link href="/matriks/">
-              <SheetIcon /> Buka dalam Matriks
+              <SheetIcon /> {t("collectionDetail.actions.openMatrix")}
             </Link>
           </Button>
           <Button variant="danger-outline" onClick={() => setConfirming(archive)} disabled={busy}>
-            <Archive /> Arkibkan
+            <Archive /> {t("collectionDetail.actions.archive")}
           </Button>
         </>
       )}
@@ -466,21 +472,22 @@ function MonthPicker({
   onChange: (value: string) => void;
   thisMonth: string;
 }) {
+  const t = useT();
   return (
     <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
       <Label htmlFor="kutipan-month" className="shrink-0 text-sm font-medium">
-        Paparan bulan
+        {t("collectionDetail.monthPicker.label")}
       </Label>
       <Select value={value} onValueChange={onChange}>
         <SelectTrigger id="kutipan-month" className="w-full font-medium sm:w-72">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">Semua bulan (ringkasan setiap ahli)</SelectItem>
+          <SelectItem value="all">{t("collectionDetail.monthPicker.all")}</SelectItem>
           {periods.map((period) => (
             <SelectItem key={period.id} value={period.id}>
               {formatMonthLong(period.month)}
-              {period.month === thisMonth ? " (bulan ini)" : period.month > thisMonth ? " (akan datang)" : ""}
+              {period.month === thisMonth ? t("collectionDetail.monthPicker.thisMonth") : period.month > thisMonth ? t("collectionDetail.monthPicker.upcoming") : ""}
             </SelectItem>
           ))}
         </SelectContent>
@@ -490,39 +497,41 @@ function MonthPicker({
 }
 
 function StatusCounts({ counts, future }: { counts: ReturnType<typeof totalsOf>["counts"]; future: number }) {
+  const t = useT();
   return (
     <div className="flex flex-wrap gap-1.5">
-      <StatusChip label={`Dibayar ${counts.paid}`} tone="paid" />
-      <StatusChip label={`Sebahagian ${counts.partial}`} tone="partial" />
-      <StatusChip label={`Belum bayar ${counts.unpaid - future}`} tone="unpaid" />
-      {future > 0 && <StatusChip label={`Akan datang ${future}`} tone="future" />}
-      {counts.overdue > 0 && <StatusChip label={`Lewat ${counts.overdue}`} tone="overdue" />}
-      {counts.pendingReview > 0 && <StatusChip label={`Menunggu ${counts.pendingReview}`} tone="pending" />}
-      {counts.exempt > 0 && <StatusChip label={`Dikecualikan ${counts.exempt}`} tone="exempt" />}
+      <StatusChip label={t("collectionDetail.counts.paid", { count: counts.paid })} tone="paid" />
+      <StatusChip label={t("collectionDetail.counts.partial", { count: counts.partial })} tone="partial" />
+      <StatusChip label={t("collectionDetail.counts.unpaid", { count: counts.unpaid - future })} tone="unpaid" />
+      {future > 0 && <StatusChip label={t("collectionDetail.counts.upcoming", { count: future })} tone="future" />}
+      {counts.overdue > 0 && <StatusChip label={t("collectionDetail.counts.overdue", { count: counts.overdue })} tone="overdue" />}
+      {counts.pendingReview > 0 && <StatusChip label={t("collectionDetail.counts.pending", { count: counts.pendingReview })} tone="pending" />}
+      {counts.exempt > 0 && <StatusChip label={t("collectionDetail.counts.exempt", { count: counts.exempt })} tone="exempt" />}
     </div>
   );
 }
 
 function InfoCard({ collection }: { collection: Collection }) {
+  const t = useT();
   return (
-    <SectionCard title="Maklumat kutipan" icon={WalletCards}>
+    <SectionCard title={t("collectionDetail.info.title")} icon={WalletCards}>
       <DetailList
         items={[
-          { label: "Jenis", value: collectionTypeLabels[collection.type] },
-          { label: "Amaun asal", value: amountLabel(collection) },
-          ...(collection.type === "one_off" ? [{ label: "Tarikh akhir", value: <DueDateEditor collection={collection} /> }] : []),
+          { label: t("collectionDetail.info.type"), value: collectionTypeLabels[collection.type] },
+          { label: t("collectionDetail.info.originalAmount"), value: amountLabel(collection) },
+          ...(collection.type === "one_off" ? [{ label: t("collectionDetail.info.dueDate"), value: <DueDateEditor collection={collection} /> }] : []),
           ...(collection.type === "monthly" && collection.startMonth && collection.endMonth
             ? [
-                { label: "Tempoh", value: `${formatMonth(collection.startMonth)} – ${formatMonth(collection.endMonth)}` },
+                { label: t("collectionDetail.info.period"), value: `${formatMonth(collection.startMonth)} – ${formatMonth(collection.endMonth)}` },
                 {
-                  label: "Hari akhir bayaran",
-                  value: collection.dueDay ? `${collection.dueDay}hb setiap bulan (hari terakhir bulan jika lebih)` : "Tiada",
+                  label: t("collectionDetail.info.dueDay"),
+                  value: collection.dueDay ? t("collectionDetail.info.dueDayValue", { day: collection.dueDay }) : t("collectionDetail.info.none"),
                 },
               ]
             : []),
-          { label: "Penerangan", value: collection.description },
-          { label: "Nota", value: collection.notes },
-          { label: "Dicipta", value: formatDateTime(collection.createdAt) },
+          { label: t("collectionDetail.info.description"), value: collection.description },
+          { label: t("collectionDetail.info.notes"), value: collection.notes },
+          { label: t("collectionDetail.info.created"), value: formatDateTime(collection.createdAt) },
         ]}
       />
     </SectionCard>
@@ -530,6 +539,7 @@ function InfoCard({ collection }: { collection: Collection }) {
 }
 
 function DueDateEditor({ collection }: { collection: Collection }) {
+  const t = useT();
   const { run } = useKelab();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(collection.dueDate ?? "");
@@ -542,7 +552,7 @@ function DueDateEditor({ collection }: { collection: Collection }) {
     setError(null);
     try {
       await run((backend) => backend.updateCollection(collection.id, { dueDate: next }));
-      toast.success(next ? `Tarikh akhir ditukar ke ${formatDay(next)}.` : "Tarikh akhir dibuang. Caj tidak akan menjadi Lewat.");
+      toast.success(next ? t("collectionDetail.dueEditor.changed", { date: formatDay(next) }) : t("collectionDetail.dueEditor.removed"));
       setEditing(false);
     } catch (cause) {
       setError(messageFor(cause));
@@ -554,7 +564,7 @@ function DueDateEditor({ collection }: { collection: Collection }) {
   if (!editing) {
     return (
       <span className="inline-flex flex-wrap items-center gap-x-2">
-        {collection.dueDate ? formatDay(collection.dueDate) : "Tiada tarikh akhir"}
+        {collection.dueDate ? formatDay(collection.dueDate) : t("collectionDetail.dueEditor.noDueDate")}
         {collection.status !== "archived" && (
           <Button
             variant="link"
@@ -565,7 +575,7 @@ function DueDateEditor({ collection }: { collection: Collection }) {
               setEditing(true);
             }}
           >
-            Ubah
+            {t("collectionDetail.dueEditor.edit")}
           </Button>
         )}
       </span>
@@ -574,18 +584,18 @@ function DueDateEditor({ collection }: { collection: Collection }) {
 
   return (
     <span className="grid gap-2">
-      <DatePicker value={value} onChange={setValue} aria-label="Tarikh akhir" emptyLabel="Tiada tarikh akhir" />
+      <DatePicker value={value} onChange={setValue} aria-label={t("collectionDetail.dueEditor.aria")} emptyLabel={t("collectionDetail.dueEditor.noDueDate")} />
       <span className="flex flex-wrap gap-1.5">
         <Button size="sm" onClick={() => void save(value || null)} disabled={busy}>
-          {busy && <Spinner className="size-3.5" />} Simpan
+          {busy && <Spinner className="size-3.5" />} {t("common.save")}
         </Button>
         {collection.dueDate && (
           <Button size="sm" variant="danger-outline" onClick={() => void save(null)} disabled={busy}>
-            Buang tarikh
+            {t("collectionDetail.dueEditor.removeDate")}
           </Button>
         )}
         <Button size="sm" variant="outline" onClick={() => setEditing(false)} disabled={busy}>
-          Batal
+          {t("common.cancel")}
         </Button>
       </span>
       {error && <span className="text-xs font-medium text-st-unpaid">{error}</span>}
@@ -597,13 +607,13 @@ function DueDateEditor({ collection }: { collection: Collection }) {
 
 type Row = { participant: Participant; member: Member };
 
-function memberCell(member: Member) {
+function memberCell(member: Member, t: TFunction) {
   return (
     <span className="block min-w-0">
       <span className="block font-medium break-words">{member.name}</span>
       <span className="block text-xs text-muted-foreground">
-        {member.category ? categoryLabels[member.category] : "Tiada kategori"}
-        {!member.active && " · Tidak aktif"}
+        {member.category ? categoryLabels[member.category] : t("collectionDetail.member.noCategory")}
+        {!member.active && t("collectionDetail.member.inactive")}
       </span>
     </span>
   );
@@ -630,6 +640,7 @@ function ChargeTable({
   archived: boolean;
   onOpen: (editing: Editing) => void;
 }) {
+  const t = useT();
   const { view } = useSnapshot();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<ChargeFilter>("all");
@@ -649,21 +660,21 @@ function ChargeTable({
 
   const options: { value: ChargeFilter; label: string; count: number }[] = (
     [
-      ["all", "Semua"],
-      ["paid", "Dibayar"],
-      ["partial", "Sebahagian"],
-      ["unpaid", "Belum bayar"],
-      ["future", "Akan datang"],
-      ["overdue", "Lewat"],
-      ["pending", "Menunggu"],
-      ["exempt", "Dikecualikan"],
+      ["all", t("collectionDetail.charge.filters.all")],
+      ["paid", t("collectionDetail.charge.filters.paid")],
+      ["partial", t("collectionDetail.charge.filters.partial")],
+      ["unpaid", t("collectionDetail.charge.filters.unpaid")],
+      ["future", t("collectionDetail.charge.filters.future")],
+      ["overdue", t("collectionDetail.charge.filters.overdue")],
+      ["pending", t("collectionDetail.charge.filters.pending")],
+      ["exempt", t("collectionDetail.charge.filters.exempt")],
     ] as [ChargeFilter, string][]
   )
     .map(([value, label]) => ({ value, label, count: count(value) }))
     .filter((option) => option.value === "all" || option.value === filter || option.count > 0 || ["paid", "unpaid"].includes(option.value));
 
   const open = (row: Row) => onOpen({ memberId: row.member.id, columnKey: column.key });
-  const actionLabel = (cell: MatrixCell) => (archived ? "Lihat" : cell.kind === "charge" && cell.status === "exempt" ? "Butiran" : "Rekod");
+  const actionLabel = (cell: MatrixCell) => (archived ? t("collectionDetail.charge.view") : cell.kind === "charge" && cell.status === "exempt" ? t("collectionDetail.charge.details") : t("collectionDetail.charge.record"));
   const note = (row: Row & { cell: MatrixCell }) => {
     const ledger = ledgerOf(row.cell);
     if (ledger?.charge.exempt) return ledger.charge.exemptReason;
@@ -671,10 +682,10 @@ function ChargeTable({
   };
 
   const tableColumns: Column<Row & { cell: MatrixCell }>[] = [
-    { key: "member", header: "Ahli", cell: (row) => memberCell(row.member) },
+    { key: "member", header: t("collectionDetail.charge.columns.member"), cell: (row) => memberCell(row.member, t) },
     {
       key: "required",
-      header: "Perlu bayar",
+      header: t("collectionDetail.charge.columns.required"),
       align: "right",
       cell: (row) => {
         const ledger = ledgerOf(row.cell);
@@ -683,7 +694,7 @@ function ChargeTable({
     },
     {
       key: "paid",
-      header: "Dibayar",
+      header: t("collectionDetail.charge.columns.paid"),
       align: "right",
       cell: (row) => {
         const ledger = ledgerOf(row.cell);
@@ -691,14 +702,14 @@ function ChargeTable({
         return (
           <span className="block">
             {formatMoney(ledger.confirmed)}
-            {ledger.pending > 0 && <span className="block text-[11px] text-st-pending">+{formatMoney(ledger.pending)} menunggu</span>}
+            {ledger.pending > 0 && <span className="block text-[11px] text-st-pending">{t("collectionDetail.charge.pendingSuffix", { amount: formatMoney(ledger.pending) })}</span>}
           </span>
         );
       },
     },
     {
       key: "remaining",
-      header: "Baki",
+      header: t("collectionDetail.charge.columns.balance"),
       align: "right",
       cell: (row) => {
         const ledger = ledgerOf(row.cell);
@@ -712,7 +723,7 @@ function ChargeTable({
     },
     {
       key: "status",
-      header: "Status",
+      header: t("collectionDetail.charge.columns.status"),
       cell: (row) =>
         row.cell.kind === "charge" ? (
           <ChargeStatusChips status={row.cell.status} overdue={row.cell.ledger.overdue} pending={row.cell.ledger.pending > 0} compact />
@@ -720,17 +731,17 @@ function ChargeTable({
           <ChargeStatusChips status="na" compact />
         ),
     },
-    { key: "last", header: "Bayaran terakhir", hideBelow: "2xl", cell: (row) => formatDay(ledgerOf(row.cell)?.lastPaidOn) },
+    { key: "last", header: t("collectionDetail.charge.columns.lastPayment"), hideBelow: "2xl", cell: (row) => formatDay(ledgerOf(row.cell)?.lastPaidOn) },
     {
       key: "note",
-      header: "Nota",
+      header: t("collectionDetail.charge.columns.note"),
       hideBelow: "2xl",
       className: "max-w-48",
       cell: (row) => <span className="line-clamp-2 text-xs text-muted-foreground">{note(row) || "—"}</span>,
     },
     {
       key: "action",
-      header: <span className="sr-only">Tindakan</span>,
+      header: <span className="sr-only">{t("collectionDetail.charge.columns.action")}</span>,
       align: "right",
       cell: (row) => (
         <Button size="sm" variant={archived ? "outline" : "brand"} onClick={() => open(row)}>
@@ -741,11 +752,11 @@ function ChargeTable({
   ];
 
   return (
-    <section className="grid min-w-0 grid-cols-1 gap-3" aria-label="Penjejakan bayaran">
-      <h2 className="text-[15px] font-semibold">Penjejakan bayaran{column.period ? ` · ${formatMonthLong(column.period.month)}` : ""}</h2>
+    <section className="grid min-w-0 grid-cols-1 gap-3" aria-label={t("collectionDetail.charge.sectionAria")}>
+      <h2 className="text-[15px] font-semibold">{t("collectionDetail.charge.heading")}{column.period ? ` · ${formatMonthLong(column.period.month)}` : ""}</h2>
       <TableToolbar
-        search={<SearchInput id="kutipan-detail-search" value={query} onChange={setQuery} placeholder="Cari ahli…" />}
-        tabs={<FilterPills label="Tapis status" value={filter} onChange={setFilter} options={options} />}
+        search={<SearchInput id="kutipan-detail-search" value={query} onChange={setQuery} placeholder={t("collectionDetail.member.searchPlaceholder")} />}
+        tabs={<FilterPills label={t("collectionDetail.charge.filterLabel")} value={filter} onChange={setFilter} options={options} />}
       />
       <DataTable
         rows={visible}
@@ -758,8 +769,8 @@ function ChargeTable({
           return (
             <MobileRow
               title={row.member.name}
-              amount={ledger ? (ledger.charge.exempt ? "—" : `Baki ${formatMoney(ledger.remaining)}`) : "—"}
-              meta={ledger ? (ledger.charge.exempt ? ledger.charge.exemptReason ?? "Dikecualikan" : `Dibayar ${formatMoney(ledger.confirmed)}`) : "Tiada caj"}
+              amount={ledger ? (ledger.charge.exempt ? "—" : t("collectionDetail.charge.mobileBalance", { amount: formatMoney(ledger.remaining) })) : "—"}
+              meta={ledger ? (ledger.charge.exempt ? ledger.charge.exemptReason ?? t("collectionDetail.charge.exempted") : t("collectionDetail.charge.mobilePaid", { amount: formatMoney(ledger.confirmed) })) : t("collectionDetail.charge.noCharge")}
               status={
                 row.cell.kind === "charge" ? (
                   <ChargeStatusChips
@@ -795,6 +806,7 @@ function AllMonthsTable({
   archived: boolean;
   onOpen: (editing: Editing) => void;
 }) {
+  const t = useT();
   const { view } = useSnapshot();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<MonthsFilter>("all");
@@ -831,22 +843,22 @@ function AllMonthsTable({
   const settledMonths = (row: MonthRow) => row.totals.counts.paid + row.totals.counts.exempt;
 
   const tableColumns: Column<MonthRow>[] = [
-    { key: "member", header: "Ahli", cell: (row) => memberCell(row.member) },
-    { key: "required", header: "Perlu bayar", align: "right", cell: (row) => formatMoney(row.totals.expected) },
+    { key: "member", header: t("collectionDetail.months.columns.member"), cell: (row) => memberCell(row.member, t) },
+    { key: "required", header: t("collectionDetail.months.columns.required"), align: "right", cell: (row) => formatMoney(row.totals.expected) },
     {
       key: "paid",
-      header: "Dibayar",
+      header: t("collectionDetail.months.columns.paid"),
       align: "right",
       cell: (row) => (
         <span className="block">
           {formatMoney(row.totals.received)}
-          {row.totals.pending > 0 && <span className="block text-[11px] text-st-pending">+{formatMoney(row.totals.pending)} menunggu</span>}
+          {row.totals.pending > 0 && <span className="block text-[11px] text-st-pending">{t("collectionDetail.charge.pendingSuffix", { amount: formatMoney(row.totals.pending) })}</span>}
         </span>
       ),
     },
     {
       key: "due",
-      header: "Baki semasa",
+      header: t("collectionDetail.months.columns.due"),
       align: "right",
       cell: (row) => (
         <span className={cn(row.totals.counts.overdue > 0 && "font-semibold text-st-unpaid", row.totals.dueNow === 0 && "text-muted-foreground")}>
@@ -856,32 +868,32 @@ function AllMonthsTable({
     },
     {
       key: "upcoming",
-      header: "Akan datang",
+      header: t("collectionDetail.months.columns.upcoming"),
       align: "right",
       hideBelow: "lg",
       cell: (row) => <span className="text-muted-foreground">{formatMoney(row.totals.upcoming)}</span>,
     },
     {
       key: "status",
-      header: "Status",
+      header: t("collectionDetail.months.columns.status"),
       cell: (row) => (
         <span className="inline-flex flex-wrap items-center gap-1">
           <span className="text-xs whitespace-nowrap text-muted-foreground tabular-nums">
-            {settledMonths(row)}/{row.ledgers.length} bulan selesai
+            {t("collectionDetail.months.settled", { settled: settledMonths(row), total: row.ledgers.length })}
           </span>
-          {row.totals.counts.overdue > 0 && <StatusChip label={`Lewat ${row.totals.counts.overdue}`} tone="overdue" compact />}
-          {row.totals.counts.pendingReview > 0 && <StatusChip label="Menunggu Semakan" tone="pending" compact />}
+          {row.totals.counts.overdue > 0 && <StatusChip label={t("collectionDetail.counts.overdue", { count: row.totals.counts.overdue })} tone="overdue" compact />}
+          {row.totals.counts.pendingReview > 0 && <StatusChip label={t("collectionDetail.months.pendingReview")} tone="pending" compact />}
         </span>
       ),
     },
     {
       key: "action",
-      header: <span className="sr-only">Tindakan</span>,
+      header: <span className="sr-only">{t("collectionDetail.months.columns.action")}</span>,
       align: "right",
       cell: (row) =>
         row.targetColumn ? (
           <Button size="sm" variant={archived ? "outline" : "brand"} onClick={() => open(row)}>
-            {archived ? "Lihat" : "Rekod"} · {row.targetColumn.short}
+            {archived ? t("collectionDetail.months.view") : t("collectionDetail.months.record")} · {row.targetColumn.short}
           </Button>
         ) : (
           "—"
@@ -890,27 +902,27 @@ function AllMonthsTable({
   ];
 
   return (
-    <section className="grid min-w-0 grid-cols-1 gap-3" aria-label="Ringkasan semua bulan">
+    <section className="grid min-w-0 grid-cols-1 gap-3" aria-label={t("collectionDetail.months.sectionAria")}>
       <div>
-        <h2 className="text-[15px] font-semibold">Semua bulan · ringkasan setiap ahli</h2>
+        <h2 className="text-[15px] font-semibold">{t("collectionDetail.months.heading")}</h2>
         <p className="text-xs text-muted-foreground">
-          &ldquo;Rekod&rdquo; membuka bulan tertua yang masih berbaki. Pilih bulan di atas untuk melihat satu bulan sahaja.
+          {t("collectionDetail.months.hintBefore")}
         </p>
       </div>
       <TableToolbar
-        search={<SearchInput id="kutipan-detail-search" value={query} onChange={setQuery} placeholder="Cari ahli…" />}
+        search={<SearchInput id="kutipan-detail-search" value={query} onChange={setQuery} placeholder={t("collectionDetail.member.searchPlaceholder")} />}
         tabs={
           <FilterPills
-            label="Tapis baris"
+            label={t("collectionDetail.months.filterLabel")}
             value={filter}
             onChange={setFilter}
             options={(
               [
-                ["all", "Semua"],
-                ["owing", "Ada baki"],
-                ["overdue", "Lewat"],
-                ["pending", "Menunggu"],
-                ["settled", "Selesai"],
+                ["all", t("collectionDetail.months.filters.all")],
+                ["owing", t("collectionDetail.months.filters.owing")],
+                ["overdue", t("collectionDetail.months.filters.overdue")],
+                ["pending", t("collectionDetail.months.filters.pending")],
+                ["settled", t("collectionDetail.months.filters.settled")],
               ] as [MonthsFilter, string][]
             ).map(([value, label]) => ({ value, label, count: rows.filter((row) => matches(row, value)).length }))}
           />
@@ -925,13 +937,13 @@ function AllMonthsTable({
         mobileCard={(row) => (
           <MobileRow
             title={row.member.name}
-            amount={`Baki ${formatMoney(row.totals.dueNow)}`}
-            meta={`${settledMonths(row)}/${row.ledgers.length} bulan selesai · dibayar ${formatMoney(row.totals.received)}`}
+            amount={t("collectionDetail.charge.mobileBalance", { amount: formatMoney(row.totals.dueNow) })}
+            meta={t("collectionDetail.months.mobileMeta", { settled: settledMonths(row), total: row.ledgers.length, amount: formatMoney(row.totals.received) })}
             status={
               row.totals.counts.overdue > 0 ? (
-                <StatusChip label={`Lewat ${row.totals.counts.overdue}`} tone="overdue" compact />
+                <StatusChip label={t("collectionDetail.counts.overdue", { count: row.totals.counts.overdue })} tone="overdue" compact />
               ) : row.totals.counts.pendingReview > 0 ? (
-                <StatusChip label="Menunggu" tone="pending" compact />
+                <StatusChip label={t("collectionDetail.months.pending")} tone="pending" compact />
               ) : undefined
             }
           />
@@ -957,6 +969,7 @@ function VoluntaryTable({
   archived: boolean;
   onOpen: (editing: Editing) => void;
 }) {
+  const t = useT();
   const { view } = useSnapshot();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<VoluntaryFilter>("all");
@@ -985,51 +998,51 @@ function VoluntaryTable({
   const open = (row: VoluntaryRow) => onOpen({ memberId: row.member.id, columnKey: column.key });
 
   const tableColumns: Column<VoluntaryRow>[] = [
-    { key: "member", header: "Ahli", cell: (row) => memberCell(row.member) },
-    { key: "received", header: "Jumlah sumbangan", align: "right", cell: (row) => formatMoney(row.received) },
-    { key: "count", header: "Bilangan", align: "right", cell: (row) => row.count },
-    { key: "last", header: "Sumbangan terakhir", hideBelow: "lg", cell: (row) => formatDay(row.last) },
+    { key: "member", header: t("collectionDetail.voluntaryTable.columns.member"), cell: (row) => memberCell(row.member, t) },
+    { key: "received", header: t("collectionDetail.voluntaryTable.columns.total"), align: "right", cell: (row) => formatMoney(row.received) },
+    { key: "count", header: t("collectionDetail.voluntaryTable.columns.count"), align: "right", cell: (row) => row.count },
+    { key: "last", header: t("collectionDetail.voluntaryTable.columns.last"), hideBelow: "lg", cell: (row) => formatDay(row.last) },
     {
       key: "pending",
-      header: "Menunggu semakan",
+      header: t("collectionDetail.voluntaryTable.columns.pending"),
       align: "right",
       cell: (row) => (row.pending > 0 ? <span className="text-st-pending">{formatMoney(row.pending)}</span> : <span className="text-muted-foreground">—</span>),
     },
     {
       key: "note",
-      header: "Nota",
+      header: t("collectionDetail.voluntaryTable.columns.note"),
       hideBelow: "2xl",
       className: "max-w-48",
       cell: (row) => <span className="line-clamp-2 text-xs text-muted-foreground">{row.participant.note || "—"}</span>,
     },
     {
       key: "action",
-      header: <span className="sr-only">Tindakan</span>,
+      header: <span className="sr-only">{t("collectionDetail.voluntaryTable.columns.action")}</span>,
       align: "right",
       cell: (row) => (
         <Button size="sm" variant={archived ? "outline" : "brand"} onClick={() => open(row)}>
-          {archived ? "Lihat" : "Rekod"}
+          {archived ? t("collectionDetail.voluntaryTable.view") : t("collectionDetail.voluntaryTable.record")}
         </Button>
       ),
     },
   ];
 
   return (
-    <section className="grid min-w-0 grid-cols-1 gap-3" aria-label="Sumbangan ahli">
-      <h2 className="text-[15px] font-semibold">Sumbangan ahli</h2>
+    <section className="grid min-w-0 grid-cols-1 gap-3" aria-label={t("collectionDetail.voluntaryTable.sectionAria")}>
+      <h2 className="text-[15px] font-semibold">{t("collectionDetail.voluntaryTable.heading")}</h2>
       <TableToolbar
-        search={<SearchInput id="kutipan-detail-search" value={query} onChange={setQuery} placeholder="Cari ahli…" />}
+        search={<SearchInput id="kutipan-detail-search" value={query} onChange={setQuery} placeholder={t("collectionDetail.member.searchPlaceholder")} />}
         tabs={
           <FilterPills
-            label="Tapis sumbangan"
+            label={t("collectionDetail.voluntaryTable.filterLabel")}
             value={filter}
             onChange={setFilter}
             options={(
               [
-                ["all", "Semua"],
-                ["given", "Sudah menyumbang"],
-                ["none", "Belum menyumbang"],
-                ["pending", "Menunggu"],
+                ["all", t("collectionDetail.voluntaryTable.filters.all")],
+                ["given", t("collectionDetail.voluntaryTable.filters.given")],
+                ["none", t("collectionDetail.voluntaryTable.filters.none")],
+                ["pending", t("collectionDetail.voluntaryTable.filters.pending")],
               ] as [VoluntaryFilter, string][]
             ).map(([value, label]) => ({ value, label, count: rows.filter((row) => matches(row, value)).length }))}
           />
@@ -1045,8 +1058,8 @@ function VoluntaryTable({
           <MobileRow
             title={row.member.name}
             amount={formatMoney(row.received)}
-            meta={row.count ? `${row.count} sumbangan · terakhir ${formatDay(row.last)}` : "Belum menyumbang"}
-            status={row.pending > 0 ? <StatusChip label="Menunggu" tone="pending" compact /> : undefined}
+            meta={row.count ? t("collectionDetail.voluntaryTable.mobileMeta", { count: row.count, date: formatDay(row.last) }) : t("collectionDetail.voluntaryTable.notYet")}
+            status={row.pending > 0 ? <StatusChip label={t("collectionDetail.voluntaryTable.pending")} tone="pending" compact /> : undefined}
           />
         )}
       />
@@ -1055,10 +1068,11 @@ function VoluntaryTable({
 }
 
 function EmptyRows({ hasParticipants }: { hasParticipants: boolean }) {
+  const t = useT();
   return hasParticipants ? (
-    <EmptyState icon={SearchX} title="Tiada ahli sepadan" description="Cuba carian atau penapis lain." />
+    <EmptyState icon={SearchX} title={t("collectionDetail.emptyRows.noMatchTitle")} description={t("collectionDetail.emptyRows.noMatchDescription")} />
   ) : (
-    <EmptyState icon={UserPlus} title="Belum ada peserta" description="Tambah peserta untuk mula menjejak bayaran kutipan ini." />
+    <EmptyState icon={UserPlus} title={t("collectionDetail.emptyRows.noneTitle")} description={t("collectionDetail.emptyRows.noneDescription")} />
   );
 }
 

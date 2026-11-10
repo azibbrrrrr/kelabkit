@@ -1,5 +1,6 @@
 import { BayaranBaru } from "@/components/sections/bayaran-baru";
 import { PageShell, TableSkeleton } from "@/components/shared";
+import { DocumentTitle } from "@/components/document-title";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
@@ -15,6 +16,7 @@ export default function Page() {
         </PageShell>
       }
     >
+      <DocumentTitle k="brand.docTitle.newPayment" />
       <BayaranBaru />
     </Suspense>
   );
