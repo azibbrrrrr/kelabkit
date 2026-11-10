@@ -311,7 +311,7 @@ export function RemindersPage() {
             icon={MessageSquareText}
             description="Klik pemegang tempat untuk memasukkannya di kedudukan kursor. Baris yang mengandungi {tarikh} dibuang jika tiada tarikh akhir."
             action={
-              <Button variant="outline" size="sm" onClick={() => setTemplate(DEFAULT_TEMPLATE)} disabled={template === DEFAULT_TEMPLATE}>
+              <Button variant="danger-outline" size="sm" onClick={() => setTemplate(DEFAULT_TEMPLATE)} disabled={template === DEFAULT_TEMPLATE}>
                 <RotateCcw /> Set semula templat
               </Button>
             }
@@ -505,8 +505,7 @@ export function RemindersPage() {
                           )}
                           <Button
                             size="sm"
-                            variant="ghost"
-                            className="text-primary-strong"
+                            variant="outline"
                             aria-expanded={isOpen}
                             onClick={() => setOpen((o) => ({ ...o, [key]: !isOpen }))}
                           >
@@ -531,7 +530,7 @@ export function RemindersPage() {
                               <div>
                                 <Button
                                   size="sm"
-                                  variant="ghost"
+                                  variant="danger-outline"
                                   onClick={() =>
                                     setEdits((e) => {
                                       const next = { ...e };

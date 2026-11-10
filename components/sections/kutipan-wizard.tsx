@@ -317,7 +317,7 @@ export function KutipanWizard() {
           {/* Desktop and tablet actions. On phones the primary pair lives in the sticky bar. */}
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex gap-2">
-              <Button variant="ghost" size="lg" onClick={leave} disabled={busy !== null} className="hidden md:inline-flex">
+              <Button variant="outline" size="lg" onClick={leave} disabled={busy !== null} className="hidden md:inline-flex">
                 Batal
               </Button>
               <Button variant="outline" size="lg" onClick={() => void save(false)} disabled={busy !== null} className="w-full sm:w-auto">
@@ -864,7 +864,7 @@ function MemberRow({
                   className="w-36 min-w-0"
                 />
                 {override.trim() && (
-                  <Button variant="ghost" size="sm" onClick={() => setOverride("")} className="h-11 text-muted-foreground">
+                  <Button variant="outline" size="sm" onClick={() => setOverride("")} className="h-11">
                     <RotateCcw /> Set semula ke asal
                   </Button>
                 )}
@@ -935,7 +935,7 @@ function ReviewStep({
         title="Semak butiran"
         icon={FileText}
         action={
-          <Button variant="ghost" size="sm" onClick={() => onEdit(0)} className="text-primary-strong">
+          <Button variant="outline" size="sm" onClick={() => onEdit(0)}>
             Ubah
           </Button>
         }
@@ -959,7 +959,7 @@ function ReviewStep({
         title={voluntary ? `Ahli dijemput (${paying.length})` : `Ahli perlu bayar (${paying.length})`}
         icon={UsersRound}
         action={
-          <Button variant="ghost" size="sm" onClick={() => onEdit(1)} className="text-primary-strong">
+          <Button variant="outline" size="sm" onClick={() => onEdit(1)}>
             Ubah
           </Button>
         }

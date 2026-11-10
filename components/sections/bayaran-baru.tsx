@@ -3,7 +3,7 @@
 import { useKelab, useSnapshot } from "@/components/data-provider";
 import { MoneyInput, parseMoney } from "@/components/money-input";
 import { MemberStatus } from "@/components/sections/ahli";
-import { ChargeStatusChips, LabelChip, Money, PageHeader, PageShell, SectionCard } from "@/components/shared";
+import { ChargeStatusChips, LabelChip, Money, PageHeader, PageShell, SectionCard, TextAction } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -454,7 +454,7 @@ function PaymentForm({ member, onChange, onSaved }: { member: Member; onChange: 
           n={1}
           title="Ahli"
           action={
-            <Button variant="ghost" size="sm" onClick={onChange}>
+            <Button variant="outline" size="sm" onClick={onChange}>
               Tukar ahli
             </Button>
           }
@@ -483,11 +483,11 @@ function PaymentForm({ member, onChange, onSaved }: { member: Member; onChange: 
           action={
             hasCharges ? (
               selected.length ? (
-                <Button variant="ghost" size="sm" onClick={() => setSelected([])}>
+                <Button variant="outline" size="sm" onClick={() => setSelected([])}>
                   Kosongkan
                 </Button>
               ) : items.some((item) => !item.ledger.future && item.ledger.payable > 0) ? (
-                <Button variant="ghost" size="sm" onClick={selectAllDue}>
+                <Button variant="outline" size="sm" onClick={selectAllDue}>
                   Pilih semua baki
                 </Button>
               ) : undefined
@@ -874,13 +874,7 @@ function ChargeRow({
             <Label htmlFor={`part-${id}`} className="text-xs text-muted-foreground">
               Amaun untuk caj ini
             </Label>
-            <button
-              type="button"
-              onClick={() => onPart(id, senToInput(ledger.payable))}
-              className="rounded-lg px-1.5 py-0.5 text-xs font-medium text-primary-strong hover:bg-primary-tint"
-            >
-              Penuh {formatMoney(ledger.payable)}
-            </button>
+            <TextAction onClick={() => onPart(id, senToInput(ledger.payable))}>Penuh {formatMoney(ledger.payable)}</TextAction>
           </div>
           <MoneyInput id={`part-${id}`} value={value} onChange={(event) => onPart(id, event.target.value)} placeholder="0.00" invalid={Boolean(error)} />
           {error && <p className="text-xs font-medium text-st-unpaid">{error}</p>}

@@ -13,7 +13,7 @@ import { methodLabels, paymentStateLabels } from "@/lib/labels";
 import { monthOf } from "@/lib/money/months";
 import type { Payment, PaymentMethod, PaymentState, Snapshot } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { BadgeCheck, FilterX, Hourglass, Plus, ReceiptText, Undo2 } from "lucide-react";
+import { BadgeCheck, FilterX, Hourglass, Plus, ReceiptText, Undo2, UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -283,7 +283,7 @@ export function BayaranPage() {
                 />
               </div>
               {filtersOn && (
-                <Button variant="ghost" onClick={clearFilters} className="col-span-2 h-10 justify-self-start text-muted-foreground sm:col-span-1">
+                <Button variant="outline" onClick={clearFilters} className="col-span-2 h-10 justify-self-start rounded-xl sm:col-span-1">
                   <FilterX /> Kosongkan penapis
                 </Button>
               )}
@@ -360,8 +360,10 @@ export function BayaranPage() {
             <>
               <PaymentList payments={[selectedPayment]} showMember />
               {selectedPayment.note && <p className="text-xs text-muted-foreground">Catatan: {selectedPayment.note}</p>}
-              <Button asChild variant="brand" className="w-full">
-                <Link href={`/ahli/${selectedPayment.memberId}/`}>Lihat profil ahli</Link>
+              <Button asChild variant="outline" size="sm" className="justify-self-start">
+                <Link href={`/ahli/${selectedPayment.memberId}/`}>
+                  <UserRound /> Lihat profil ahli
+                </Link>
               </Button>
             </>
           )}

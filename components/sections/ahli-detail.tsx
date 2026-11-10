@@ -103,7 +103,7 @@ export function AhliDetail({ id }: { id: string }) {
           .join(" · ")}
         actions={
           <>
-            <Button variant="outline" onClick={() => setToggling(true)}>
+            <Button variant={member.active ? "danger-outline" : "outline"} onClick={() => setToggling(true)}>
               {member.active ? <UserX /> : <UserCheck />}
               {member.active ? "Nyahaktifkan" : "Aktifkan semula"}
             </Button>
@@ -155,7 +155,7 @@ export function AhliDetail({ id }: { id: string }) {
         <SectionCard
           title="Profil"
           action={
-            <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>
+            <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
               <Pencil /> Edit
             </Button>
           }

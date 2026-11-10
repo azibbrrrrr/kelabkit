@@ -28,7 +28,7 @@ import { sum } from "@/lib/money/amount";
 import { themes, type ThemeId } from "@/lib/themes";
 import type { Club } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { Check, Database, History, Palette, Plus, School } from "lucide-react";
+import { Check, Database, History, Palette, Plus, RotateCcw, School } from "lucide-react";
 import Link from "next/link";
 import { useId, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -147,7 +147,7 @@ function ClubForm({ club }: { club: Club }) {
           {dirty && !busy && (
             <Button
               type="button"
-              variant="ghost"
+              variant="outline"
               onClick={() => {
                 setFields(initial);
                 setErrors({});
@@ -326,8 +326,8 @@ function DemoDataCard() {
         </p>
         <AlertDialog open={open} onOpenChange={(next) => !busy && setOpen(next)}>
           <AlertDialogTrigger asChild>
-            <Button variant="destructive" className="w-fit">
-              Set semula data demo
+            <Button variant="danger-outline" className="w-fit">
+              <RotateCcw /> Set semula data demo
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
