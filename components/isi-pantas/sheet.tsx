@@ -20,7 +20,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { formatDayShort, formatMoney, formatMonth, initials, today } from "@/lib/format";
 import { useT, type TFunction } from "@/lib/i18n/react";
 import { chargeFor, CONFIDENT, isConfident, type IssueCode } from "@/lib/isi-pantas/parse";
-import { currentSection } from "@/lib/nav";
+import { currentSection, hasOwnActionBar } from "@/lib/nav";
 import type { Collection, Snapshot } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import type { View } from "@/lib/view";
@@ -59,11 +59,12 @@ export function IsiPantasButton() {
         close();
         opener.current?.focus();
       }}
-      className="isi-spark-btn hidden h-9 shrink-0 items-center gap-2 rounded-[10px] px-3 text-[13px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background md:inline-flex print:hidden"
+      className="isi-spark-btn hidden size-9 shrink-0 items-center justify-center gap-2 rounded-[10px] text-[13px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background md:inline-flex xl:w-auto xl:px-3 print:hidden"
     >
       <Sparkles className="size-4" aria-hidden />
-      {t("quickFill.name")}
-      <kbd aria-hidden className="rounded-[5px] bg-white/20 px-1.5 font-mono text-[10.5px] leading-[18px]">
+      {/* Icon only below xl so the top bar fits at tablet width; the name stays for assistive tech. */}
+      <span className="sr-only xl:not-sr-only">{t("quickFill.name")}</span>
+      <kbd aria-hidden className="hidden rounded-[5px] bg-white/20 px-1.5 font-mono text-[10.5px] leading-[18px] xl:inline">
         /
       </kbd>
     </button>
@@ -76,8 +77,8 @@ export function IsiPantasPill() {
   const pathname = usePathname();
   const { open, openSheet } = useIsiPantas();
   const path = pathname.endsWith("/") ? pathname : `${pathname}/`;
-  // Rekod Bayaran is the list page; /bayaran/baru/ keeps its own fixed Simpan bar where the pill would sit.
-  const show = path === "/matriks/" || path === "/bayaran/" || (/^\/kutipan\/[^/]+\/$/.test(path) && path !== "/kutipan/baru/");
+  // Pages with their own fixed action bar (/bayaran/baru/, the collection wizard) never get the pill.
+  const show = !hasOwnActionBar(path) && (path === "/matriks/" || path === "/bayaran/" || /^\/kutipan\/[^/]+\/$/.test(path));
   if (!show) return null;
   // Stays mounted (only hidden) while the sheet is open, so focus can return to it on close.
   return (

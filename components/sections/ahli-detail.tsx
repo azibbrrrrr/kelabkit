@@ -18,6 +18,7 @@ import {
   StatCard,
 } from "@/components/shared";
 import { Button } from "@/components/ui/button";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { ModalBody, ModalError, ModalField, ModalFooter, ModalHeader, ModalSection, modalFormClass } from "@/components/modal";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -105,10 +106,6 @@ export function AhliDetail({ id }: { id: string }) {
           .join(" · ")}
         actions={
           <>
-            <Button variant={member.active ? "danger-outline" : "outline"} onClick={() => setToggling(true)}>
-              {member.active ? <UserX /> : <UserCheck />}
-              {member.active ? t("memberDetail.deactivate") : t("memberDetail.reactivate")}
-            </Button>
             <Button variant="brand" onClick={() => setEditing(true)}>
               <Pencil /> {t("memberDetail.editProfile")}
             </Button>
@@ -118,6 +115,12 @@ export function AhliDetail({ id }: { id: string }) {
               </Link>
             </Button>
           </>
+        }
+        more={
+          <DropdownMenuItem variant={member.active ? "destructive" : "default"} onSelect={() => setToggling(true)}>
+            {member.active ? <UserX /> : <UserCheck />}
+            {member.active ? t("memberDetail.deactivate") : t("memberDetail.reactivate")}
+          </DropdownMenuItem>
         }
       />
 

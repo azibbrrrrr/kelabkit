@@ -5,6 +5,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,7 +14,7 @@ import { formatMoney } from "@/lib/format";
 import { cellStatusLabels, overdueLabel, pendingLabel, type CellStatus, type Tone } from "@/lib/labels";
 import { useT } from "@/lib/i18n/react";
 import { cn } from "@/lib/utils";
-import { Check, Circle, Clock, Hourglass, Minus, Search, TriangleAlert, X, type LucideIcon } from "lucide-react";
+import { Check, Circle, Clock, Ellipsis, Hourglass, Minus, Search, TriangleAlert, X, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, type ComponentProps, type ComponentType, type KeyboardEvent, type ReactNode, type SVGProps } from "react";
 
@@ -31,12 +32,16 @@ export function PageHeader({
   title,
   description,
   actions,
+  more,
   back,
   compact,
 }: {
   title: ReactNode;
   description?: ReactNode;
+  /** At most two buttons: the primary action and one supporting action. */
   actions?: ReactNode;
+  /** Everything else, as DropdownMenuItems, behind a "Lagi" menu after the actions. */
+  more?: ReactNode;
   /** A link above the title back to the parent list. */
   back?: { href: string; label: string };
   /** One line: title left, actions right, wrapping only when they do not fit. For work surfaces like the Matriks. */
@@ -44,7 +49,7 @@ export function PageHeader({
 }) {
   return (
     <div className={cn("flex gap-4", compact ? "flex-wrap items-center justify-between gap-y-3" : "flex-col lg:flex-row lg:items-end lg:justify-between")}>
-      <div className="min-w-0">
+      <div className="min-w-0 lg:flex-1">
         {back && (
           <Link href={back.href} className="mb-2 inline-flex items-center gap-1 text-xs font-medium text-primary-strong hover:underline">
             ← {back.label}
@@ -53,8 +58,30 @@ export function PageHeader({
         <h1 className="font-display text-[24px] leading-[1.2] font-bold tracking-[-.02em] break-words md:text-[28px]">{title}</h1>
         {description && <p className="mt-1.5 max-w-2xl text-[13px] text-muted-foreground">{description}</p>}
       </div>
-      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+      {(actions || more) && (
+        <div className="flex flex-wrap items-center gap-2 lg:shrink-0">
+          {actions}
+          {more && <MoreMenu>{more}</MoreMenu>}
+        </div>
+      )}
     </div>
+  );
+}
+
+/** The "Lagi" menu of a page header: the secondary and destructive actions beyond the first two. */
+export function MoreMenu({ children }: { children: ReactNode }) {
+  const t = useT();
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline">
+          <Ellipsis /> {t("common.more")}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        {children}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -168,10 +195,13 @@ export function StatCard({
   href?: string;
   className?: string;
 }) {
+  // The card lays itself out by its own width (container query): side-by-side icon and text when
+  // it is wide enough, icon above text in the half-width cells of a phone's two-column grid.
   const body = (
+    <div className="@container/stat h-full min-w-0">
     <Card
       className={cn(
-        "relative h-full min-w-0 flex-row items-start gap-3 rounded-2xl border-border px-4 py-4 transition-colors md:px-5 md:py-5",
+        "relative h-full min-w-0 flex-row items-start gap-3 rounded-2xl border-border px-4 py-4 transition-colors @max-[220px]/stat:flex-col @max-[220px]/stat:gap-2.5 @max-[220px]/stat:px-3.5 @max-[220px]/stat:py-3.5 md:px-5 md:py-5 md:@max-[220px]/stat:px-3.5",
         tone === "brand" && "bg-primary-tint/60",
         href && "hover:border-primary/40",
         className,
@@ -182,10 +212,11 @@ export function StatCard({
       </span>
       <div className="min-w-0">
         <div className="text-[13px] font-medium text-muted-foreground">{label}</div>
-        <div className="mt-1 text-[21px] leading-tight font-bold tracking-[-.015em] whitespace-nowrap tabular-nums md:text-[23px]">{value}</div>
+        <div className="mt-1 text-[21px] leading-tight font-bold tracking-[-.015em] tabular-nums whitespace-nowrap @max-[160px]/stat:text-[17px] md:text-[23px]">{value}</div>
         {hint && <div className="mt-1.5 text-xs text-muted-foreground">{hint}</div>}
       </div>
     </Card>
+    </div>
   );
   return href ? (
     <Link href={href} className="block min-w-0 rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">

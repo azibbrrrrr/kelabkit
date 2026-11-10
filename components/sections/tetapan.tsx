@@ -4,7 +4,6 @@ import { BrandMark } from "@/components/brand";
 import { ModalBody, ModalFooter, ModalHeader, ModalText } from "@/components/modal";
 import { useKelab, useSnapshot } from "@/components/data-provider";
 import { Blossom } from "@/components/floral";
-import { ChoiceCard, ChoiceCards } from "@/components/choice";
 import { usePrefs } from "@/components/prefs-provider";
 import { DemoNote, Money, PageHeader, PageShell, ProgressBar, SectionCard } from "@/components/shared";
 import {
@@ -26,7 +25,7 @@ import { auditActionLabels } from "@/lib/labels";
 import { sum } from "@/lib/money/amount";
 import { LanguagePill } from "@/components/language-pill";
 import { useT, type TFunction } from "@/lib/i18n/react";
-import { themeLabel, themeMood, themes, type ThemeId } from "@/lib/themes";
+import { themeLabel, themes, type ThemeId } from "@/lib/themes";
 import type { Club } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Check, Database, History, Languages, Palette, Plus, RotateCcw, School } from "lucide-react";
@@ -263,35 +262,6 @@ function ThemeCard() {
           {t("settings.theme.previewNote", { theme: themeLabel(current.id) })}
         </p>
 
-        <div className="grid gap-2">
-          <p className="text-xs font-semibold text-muted-foreground">{t("settings.theme.allThemes")}</p>
-          <ChoiceCards label={t("settings.theme.listLabel")} value={theme} onChange={(id) => choose(id as ThemeId)} className="grid gap-2">
-            {themes.map((th) => {
-              const selected = th.id === theme;
-              return (
-                <ChoiceCard key={th.id} value={th.id} checked={selected} className="min-h-0 items-center rounded-xl px-3 py-2.5 text-foreground">
-                  <span className="size-8 shrink-0 rounded-lg" style={{ backgroundColor: th.swatch }} aria-hidden />
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-medium">
-                      {themeLabel(th.id)}
-                      {th.id === "rose" && <span className="font-normal text-muted-foreground"> {t("settings.theme.defaultTag")}</span>}
-                    </span>
-                    <span className="block text-xs text-muted-foreground">{themeMood(th.id)}</span>
-                  </span>
-                  <span
-                    className={cn(
-                      "grid size-5 shrink-0 place-items-center rounded-full border",
-                      selected ? "border-transparent bg-primary-fill text-primary-foreground" : "border-input bg-card",
-                    )}
-                    aria-hidden
-                  >
-                    {selected && <Check className="size-3.5" strokeWidth={3} />}
-                  </span>
-                </ChoiceCard>
-              );
-            })}
-          </ChoiceCards>
-        </div>
       </div>
     </SectionCard>
   );
