@@ -3,9 +3,9 @@
 import { useKelab, useSnapshot } from "@/components/data-provider";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ModalBody, ModalError, ModalField, ModalFooter, ModalHeader, ModalSection, ModalText } from "@/components/modal";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,7 +15,7 @@ import { ACCEPTED_CATEGORIES, buildMemberTemplate, invalidPhoneMessage, invalidC
 import { normaliseName } from "@/lib/names";
 import type { MemberCategory } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { ChevronDown, Download, FileSpreadsheet, Info, TriangleAlert, X } from "lucide-react";
+import { ChevronDown, Download, FileSpreadsheet, Info, TriangleAlert, UsersRound, X } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -209,17 +209,15 @@ export function BulkAddMembersDialog({
 
   return (
     <Dialog open={open} onOpenChange={close}>
-      <DialogContent className="max-h-[92svh] overflow-y-auto rounded-2xl sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Tambah ahli secara pukal</DialogTitle>
-          <DialogDescription>
-            {step === "input"
-              ? "Tampal senarai nama, satu nama sebaris, atau import fail CSV. Anda boleh semak dan betulkan sebelum simpan."
-              : `Semak ${rows.length} nama sebelum disimpan.`}
-          </DialogDescription>
-        </DialogHeader>
-
-        <p className="flex items-start gap-2 rounded-xl bg-primary-tint px-3 py-2.5 text-xs text-foreground/80">
+      <DialogContent size="lg">
+        <ModalHeader icon={UsersRound} title="Tambah ahli secara pukal" />
+        <ModalBody>
+        <ModalText>
+          {step === "input"
+            ? "Tampal senarai nama, satu nama sebaris, atau import fail CSV. Anda boleh semak dan betulkan sebelum simpan."
+            : `Semak ${rows.length} nama sebelum disimpan.`}
+        </ModalText>
+        <p className="flex items-start gap-2 rounded-[10px] bg-primary-tint px-3 py-2.5 text-xs text-foreground/80">
           <Info className="mt-px size-4 shrink-0 text-primary-strong" aria-hidden />
           <span>
             Ahli baharu <b>tidak dimasukkan ke mana-mana kutipan</b> dan tidak dicaj apa-apa. Sertakan mereka kemudian dari halaman
@@ -228,9 +226,18 @@ export function BulkAddMembersDialog({
         </p>
 
         {step === "input" ? (
-          <div className="grid gap-4">
-            <div className="grid gap-1.5">
-              <Label htmlFor="bulk-names">Senarai nama</Label>
+          <>
+            <ModalSection label="Senarai ahli">
+            <ModalField
+              label="Senarai nama"
+              htmlFor="bulk-names"
+              helper={
+                <span className="tabular-nums">
+                  {pastedNames.length} nama
+                  {pastedLines.length - pastedNames.length > 0 && text.trim() && ` · ${pastedLines.length - pastedNames.length} baris kosong diabaikan`}
+                </span>
+              }
+            >
               <Textarea
                 id="bulk-names"
                 autoFocus
@@ -241,22 +248,18 @@ export function BulkAddMembersDialog({
                   setError(null);
                 }}
                 placeholder={"Cikgu Nurul Ain binti Ahmad\nEncik Faizal bin Hamid\nPuan Siti Aishah"}
-                className="min-h-40 rounded-xl font-normal"
+                className="min-h-40 font-normal"
               />
-              <p className="text-xs text-muted-foreground tabular-nums">
-                {pastedNames.length} nama
-                {pastedLines.length - pastedNames.length > 0 && text.trim() && ` · ${pastedLines.length - pastedNames.length} baris kosong diabaikan`}
-              </p>
-            </div>
-            <div className="grid gap-1.5 sm:max-w-xs">
-              <Label>Kategori lalai</Label>
+            </ModalField>
+            <ModalField label="Kategori lalai" className="sm:max-w-xs" helper="Boleh ditukar bagi setiap nama dalam semakan.">
               <CategorySelect value={fallback} onChange={setFallback} ariaLabel="Kategori lalai" />
-              <p className="text-xs text-muted-foreground">Boleh ditukar bagi setiap nama dalam semakan.</p>
-            </div>
-            <div className="rounded-xl border border-dashed border-border p-3">
+            </ModalField>
+            </ModalSection>
+            <ModalSection divided>
+            <div className="rounded-[10px] border border-dashed border-border p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex min-w-0 items-start gap-2.5">
-                  <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary-light text-primary-strong">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-[10px] bg-primary-light text-primary-strong">
                     <FileSpreadsheet className="size-4" aria-hidden />
                   </span>
                   <div className="min-w-0">
@@ -309,16 +312,9 @@ export function BulkAddMembersDialog({
                 </ul>
               )}
             </div>
-            {error && <p className="text-xs font-medium text-st-unpaid">{error}</p>}
-            <DialogFooter className="gap-2">
-              <Button type="button" variant="outline" onClick={() => close(false)}>
-                Batal
-              </Button>
-              <Button type="button" onClick={fromPaste} disabled={!pastedNames.length}>
-                Semak {pastedNames.length > 0 ? `${pastedNames.length} nama` : "senarai"}
-              </Button>
-            </DialogFooter>
-          </div>
+            </ModalSection>
+            {error && <ModalError>{error}</ModalError>}
+          </>
         ) : (
           <div className="grid gap-3">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
@@ -338,7 +334,7 @@ export function BulkAddMembersDialog({
             </div>
 
             {notes.length > 0 && (
-              <div role="status" data-testid="import-notes" className="rounded-xl border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+              <div role="status" data-testid="import-notes" className="rounded-[10px] border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
                 <p className="font-medium text-foreground">Tidak dimasukkan / diabaikan</p>
                 <ul className="mt-1 grid gap-0.5">
                   {notes.map((note, i) => (
@@ -349,7 +345,7 @@ export function BulkAddMembersDialog({
             )}
 
             {rows.length === 0 ? (
-              <p className="rounded-xl border border-dashed border-border px-3 py-6 text-center text-sm text-muted-foreground">
+              <p className="rounded-[10px] border border-dashed border-border px-3 py-6 text-center text-sm text-muted-foreground">
                 Semua baris telah dibuang.
               </p>
             ) : (
@@ -360,7 +356,7 @@ export function BulkAddMembersDialog({
                     <li
                       key={row.key}
                       className={cn(
-                        "grid gap-2 rounded-xl border border-border bg-card p-2.5",
+                        "grid gap-2 rounded-[10px] border border-border bg-card p-2.5",
                         flag.blocking && "border-st-partial/60 bg-st-partial-bg/40",
                       )}
                     >
@@ -379,7 +375,7 @@ export function BulkAddMembersDialog({
                           size="icon"
                           onClick={() => remove(row.key)}
                           aria-label={`Buang baris ${index + 1}`}
-                          className="size-10 shrink-0 rounded-xl"
+                          className="size-10 shrink-0 rounded-[10px]"
                         >
                           <X />
                         </Button>
@@ -429,17 +425,29 @@ export function BulkAddMembersDialog({
               </ol>
             )}
 
-            {error && <p className="text-xs font-medium text-st-unpaid">{error}</p>}
-            <DialogFooter className="gap-2">
-              <Button type="button" variant="outline" onClick={() => setStep("input")} disabled={busy}>
-                Kembali
-              </Button>
-              <Button type="button" onClick={() => void save()} disabled={busy || rows.length === 0}>
-                {busy && <Spinner className="size-4" />}
-                {busy ? "Menyimpan…" : `Simpan ${rows.length} ahli`}
-              </Button>
-            </DialogFooter>
+            {error && <ModalError>{error}</ModalError>}
           </div>
+        )}
+        </ModalBody>
+        {step === "input" ? (
+          <ModalFooter>
+            <Button type="button" variant="ghost" onClick={() => close(false)}>
+              Batal
+            </Button>
+            <Button type="button" onClick={fromPaste} disabled={!pastedNames.length}>
+              Semak {pastedNames.length > 0 ? `${pastedNames.length} nama` : "senarai"}
+            </Button>
+          </ModalFooter>
+        ) : (
+          <ModalFooter>
+            <Button type="button" variant="ghost" onClick={() => setStep("input")} disabled={busy}>
+              Kembali
+            </Button>
+            <Button type="button" onClick={() => void save()} disabled={busy || rows.length === 0}>
+              {busy && <Spinner className="size-4" />}
+              {busy ? "Menyimpan…" : `Simpan ${rows.length} ahli`}
+            </Button>
+          </ModalFooter>
         )}
       </DialogContent>
     </Dialog>

@@ -12,6 +12,7 @@ import { turnSummary, useIsiPantas, type Item, type Pick, type Turn } from "@/co
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ModalHandle } from "@/components/ui/modal-surface";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
@@ -161,7 +162,7 @@ export function IsiPantasSheet() {
           id="isi-pantas"
           side="bottom"
           showCloseButton={false}
-          className="isi-glass isi-aurora h-[82svh] gap-0 data-[side=bottom]:h-[82svh] rounded-t-[26px] border-0 p-0 pb-[env(safe-area-inset-bottom)]"
+          className="isi-glass isi-aurora h-[82svh] gap-0 data-[side=bottom]:h-[82svh] rounded-t-(--radius-modal) border-0 p-0 pb-[env(safe-area-inset-bottom)]"
           onOpenAutoFocus={(event) => {
             // Raise the keyboard only when there is nothing to read yet.
             if (turnsRef.current.length) {
@@ -175,7 +176,7 @@ export function IsiPantasSheet() {
             opener.current.focus();
           }}
         >
-          <div aria-hidden className="relative mx-auto mt-2 mb-0.5 h-[5px] w-10 shrink-0 rounded-full bg-primary/30" />
+          <ModalHandle className="relative" />
           <Body data={data} view={view} onClose={close} mobile />
         </SheetContent>
       </Sheet>
@@ -228,25 +229,25 @@ function Body({ data, view, onClose, mobile = false }: { data: Snapshot; view: V
   return (
     <>
       <Petals trigger={celebrate} />
-      <div className="relative flex items-center gap-2.5 px-4 pt-3.5 pb-2.5">
+      <div className="relative flex items-center gap-3 border-b border-border/60 px-4 pt-3.5 pb-3 sm:px-5">
         <span aria-hidden className={cn("isi-orb grid size-9 shrink-0 place-items-center rounded-xl", thinking && "isi-orb-spin")}>
           <Sparkles className="size-[18px]" />
         </span>
         <div className="min-w-0">
-          <Title id="isi-title" className="font-display text-[15px] leading-tight font-bold text-foreground">
+          <Title id="isi-title" className="font-display text-[17px] leading-6 font-semibold text-foreground">
             {t("quickFill.name")}
           </Title>
-          <Description id="isi-sub" aria-live="polite" className="truncate text-[11.5px] text-muted-foreground">
+          <Description id="isi-sub" aria-live="polite" className="truncate text-[13px] leading-[18px] text-muted-foreground">
             {subtitle}
           </Description>
         </div>
         <div className="ml-auto flex shrink-0 gap-1.5">
           {turns.length > 0 && (
-            <Button variant="outline" size="icon-sm" className="bg-card" aria-label={t("quickFill.clear")} title={t("quickFill.clear")} disabled={busy} onClick={clear}>
+            <Button variant="outline" size="icon" className="size-9 rounded-[10px] bg-card" aria-label={t("quickFill.clear")} title={t("quickFill.clear")} disabled={busy} onClick={clear}>
               <Eraser />
             </Button>
           )}
-          <Button variant="outline" size="icon-sm" className="bg-card" aria-label={t("quickFill.close")} onClick={onClose}>
+          <Button variant="outline" size="icon" className="size-9 rounded-[10px] bg-card" aria-label={t("quickFill.close")} data-modal-close="" onClick={onClose}>
             <X />
           </Button>
         </div>

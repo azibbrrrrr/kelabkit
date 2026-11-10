@@ -32,20 +32,15 @@ import {
   AlertDialog,
   AlertDialogCancel,
   AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ModalBody, ModalError, ModalField, ModalFooter, ModalHeader, ModalText } from "@/components/modal";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Spinner } from "@/components/ui/spinner";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { useT, type TFunction } from "@/lib/i18n/react";
 import { errorMessages, messageFor } from "@/lib/errors";
 import { formatDateTime, formatDay, formatMoney, formatMonth, formatMonthLong, formatPercent } from "@/lib/format";
@@ -66,6 +61,7 @@ import {
   Hourglass,
   Pencil,
   Play,
+  ReceiptText,
   SearchX,
   Sheet as SheetIcon,
   UserPlus,
@@ -436,19 +432,24 @@ function StatusActions({ collection, dueNow, onAddParticipants }: { collection: 
       )}
 
       <AlertDialog open={confirming !== null} onOpenChange={(open) => !open && !busy && setConfirming(null)}>
-        <AlertDialogContent className="rounded-2xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle>{confirming?.title}</AlertDialogTitle>
-            <AlertDialogDescription>{confirming?.body}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={busy}>Batal</AlertDialogCancel>
+        <AlertDialogContent>
+          <ModalHeader
+            alert
+            icon={confirming?.status === "archived" ? Archive : Check}
+            tone={confirming?.status === "archived" ? "danger" : "brand"}
+            title={confirming?.title}
+          />
+          <ModalBody>
+            <ModalText alert>{confirming?.body}</ModalText>
+          </ModalBody>
+          <ModalFooter>
+            <AlertDialogCancel variant="ghost" disabled={busy}>Batal</AlertDialogCancel>
             {/* A plain button, not AlertDialogAction, so the dialog stays open until the change succeeds. */}
-            <Button onClick={() => confirming && void change(confirming)} disabled={busy}>
+            <Button variant={confirming?.status === "archived" ? "danger" : "default"} onClick={() => confirming && void change(confirming)} disabled={busy}>
               {busy && <Spinner className="size-4" />}
               {confirming?.confirm}
             </Button>
-          </AlertDialogFooter>
+          </ModalFooter>
         </AlertDialogContent>
       </AlertDialog>
       {/* The Pulihkan button is replaced once restored; focus moves to the first new action. */}
@@ -1080,7 +1081,6 @@ function EmptyRows({ hasParticipants }: { hasParticipants: boolean }) {
 
 function EditorHost({ editing, columns, onClose }: { editing: Editing | null; columns: MatrixColumn[]; onClose: () => void }) {
   const { view } = useSnapshot();
-  const isMobile = useIsMobile();
   const [dirty, setDirty] = useState(false);
 
   const member = editing ? view.membersById.get(editing.memberId) : undefined;
@@ -1099,28 +1099,12 @@ function EditorHost({ editing, columns, onClose }: { editing: Editing | null; co
   };
   const editor = cell && <CellEditor cell={cell} onDone={close} onDirtyChange={setDirty} />;
 
-  if (isMobile) {
-    return (
-      <Sheet open={cell !== null} onOpenChange={onOpenChange}>
-        <SheetContent side="bottom" className="max-h-[90svh] overflow-y-auto rounded-t-3xl px-4 pt-2 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-          <div className="mx-auto mb-1 h-1.5 w-10 rounded-full bg-border" aria-hidden />
-          <SheetHeader className="sr-only">
-            <SheetTitle>Rekod bayaran</SheetTitle>
-            <SheetDescription>Rekod bayaran, ubah amaun atau lihat sejarah</SheetDescription>
-          </SheetHeader>
-          {editor}
-        </SheetContent>
-      </Sheet>
-    );
-  }
+  // One Dialog: a centred card from 640px up, a bottom sheet below it.
   return (
     <Dialog open={cell !== null} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92svh] overflow-y-auto rounded-2xl sm:max-w-md">
-        <DialogHeader className="sr-only">
-          <DialogTitle>Rekod bayaran</DialogTitle>
-          <DialogDescription>Rekod bayaran, ubah amaun atau lihat sejarah</DialogDescription>
-        </DialogHeader>
-        {editor}
+      <DialogContent size="md">
+        <ModalHeader icon={ReceiptText} title="Rekod bayaran" description="Rekod bayaran, ubah amaun atau lihat sejarah" />
+        <ModalBody>{editor}</ModalBody>
       </DialogContent>
     </Dialog>
   );
@@ -1199,67 +1183,74 @@ function AddParticipantsDialog({ collection, open, onOpenChange }: { collection:
         onOpenChange(next);
       }}
     >
-      <DialogContent className="flex max-h-[92svh] flex-col overflow-hidden rounded-2xl sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Tambah peserta</DialogTitle>
-          <DialogDescription>
-            {voluntary
+      <DialogContent size="md">
+        <ModalHeader
+          icon={UserPlus}
+          title="Tambah peserta"
+          description={
+            voluntary
               ? "Ahli yang ditambah dijemput menyumbang. Mereka tidak berhutang apa-apa."
               : isMonthly(collection)
                 ? `Caj dicipta untuk setiap ${months} bulan dalam tempoh kutipan.`
-                : "Caj dicipta untuk setiap ahli yang ditambah."}
-          </DialogDescription>
-        </DialogHeader>
-
-        {candidates.length === 0 ? (
-          <p className="rounded-xl bg-primary-tint px-3 py-4 text-center text-sm text-muted-foreground">Semua ahli aktif sudah termasuk dalam kutipan ini.</p>
-        ) : (
-          <div className="grid min-h-0 gap-3 overflow-y-auto overscroll-contain">
-            {!voluntary && (
-              <div className="grid gap-1.5">
-                <Label htmlFor="add-amount">{isMonthly(collection) ? "Amaun sebulan" : "Amaun perlu dibayar"}</Label>
-                <MoneyInput
-                  id="add-amount"
-                  value={amount}
-                  onChange={(event) => {
-                    setAmount(event.target.value);
-                    setAmountError(null);
-                  }}
-                  invalid={Boolean(amountError)}
-                />
-                {amountError && <p className="text-xs font-medium text-st-unpaid">{amountError}</p>}
-                {isMonthly(collection) && pastMonths > 0 && (
-                  <p className="text-xs text-st-partial">
-                    Perhatian: {pastMonths} bulan sudah berlalu. Caj bulan itu akan terus menjadi Belum Bayar atau Lewat. Jika ahli tidak perlu membayarnya,
-                    pilih bulan itu dan gunakan &ldquo;Kecualikan&rdquo; dalam tab Ubah amaun.
-                  </p>
-                )}
-              </div>
-            )}
-            <SearchInput id="add-participant-search" value={query} onChange={setQuery} placeholder="Cari ahli…" className="sm:max-w-none" />
-            <ul className="grid max-h-72 gap-1 overflow-y-auto overscroll-contain rounded-xl border border-border p-1">
-              {visible.length === 0 ? (
-                <li className="px-3 py-4 text-center text-sm text-muted-foreground">Tiada ahli sepadan.</li>
-              ) : (
-                visible.map((member) => (
-                  <li key={member.id}>
-                    <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg px-2.5 hover:bg-primary-tint">
-                      <Checkbox checked={picked.has(member.id)} onCheckedChange={(value) => toggle(member.id, value === true)} />
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-sm font-medium break-words">{member.name}</span>
-                        <span className="block text-xs text-muted-foreground">{member.category ? categoryLabels[member.category] : "Tiada kategori"}</span>
+                : "Caj dicipta untuk setiap ahli yang ditambah."
+          }
+        />
+        <ModalBody>
+          {candidates.length === 0 ? (
+            <p className="rounded-[10px] bg-primary-tint px-3 py-4 text-center text-sm text-muted-foreground">Semua ahli aktif sudah termasuk dalam kutipan ini.</p>
+          ) : (
+            <>
+              {!voluntary && (
+                <ModalField
+                  label={isMonthly(collection) ? "Amaun sebulan" : "Amaun perlu dibayar"}
+                  htmlFor="add-amount"
+                  error={amountError}
+                  helper={
+                    isMonthly(collection) && pastMonths > 0 ? (
+                      <span className="text-st-partial">
+                        Perhatian: {pastMonths} bulan sudah berlalu. Caj bulan itu akan terus menjadi Belum Bayar atau Lewat. Jika ahli tidak perlu membayarnya,
+                        pilih bulan itu dan gunakan &ldquo;Kecualikan&rdquo; dalam tab Ubah amaun.
                       </span>
-                    </label>
-                  </li>
-                ))
+                    ) : undefined
+                  }
+                >
+                  <MoneyInput
+                    id="add-amount"
+                    value={amount}
+                    onChange={(event) => {
+                      setAmount(event.target.value);
+                      setAmountError(null);
+                    }}
+                    invalid={Boolean(amountError)}
+                  />
+                </ModalField>
               )}
-            </ul>
-          </div>
-        )}
-
-        {error && <p className="text-xs font-medium text-st-unpaid">{error}</p>}
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
+              <div className="grid gap-3">
+                <SearchInput id="add-participant-search" value={query} onChange={setQuery} placeholder="Cari ahli…" className="sm:max-w-none" />
+                <ul className="max-h-72 divide-y divide-border overflow-y-auto overscroll-contain rounded-[10px] border border-border">
+                  {visible.length === 0 ? (
+                    <li className="px-3 py-4 text-center text-sm text-muted-foreground">Tiada ahli sepadan.</li>
+                  ) : (
+                    visible.map((member) => (
+                      <li key={member.id}>
+                        <label className="flex min-h-11 cursor-pointer items-center gap-3 px-3 py-2 transition-colors hover:bg-primary-tint">
+                          <Checkbox checked={picked.has(member.id)} onCheckedChange={(value) => toggle(member.id, value === true)} />
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-sm font-medium break-words">{member.name}</span>
+                            <span className="block text-xs text-muted-foreground">{member.category ? categoryLabels[member.category] : "Tiada kategori"}</span>
+                          </span>
+                        </label>
+                      </li>
+                    ))
+                  )}
+                </ul>
+              </div>
+            </>
+          )}
+          {error && <ModalError>{error}</ModalError>}
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>
             {candidates.length === 0 ? "Tutup" : "Batal"}
           </Button>
           {candidates.length > 0 && (
@@ -1268,7 +1259,7 @@ function AddParticipantsDialog({ collection, open, onOpenChange }: { collection:
               Tambah {picked.size || ""} ahli
             </Button>
           )}
-        </DialogFooter>
+        </ModalFooter>
       </DialogContent>
     </Dialog>
   );

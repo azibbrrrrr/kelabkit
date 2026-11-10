@@ -26,6 +26,7 @@ export function SegmentedChoice<T extends string>({
   itemClassName,
   size = "default",
   optional = false,
+  joined = false,
 }: {
   value: T | "";
   onChange: (value: T) => void;
@@ -36,6 +37,8 @@ export function SegmentedChoice<T extends string>({
   itemClassName?: string;
   size?: "default" | "sm";
   optional?: boolean;
+  /** One joined control (shared border, hairline dividers) instead of separate pills. Used in forms. */
+  joined?: boolean;
 }) {
   return (
     <ToggleGroup
@@ -45,7 +48,7 @@ export function SegmentedChoice<T extends string>({
       onValueChange={(next) => (next || optional) && onChange(next as T)}
       aria-label={label}
       spacing={0}
-      className={cn("grid w-full gap-1.5", className)}
+      className={cn("grid w-full", joined ? "overflow-hidden rounded-[10px] border border-input bg-card" : "gap-1.5", className)}
       style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
     >
       {options.map((option) => (
@@ -53,9 +56,11 @@ export function SegmentedChoice<T extends string>({
           key={option.value}
           value={option.value}
           className={cn(
-            // Undo the group's joined-segment corners: these are separate pills.
-            "h-auto min-h-10 w-full min-w-0 rounded-xl! border border-border! bg-card px-2 text-xs leading-tight font-medium whitespace-normal text-muted-foreground hover:bg-primary-tint hover:text-foreground",
-            "data-[state=on]:border-primary! data-[state=on]:bg-primary-tint data-[state=on]:text-primary-strong",
+            joined
+              ? "h-10 min-h-10 w-full min-w-0 rounded-none! border-y-0! border-r-0! border-l! border-border! bg-transparent px-2 text-[13px] leading-tight font-medium whitespace-normal text-muted-foreground first:border-l-0! hover:bg-primary-tint hover:text-foreground pointer-coarse:h-11 data-[state=on]:bg-primary-tint data-[state=on]:text-primary-strong"
+              : // Undo the group's joined-segment corners: these are separate pills.
+                "h-auto min-h-10 w-full min-w-0 rounded-xl! border border-border! bg-card px-2 text-xs leading-tight font-medium whitespace-normal text-muted-foreground hover:bg-primary-tint hover:text-foreground data-[state=on]:border-primary!",
+            !joined && "data-[state=on]:bg-primary-tint data-[state=on]:text-primary-strong",
             size === "sm" && "min-h-8 px-2.5",
             itemClassName,
           )}

@@ -18,6 +18,9 @@ const buttonVariants = cva(
           "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
         destructive:
           "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:ring-destructive dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
+        /* Solid red primary of a destructive confirmation (modal footer). */
+        danger:
+          "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive",
         /* Reverse, remove or destructive actions (Batalkan bayaran, Arkibkan, Nyahaktifkan…):
            visible as a button, red so it never reads as the primary path. */
         "danger-outline":

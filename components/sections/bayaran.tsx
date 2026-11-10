@@ -5,7 +5,8 @@ import { DatePicker } from "@/components/date-picker";
 import { PaymentList } from "@/components/payments";
 import { DataTable, EmptyState, LabelChip, MobileRow, PageHeader, PageShell, SearchInput, StatCard, type Column } from "@/components/shared";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ModalBody, ModalFooter, ModalHeader } from "@/components/modal";
+import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -341,24 +342,35 @@ export function BayaranPage() {
       )}
 
       <Dialog open={selectedPayment !== null} onOpenChange={(open) => !open && setSelected(null)}>
-        <DialogContent className="max-h-[92svh] overflow-y-auto rounded-2xl sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Butiran bayaran</DialogTitle>
-            <DialogDescription>
-              {selectedPayment ? `Dibayar ${formatDay(selectedPayment.paidOn)} oleh ${view.membersById.get(selectedPayment.memberId)?.name ?? "ahli"}.` : ""}
-            </DialogDescription>
-          </DialogHeader>
-          {selectedPayment && (
-            <>
-              <PaymentList payments={[selectedPayment]} showMember />
-              {selectedPayment.note && <p className="text-xs text-muted-foreground">Catatan: {selectedPayment.note}</p>}
-              <Button asChild variant="outline" size="sm" className="justify-self-start">
-                <Link href={`/ahli/${selectedPayment.memberId}/`}>
-                  <UserRound /> Lihat profil ahli
-                </Link>
-              </Button>
-            </>
-          )}
+        <DialogContent size="md">
+          <ModalHeader
+            icon={ReceiptText}
+            title="Butiran bayaran"
+            description={selectedPayment ? `Dibayar ${formatDay(selectedPayment.paidOn)} oleh ${view.membersById.get(selectedPayment.memberId)?.name ?? "ahli"}.` : ""}
+          />
+          <ModalBody>
+            {selectedPayment && (
+              <>
+                <PaymentList payments={[selectedPayment]} showMember />
+                {selectedPayment.note && <p className="text-xs text-muted-foreground">Catatan: {selectedPayment.note}</p>}
+              </>
+            )}
+          </ModalBody>
+          <ModalFooter
+            start={
+              selectedPayment && (
+                <Button asChild variant="ghost" size="sm">
+                  <Link href={`/ahli/${selectedPayment.memberId}/`}>
+                    <UserRound /> Lihat profil ahli
+                  </Link>
+                </Button>
+              )
+            }
+          >
+            <DialogClose asChild>
+              <Button>{t("ui.close")}</Button>
+            </DialogClose>
+          </ModalFooter>
         </DialogContent>
       </Dialog>
     </PageShell>

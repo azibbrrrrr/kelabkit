@@ -23,16 +23,13 @@ import {
 import { MemberCardGrid } from "@/components/matrix/member-card-grid";
 import { MonthTile } from "@/components/matrix/month-tile";
 import { readLayout, writeLayout, type MatrixLayout } from "@/components/matrix/view-pref";
+import { ModalBody, ModalFooter, ModalHeader, ModalText } from "@/components/modal";
 import { RestoreCollectionDialog } from "@/components/restore-collection-dialog";
 import { ChargeStatusChips, EmptyState, FilterPills, PageHeader, PageShell, SearchInput, StatusChip, Toolbar } from "@/components/shared";
 import {
   AlertDialog,
   AlertDialogCancel,
   AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -52,7 +49,8 @@ import { Input } from "@/components/ui/input";
 import { CollectionIcon, CollectionName } from "@/components/collection-icon";
 import { EmojiPicker, useSetCollectionIcon } from "@/components/emoji-picker";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { ModalHandle } from "@/components/ui/modal-surface";
 import { Spinner } from "@/components/ui/spinner";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -907,7 +905,6 @@ function ArchiveDialog({ collection, onClose, onArchived }: { collection: Collec
   return (
     <AlertDialog open={collection !== null} onOpenChange={(open) => !open && !busy && onClose()}>
       <AlertDialogContent
-        className="rounded-2xl"
         onOpenAutoFocus={() => (archived.current = false)}
         // Cancel returns focus to the column menu button (Radix default). After archiving that
         // column is gone, so focus goes to the grid's active cell instead.
@@ -917,20 +914,18 @@ function ArchiveDialog({ collection, onClose, onArchived }: { collection: Collec
           onArchived();
         }}
       >
-        <AlertDialogHeader>
-          <AlertDialogTitle>{t("matrix.archiveTitle", { name: collection?.name ?? "" })}</AlertDialogTitle>
-          <AlertDialogDescription>
-            {t("matrix.archiveDescription")}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={busy}>{t("common.cancel")}</AlertDialogCancel>
+        <ModalHeader alert icon={Archive} tone="danger" title={t("matrix.archiveTitle", { name: collection?.name ?? "" })} />
+        <ModalBody>
+          <ModalText alert>{t("matrix.archiveDescription")}</ModalText>
+        </ModalBody>
+        <ModalFooter>
+          <AlertDialogCancel variant="ghost" disabled={busy}>{t("common.cancel")}</AlertDialogCancel>
           {/* A plain button, not AlertDialogAction, so the dialog stays open until the change succeeds. */}
-          <Button onClick={() => void archive()} disabled={busy}>
+          <Button variant="danger" onClick={() => void archive()} disabled={busy}>
             {busy && <Spinner className="size-4" />}
             {t("matrix.archiveConfirm")}
           </Button>
-        </AlertDialogFooter>
+        </ModalFooter>
       </AlertDialogContent>
     </AlertDialog>
   );
@@ -1396,7 +1391,8 @@ const MemberCards = memo(function MemberCards({ rows, columns }: { rows: Member[
       <Sheet open={open !== null} onOpenChange={(next) => !next && dismiss()}>
         <SheetContent
           side="bottom"
-          className="max-h-[90svh] overflow-y-auto rounded-t-3xl px-4 pt-2 pb-[calc(1rem+env(safe-area-inset-bottom))]"
+          showCloseButton={false}
+          className="gap-0 overflow-hidden p-0"
           onOpenAutoFocus={(event) => {
             event.preventDefault();
             focusEditorStart(event.currentTarget as HTMLElement);
@@ -1411,12 +1407,9 @@ const MemberCards = memo(function MemberCards({ rows, columns }: { rows: Member[
             }
           }}
         >
-          <div className="mx-auto mb-1 h-1.5 w-10 rounded-full bg-border" aria-hidden />
-          <SheetHeader className="sr-only">
-            <SheetTitle>{current ? t("editor.cellLabel", { member: current.member.name, column: current.column.label }) : t("editor.cellTitle")}</SheetTitle>
-            <SheetDescription>{t("editor.cellDescription")}</SheetDescription>
-          </SheetHeader>
-          {current && <CellEditor cell={current} onDone={dismiss} onDirtyChange={setDirty} />}
+          <ModalHandle />
+          <ModalHeader icon={Pencil} title={current ? t("editor.cellLabel", { member: current.member.name, column: current.column.label }) : t("editor.cellTitle")} description={t("editor.cellDescription")} />
+          <ModalBody className="pb-[calc(1.25rem+env(safe-area-inset-bottom))]">{current && <CellEditor cell={current} onDone={dismiss} onDirtyChange={setDirty} />}</ModalBody>
         </SheetContent>
       </Sheet>
       <DiscardDialog open={guard} onKeep={() => setGuard(false)} onDiscard={dismiss} restoreFocus={lastFocus.restore} />

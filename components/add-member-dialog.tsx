@@ -4,16 +4,16 @@ import { SegmentedChoice } from "@/components/choice";
 import { useKelab, useSnapshot } from "@/components/data-provider";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ModalBody, ModalCheckList, ModalCheckRow, ModalError, ModalField, ModalFooter, ModalHeader, ModalSection, modalFormClass } from "@/components/modal";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import { normaliseName } from "@/lib/names";
 import { messageFor } from "@/lib/errors";
 import { formatMoney } from "@/lib/format";
 import { categoryLabels } from "@/lib/labels";
 import type { MemberCategory } from "@/lib/types";
-import { TriangleAlert } from "lucide-react";
+import { TriangleAlert, UserPlus } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 
@@ -88,73 +88,78 @@ export function AddMemberDialog({
         onOpenChange(next);
       }}
     >
-      <DialogContent className="max-h-[92svh] overflow-y-auto rounded-2xl sm:max-w-md" onCloseAutoFocus={onCloseAutoFocus}>
-        <form onSubmit={submit} className="grid gap-4" noValidate>
-          <DialogHeader>
-            <DialogTitle>Tambah ahli</DialogTitle>
-            <DialogDescription>Hanya nama diperlukan. Tiada No. KP atau maklumat peribadi lain.</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-1.5">
-            <Label htmlFor="member-name">Nama penuh</Label>
-            <Input id="member-name" autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder="cth. Cikgu Nurul Ain" />
-            {similar && (
-              <p className="flex items-start gap-1.5 text-xs text-st-partial">
-                <TriangleAlert className="mt-px size-3.5 shrink-0" /> Mungkin sama dengan &quot;{similar.name}&quot;.
-              </p>
-            )}
-          </div>
-          <div className="grid gap-1.5">
-            <Label>Kategori (pilihan)</Label>
-            <SegmentedChoice<MemberCategory | "">
-              label="Kategori (pilihan)"
-              optional
-              value={category ?? ""}
-              onChange={(value) => setCategory(value || null)}
-              options={(Object.keys(categoryLabels) as MemberCategory[]).map((value) => ({ value, label: categoryLabels[value] }))}
-            />
-          </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="member-phone">No. telefon (pilihan)</Label>
-            <Input id="member-phone" inputMode="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="012-345 6789" />
-            <p className="text-xs text-muted-foreground">Untuk butang WhatsApp dalam Peringatan.</p>
-          </div>
-          {active.length > 0 && (
-            <fieldset className="grid gap-1.5">
-              <legend className="mb-1.5 text-sm font-medium">Sertakan dalam kutipan aktif?</legend>
-              <p className="-mt-1 mb-1 text-xs text-muted-foreground">Tidak ditanda secara lalai. Ahli baharu hanya dicaj untuk kutipan yang anda pilih.</p>
-              {active.map((collection) => (
-                <label key={collection.id} className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-border px-3 py-2">
-                  <Checkbox
-                    checked={join.includes(collection.id)}
-                    onCheckedChange={(value) =>
-                      setJoin((current) => (value === true ? [...current, collection.id] : current.filter((id) => id !== collection.id)))
-                    }
-                  />
-                  <span className="min-w-0 flex-1 truncate text-sm">{collection.name}</span>
-                  <span className="text-xs text-muted-foreground tabular-nums">
-                    {collection.defaultAmount !== null ? formatMoney(collection.defaultAmount) : "Sukarela"}
-                    {collection.type === "monthly" && "/bln"}
-                  </span>
+      <DialogContent size="md" onCloseAutoFocus={onCloseAutoFocus}>
+        <form onSubmit={submit} className={modalFormClass} noValidate>
+          <ModalHeader icon={UserPlus} title="Tambah ahli" description="Hanya nama diperlukan. Tiada No. KP atau maklumat peribadi lain." />
+          <ModalBody>
+            <ModalSection label="Maklumat ahli">
+              <ModalField
+                label="Nama penuh"
+                htmlFor="member-name"
+                helper={
+                  similar && (
+                    <span className="flex items-start gap-1.5 text-st-partial">
+                      <TriangleAlert className="mt-px size-3.5 shrink-0" aria-hidden /> Mungkin sama dengan &quot;{similar.name}&quot;.
+                    </span>
+                  )
+                }
+              >
+                <Input id="member-name" autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder="cth. Cikgu Nurul Ain" />
+              </ModalField>
+              {similar && (
+                <label className="flex items-center gap-2 text-[13px]">
+                  <Checkbox checked={allowDuplicate} onCheckedChange={(value) => setAllowDuplicate(value === true)} />
+                  Ini orang berbeza; simpan juga.
                 </label>
-              ))}
-            </fieldset>
-          )}
-          {similar && (
-            <label className="flex items-center gap-2 text-xs">
-              <Checkbox checked={allowDuplicate} onCheckedChange={(value) => setAllowDuplicate(value === true)} />
-              Ini orang berbeza; simpan juga.
-            </label>
-          )}
-          {error && <p className="text-xs font-medium text-st-unpaid">{error}</p>}
-          <DialogFooter className="gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
+              )}
+              <ModalField label="Kategori (pilihan)" labelId="member-category-label">
+                <SegmentedChoice<MemberCategory | "">
+                  joined
+                  label="Kategori (pilihan)"
+                  optional
+                  value={category ?? ""}
+                  onChange={(value) => setCategory(value || null)}
+                  options={(Object.keys(categoryLabels) as MemberCategory[]).map((value) => ({ value, label: categoryLabels[value] }))}
+                />
+              </ModalField>
+              <ModalField label="No. telefon (pilihan)" htmlFor="member-phone" helper="Untuk butang WhatsApp dalam Peringatan.">
+                <Input id="member-phone" inputMode="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="012-345 6789" />
+              </ModalField>
+            </ModalSection>
+            {active.length > 0 && (
+              <ModalSection divided>
+                <ModalField label="Sertakan dalam kutipan aktif?" labelId="member-join-label">
+                  <p className="-mt-0.5 text-xs leading-4 text-muted-foreground">Tidak ditanda secara lalai. Ahli baharu hanya dicaj untuk kutipan yang anda pilih.</p>
+                  <ModalCheckList label="Sertakan dalam kutipan aktif?">
+                    {active.map((collection) => (
+                      <ModalCheckRow
+                        key={collection.id}
+                        checked={join.includes(collection.id)}
+                        onCheckedChange={(value) => setJoin((current) => (value ? [...current, collection.id] : current.filter((id) => id !== collection.id)))}
+                        label={collection.name}
+                        trailing={
+                          <>
+                            {collection.defaultAmount !== null ? formatMoney(collection.defaultAmount) : "Sukarela"}
+                            {collection.type === "monthly" && "/bln"}
+                          </>
+                        }
+                      />
+                    ))}
+                  </ModalCheckList>
+                </ModalField>
+              </ModalSection>
+            )}
+            {error && <ModalError>{error}</ModalError>}
+          </ModalBody>
+          <ModalFooter>
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>
               Batal
             </Button>
             <Button type="submit" disabled={busy}>
               {busy && <Spinner className="size-4" />}
               Simpan ahli
             </Button>
-          </DialogFooter>
+          </ModalFooter>
         </form>
       </DialogContent>
     </Dialog>

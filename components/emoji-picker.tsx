@@ -5,7 +5,9 @@ import { useKelab } from "@/components/data-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { ModalHeader } from "@/components/modal";
+import { ModalHandle } from "@/components/ui/modal-surface";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { isSingleEmoji, LUCIDE_PREFIX, lucideIconLabels, type LucideIconName } from "@/lib/collection-icon";
@@ -14,7 +16,7 @@ import { messageFor } from "@/lib/errors";
 import { useT, type TFunction } from "@/lib/i18n/react";
 import type { Collection } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { Clock3, EyeOff, Search, Shuffle } from "lucide-react";
+import { Clock3, EyeOff, Search, Shuffle, Smile } from "lucide-react";
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactElement, type ReactNode } from "react";
 import { toast } from "sonner";
 
@@ -421,11 +423,9 @@ export function EmojiPicker({
     return (
       <Sheet open={open} onOpenChange={setOpen}>
         {anchor ? children : <SheetTrigger asChild>{children}</SheetTrigger>}
-        <SheetContent side="bottom" className="gap-0 rounded-t-2xl p-0 pb-[env(safe-area-inset-bottom)]" showCloseButton={false} onCloseAutoFocus={onCloseAutoFocus}>
-          <SheetHeader className="px-4 pt-3 pb-1">
-            <SheetTitle className="truncate">{t("emoji.sheetTitle")}</SheetTitle>
-            <SheetDescription className="truncate">{label}</SheetDescription>
-          </SheetHeader>
+        <SheetContent side="bottom" className="gap-0 overflow-hidden p-0 pb-[env(safe-area-inset-bottom)]" showCloseButton={false} onCloseAutoFocus={onCloseAutoFocus}>
+          <ModalHandle />
+          <ModalHeader icon={Smile} title={t("emoji.sheetTitle")} description={<span className="block truncate">{label}</span>} />
           <PickerBody value={value} onPick={onPick} onClose={() => setOpen(false)} sheet />
         </SheetContent>
       </Sheet>

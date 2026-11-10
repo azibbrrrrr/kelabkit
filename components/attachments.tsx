@@ -7,7 +7,8 @@
 import { useKelab, useSnapshot } from "@/components/data-provider";
 import { ReasonDialog } from "@/components/reason-dialog";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ModalBody, ModalFooter, ModalHeader } from "@/components/modal";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
 import {
   ACCEPT_ATTR,
@@ -327,17 +328,16 @@ export function AttachProofButton({ payment }: { payment: Payment }) {
         <Paperclip /> {t("attachments.attach.button")}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[92svh] overflow-y-auto rounded-2xl sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Lampirkan bukti bayaran</DialogTitle>
-            <DialogDescription>
-              Bayaran {formatMoney(payment.amount)} pada {formatDay(payment.paidOn)}. {active} daripada {MAX_ACTIVE_ATTACHMENTS} lampiran digunakan.
-            </DialogDescription>
-          </DialogHeader>
-          {open && <ProofDropzone onFile={add} keepDone />}
-          <DialogFooter>
+        <DialogContent size="md">
+          <ModalHeader
+            icon={Paperclip}
+            title="Lampirkan bukti bayaran"
+            description={`Bayaran ${formatMoney(payment.amount)} pada ${formatDay(payment.paidOn)}. ${active} daripada ${MAX_ACTIVE_ATTACHMENTS} lampiran digunakan.`}
+          />
+          <ModalBody>{open && <ProofDropzone onFile={add} keepDone />}</ModalBody>
+          <ModalFooter>
             <Button onClick={() => setOpen(false)}>Selesai</Button>
-          </DialogFooter>
+          </ModalFooter>
         </DialogContent>
       </Dialog>
     </>
@@ -462,6 +462,7 @@ type Zoom = "fit" | 1 | 2;
 
 /** Image preview with fit/zoom, PDF preview on a blob URL, download always. Blob URLs are revoked on close. */
 export function ProofViewer({ attachment, onClose }: { attachment: Attachment | null; onClose: () => void }) {
+  const t = useT();
   const blob = useBlobUrl(attachment?.id ?? null);
   const [zoom, setZoom] = useState<Zoom>("fit");
   const [failed, setFailed] = useState<string | null>(null);
@@ -479,13 +480,15 @@ export function ProofViewer({ attachment, onClose }: { attachment: Attachment | 
         }
       }}
     >
-      <DialogContent className="max-h-[94svh] gap-3 overflow-y-auto rounded-2xl sm:max-w-3xl">
-        <DialogHeader>
-          <DialogTitle className="truncate pr-6">{attachment?.fileName ?? "Lampiran"}</DialogTitle>
-          <DialogDescription>{attachment ? `${formatBytes(attachment.sizeBytes)} · dilampirkan ${formatDateTime(attachment.createdAt)}` : ""}</DialogDescription>
-        </DialogHeader>
+      <DialogContent size="lg">
+        <ModalHeader
+          icon={isPdf ? FileText : ImageIcon}
+          title={<span className="block truncate">{attachment?.fileName ?? "Lampiran"}</span>}
+          description={attachment ? `${formatBytes(attachment.sizeBytes)} · dilampirkan ${formatDateTime(attachment.createdAt)}` : ""}
+        />
+        <ModalBody>
         {attachment && (
-          <div className="min-h-40 overflow-auto rounded-xl border border-border bg-muted/50">
+          <div className="min-h-40 overflow-auto rounded-[10px] border border-border bg-muted/50">
             {!blob ? (
               <div className="grid h-40 place-items-center">
                 <Spinner />
@@ -512,8 +515,10 @@ export function ProofViewer({ attachment, onClose }: { attachment: Attachment | 
             )}
           </div>
         )}
-        <DialogFooter className="gap-2 sm:justify-between">
-          <div className="flex gap-2">
+        </ModalBody>
+        <ModalFooter
+          start={
+            <div className="flex gap-2">
             {attachment && isImageMime(attachment.mimeType) && !unsupported && (
               <>
                 <Button variant="outline" size="icon-sm" aria-label="Muat dalam tetingkap" title="Muat dalam tetingkap" aria-pressed={zoom === "fit"} onClick={() => setZoom("fit")}>
@@ -527,8 +532,9 @@ export function ProofViewer({ attachment, onClose }: { attachment: Attachment | 
                 </Button>
               </>
             )}
-          </div>
-          <div className="flex gap-2">
+            </div>
+          }
+        >
             {attachment && blob?.url && (
               <Button asChild variant="outline">
                 <a href={blob.url} download={attachment.fileName}>
@@ -536,9 +542,8 @@ export function ProofViewer({ attachment, onClose }: { attachment: Attachment | 
                 </a>
               </Button>
             )}
-            <Button onClick={onClose}>Tutup</Button>
-          </div>
-        </DialogFooter>
+            <Button onClick={onClose}>{t("ui.close")}</Button>
+        </ModalFooter>
         {heic && !unsupported && <span className="sr-only">Format HEIC dipaparkan jika pelayar menyokongnya.</span>}
       </DialogContent>
     </Dialog>
