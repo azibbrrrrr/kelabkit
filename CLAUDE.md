@@ -41,6 +41,8 @@ npm run db:seed       # demo club on the dev branch (needs KELABKIT_DB_ENV=dev)
 npm run db:test       # money + tenancy tests against the dev database (not part of npm test)
 ```
 
+Operations: `GET /api/health` (db + storage). `GET /api/cron/backup/` (Vercel Cron daily, `CRON_SECRET` bearer) writes `backups/YYYY-MM-DD/kelabkit.json.gz` to the bucket and keeps 30 days; restore with `RESTORE_DATABASE_URL=<target> npx tsx scripts/restore-backup.ts --from-bucket <key>` (refuses production without `--i-know-this-is-production`). `db:test` fixtures are `kk-test-<runId>-*` per run.
+
 Phase 2 database and auth: `db/schema.ts`, `db/migrations/`, `docs/design/phase-2-backend.md`. Copy `.env.example` to `.env.local`.
 
 - Only `lib/db/with-club.ts` may touch Postgres (`tests/db-boundary.test.ts`). Server code uses `withClub`/`withUser`; money tables are written only by `kk_*` SQL functions, never by direct SQL.

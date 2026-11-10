@@ -108,6 +108,27 @@ export function withUser<T>(userId: string, fn: (tx: Tx) => Promise<T>, options:
   return run(userId, null, fn, options);
 }
 
+/**
+ * One read-only REPEATABLE READ snapshot as the connection's own role (kelabkit_owner, BYPASSRLS), with no
+ * app role, user or club set. It sees every club, which is the point of a backup and the reason it is not
+ * `withClub`. Only lib/server/backup.ts may import it (tests/db-boundary.test.ts); never reachable from an
+ * action or a user-facing route.
+ */
+export async function withBackupSnapshot<T>(fn: (tx: Tx) => Promise<T>): Promise<T> {
+  const client = await pool().connect();
+  try {
+    await client.query("begin isolation level repeatable read read only");
+    const result = await fn(client);
+    await client.query("rollback");
+    return result;
+  } catch (error) {
+    await client.query("rollback").catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 /** Health probe: one `select 1` on the shared pool, no role or club. Rejects on error or after `timeoutMs`. */
 export async function pingDatabase(timeoutMs = 2000): Promise<void> {
   let timer: ReturnType<typeof setTimeout> | undefined;

@@ -85,3 +85,9 @@ export async function listObjects(prefix: string, maxKeys?: number): Promise<{ k
   } while (token);
   return out;
 }
+
+/** Writes one object. Ops tooling only (backups); never takes a client-supplied key. */
+export async function putObject(key: string, body: Uint8Array, contentType: string): Promise<void> {
+  const { client, bucket } = storage();
+  await client.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: body, ContentType: contentType, ContentLength: body.byteLength }));
+}
