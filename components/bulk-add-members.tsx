@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
+import { useT } from "@/lib/i18n/react";
 import { messageFor } from "@/lib/errors";
 import { categoryLabels } from "@/lib/labels";
 import { ACCEPTED_CATEGORIES, buildMemberTemplate, invalidPhoneMessage, invalidCategoryMessage, MIN_PHONE_DIGITS, parseMemberCsv, phoneDigits, TEMPLATE_FILENAME, type ImportIssue } from "@/lib/member-import";
@@ -57,6 +58,7 @@ export function BulkAddMembersDialog({
 }) {
   const { data } = useSnapshot();
   const { run } = useKelab();
+  const t = useT();
   const [step, setStep] = useState<"input" | "preview">("input");
   const [text, setText] = useState("");
   const [fallback, setFallback] = useState<CategoryValue>("guru");
@@ -93,7 +95,7 @@ export function BulkAddMembersDialog({
   };
 
   const fromPaste = () => {
-    if (!pastedNames.length) return setError("Tampal sekurang-kurangnya satu nama.");
+    if (!pastedNames.length) return setError(t("bulkAdd.errPasteOne"));
     setRows(pastedNames.map((name) => ({ key: newKey(), name, category: fallbackCategory, phone: "", distinct: false })));
     setSkipped(pastedLines.length - pastedNames.length);
     setNotes([]);
@@ -114,8 +116,8 @@ export function BulkAddMembersDialog({
       }
       const kept = parsed.filter((row) => !row.isExample);
       if (!kept.length) {
-        const why = issues.filter((issue) => issue.level === "skipped").map((issue) => `baris ${issue.line}: ${issue.message}`);
-        setError(`Fail CSV tiada ahli untuk diimport.${why.length ? ` ${why.join(" ")}` : ""}`);
+        const why = issues.filter((issue) => issue.level === "skipped").map((issue) => t("bulkAdd.errRowPrefix", { line: issue.line ?? 0, message: issue.message }));
+        setError(`${t("bulkAdd.errNoMembers")}${why.length ? ` ${why.join(" ")}` : ""}`);
         return;
       }
       setRows(
@@ -127,7 +129,7 @@ export function BulkAddMembersDialog({
       setError(null);
       setStep("preview");
     } catch {
-      setError("Fail tidak dapat dibaca. Simpan sebagai CSV (UTF-8) dan cuba lagi.");
+      setError(t("bulkAdd.errUnreadable"));
     } finally {
       if (fileInput.current) fileInput.current.value = "";
     }
@@ -140,10 +142,10 @@ export function BulkAddMembersDialog({
     return rows.map((row, index) => {
       const key = normaliseName(row.name);
       const problems: { kind: "empty" | "long" | "existing" | "repeat"; text: string }[] = [];
-      if (!key) problems.push({ kind: "empty", text: "Nama diperlukan." });
-      else if (row.name.trim().length > MAX_NAME) problems.push({ kind: "long", text: `Nama terlalu panjang (maksimum ${MAX_NAME} aksara).` });
-      if (key && existing.has(key)) problems.push({ kind: "existing", text: `Mungkin sama dengan ahli sedia ada "${existing.get(key)}".` });
-      if (key && firstRow.has(key)) problems.push({ kind: "repeat", text: `Berulang dengan baris ${firstRow.get(key)! + 1} dalam senarai ini.` });
+      if (!key) problems.push({ kind: "empty", text: t("bulkAdd.problemEmpty") });
+      else if (row.name.trim().length > MAX_NAME) problems.push({ kind: "long", text: t("bulkAdd.problemLong", { max: MAX_NAME }) });
+      if (key && existing.has(key)) problems.push({ kind: "existing", text: t("bulkAdd.problemExisting", { name: existing.get(key) ?? "" }) });
+      if (key && firstRow.has(key)) problems.push({ kind: "repeat", text: t("bulkAdd.problemRepeat", { line: firstRow.get(key)! + 1 }) });
       if (key && !firstRow.has(key)) firstRow.set(key, index);
       const warnings: string[] = [];
       if (row.invalidCategory && row.category === null) warnings.push(invalidCategoryMessage(row.invalidCategory));
@@ -153,7 +155,7 @@ export function BulkAddMembersDialog({
       const blocking = problems.some((p) => p.kind === "empty" || p.kind === "long") || (duplicate && !row.distinct);
       return { problems, warnings, duplicate, blocking };
     });
-  }, [rows, data.members]);
+  }, [rows, data.members, t]);
 
   const blockingCount = flags.filter((flag) => flag.blocking).length;
   const duplicateCount = flags.filter((flag) => flag.duplicate).length;
@@ -177,11 +179,9 @@ export function BulkAddMembersDialog({
   const remove = (key: string) => setRows((current) => current.filter((row) => row.key !== key));
 
   const save = async () => {
-    if (!rows.length) return setError("Tiada nama untuk disimpan.");
+    if (!rows.length) return setError(t("bulkAdd.errNothingToSave"));
     if (blockingCount > 0)
-      return setError(
-        `${blockingCount} baris perlu disemak: buang baris itu, betulkan nama, atau tandakan "Orang berbeza" jika memang bukan orang yang sama.`,
-      );
+      return setError(t("bulkAdd.errBlocking", { count: blockingCount }));
     setBusy(true);
     setError(null);
     try {
@@ -196,7 +196,7 @@ export function BulkAddMembersDialog({
           })),
         ),
       );
-      toast.success(`${ids.length} ahli ditambah. Mereka belum dimasukkan ke mana-mana kutipan.`);
+      toast.success(t("bulkAdd.saved", { count: ids.length }));
       reset();
       onOpenChange(false);
       onAdded?.(ids);
@@ -210,31 +210,28 @@ export function BulkAddMembersDialog({
   return (
     <Dialog open={open} onOpenChange={close}>
       <DialogContent size="lg">
-        <ModalHeader icon={UsersRound} title="Tambah ahli secara pukal" />
+        <ModalHeader icon={UsersRound} title={t("bulkAdd.title")} />
         <ModalBody>
         <ModalText>
-          {step === "input"
-            ? "Tampal senarai nama, satu nama sebaris, atau import fail CSV. Anda boleh semak dan betulkan sebelum simpan."
-            : `Semak ${rows.length} nama sebelum disimpan.`}
+          {step === "input" ? t("bulkAdd.introInput") : t("bulkAdd.introPreview", { count: rows.length })}
         </ModalText>
         <p className="flex items-start gap-2 rounded-[10px] bg-primary-tint px-3 py-2.5 text-xs text-foreground/80">
           <Info className="mt-px size-4 shrink-0 text-primary-strong" aria-hidden />
           <span>
-            Ahli baharu <b>tidak dimasukkan ke mana-mana kutipan</b> dan tidak dicaj apa-apa. Sertakan mereka kemudian dari halaman
-            kutipan atau Matriks.
+            {t("bulkAdd.noCollectionBefore")}<b>{t("bulkAdd.noCollectionBold")}</b>{t("bulkAdd.noCollectionAfter")}
           </span>
         </p>
 
         {step === "input" ? (
           <>
-            <ModalSection label="Senarai ahli">
+            <ModalSection label={t("bulkAdd.listSection")}>
             <ModalField
-              label="Senarai nama"
+              label={t("bulkAdd.namesLabel")}
               htmlFor="bulk-names"
               helper={
                 <span className="tabular-nums">
-                  {pastedNames.length} nama
-                  {pastedLines.length - pastedNames.length > 0 && text.trim() && ` · ${pastedLines.length - pastedNames.length} baris kosong diabaikan`}
+                  {t("bulkAdd.nameCount", { count: pastedNames.length })}
+                  {pastedLines.length - pastedNames.length > 0 && text.trim() && t("bulkAdd.blankIgnoredInline", { count: pastedLines.length - pastedNames.length })}
                 </span>
               }
             >
@@ -247,12 +244,12 @@ export function BulkAddMembersDialog({
                   setText(event.target.value);
                   setError(null);
                 }}
-                placeholder={"Cikgu Nurul Ain binti Ahmad\nEncik Faizal bin Hamid\nPuan Siti Aishah"}
+                placeholder={t("bulkAdd.namesPlaceholder")}
                 className="min-h-40 font-normal"
               />
             </ModalField>
-            <ModalField label="Kategori lalai" className="sm:max-w-xs" helper="Boleh ditukar bagi setiap nama dalam semakan.">
-              <CategorySelect value={fallback} onChange={setFallback} ariaLabel="Kategori lalai" />
+            <ModalField label={t("bulkAdd.defaultCategory")} className="sm:max-w-xs" helper={t("bulkAdd.defaultCategoryHelper")}>
+              <CategorySelect value={fallback} onChange={setFallback} ariaLabel={t("bulkAdd.defaultCategory")} />
             </ModalField>
             </ModalSection>
             <ModalSection divided>
@@ -263,16 +260,16 @@ export function BulkAddMembersDialog({
                     <FileSpreadsheet className="size-4" aria-hidden />
                   </span>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium">Import CSV (pilihan)</p>
-                    <p className="text-xs text-muted-foreground">Guna templat supaya format tepat.</p>
+                    <p className="text-sm font-medium">{t("bulkAdd.csvTitle")}</p>
+                    <p className="text-xs text-muted-foreground">{t("bulkAdd.csvHint")}</p>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Button type="button" variant="outline" size="sm" onClick={downloadTemplate}>
-                    <Download aria-hidden /> Muat turun templat CSV
+                    <Download aria-hidden /> {t("bulkAdd.downloadTemplate")}
                   </Button>
                   <Button type="button" variant="brand" size="sm" onClick={() => fileInput.current?.click()}>
-                    Pilih fail
+                    {t("bulkAdd.pickFile")}
                   </Button>
                 </div>
                 <input
@@ -281,7 +278,7 @@ export function BulkAddMembersDialog({
                   accept=".csv,text/csv"
                   className="sr-only"
                   tabIndex={-1}
-                  aria-label="Pilih fail CSV"
+                  aria-label={t("bulkAdd.pickFileAria")}
                   onChange={(event) => void fromFile(event.target.files?.[0])}
                 />
               </div>
@@ -292,23 +289,23 @@ export function BulkAddMembersDialog({
                 onClick={() => setGuideOpen((value) => !value)}
                 className="mt-2.5 flex items-center gap-1 text-xs font-medium text-primary-strong"
               >
-                <ChevronDown className={cn("size-3.5 transition-transform", guideOpen && "rotate-180")} aria-hidden /> Panduan format CSV
+                <ChevronDown className={cn("size-3.5 transition-transform", guideOpen && "rotate-180")} aria-hidden /> {t("bulkAdd.guideToggle")}
               </button>
               {guideOpen && (
                 <ul id="csv-guide" className="mt-1.5 grid list-disc gap-1 pl-5 text-xs text-muted-foreground">
                   <li>
-                    Pengepala: <b className="text-foreground">nama, kategori, telefon</b>. Satu ahli setiap baris.
+                    {t("bulkAdd.guideHeaderBefore")}<b className="text-foreground">{t("bulkAdd.guideHeaderBold")}</b>{t("bulkAdd.guideHeaderAfter")}
                   </li>
                   <li>
-                    <b className="text-foreground">nama</b> wajib.
+                    <b className="text-foreground">{t("bulkAdd.guideNameBold")}</b>{t("bulkAdd.guideNameAfter")}
                   </li>
                   <li>
-                    <b className="text-foreground">kategori</b> pilihan: {ACCEPTED_CATEGORIES} (huruf besar atau kecil; &quot;staf&quot; dan &quot;lain-lain&quot; pun diterima).
+                    <b className="text-foreground">{t("bulkAdd.guideCategoryBold")}</b>{t("bulkAdd.guideCategoryAfter", { values: ACCEPTED_CATEGORIES })}
                   </li>
                   <li>
-                    <b className="text-foreground">telefon</b> pilihan, format Malaysia, cth 012-345 6789.
+                    <b className="text-foreground">{t("bulkAdd.guidePhoneBold")}</b>{t("bulkAdd.guidePhoneAfter")}
                   </li>
-                  <li>Fail berpembatas koma-bertitik (Excel bahasa Melayu) turut diterima. Baris contoh dalam templat diabaikan.</li>
+                  <li>{t("bulkAdd.guideDelimiter")}</li>
                 </ul>
               )}
             </div>
@@ -318,27 +315,27 @@ export function BulkAddMembersDialog({
         ) : (
           <div className="grid gap-3">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-              <span className="font-medium text-foreground tabular-nums">{rows.length} ahli akan ditambah</span>
-              {source === "csv" && <span>Dari fail CSV</span>}
-              {skipped > 0 && <span className="tabular-nums">{skipped} baris kosong diabaikan</span>}
+              <span className="font-medium text-foreground tabular-nums">{t("bulkAdd.willAdd", { count: rows.length })}</span>
+              {source === "csv" && <span>{t("bulkAdd.fromCsv")}</span>}
+              {skipped > 0 && <span className="tabular-nums">{t("bulkAdd.blankIgnored", { count: skipped })}</span>}
               {warningCount > 0 && (
                 <span className="inline-flex items-center gap-1 text-st-partial tabular-nums">
-                  <TriangleAlert className="size-3.5" aria-hidden /> {warningCount} baris ada amaran
+                  <TriangleAlert className="size-3.5" aria-hidden /> {t("bulkAdd.warningRows", { count: warningCount })}
                 </span>
               )}
               {duplicateCount > 0 && (
                 <span className="inline-flex items-center gap-1 text-st-partial tabular-nums">
-                  <TriangleAlert className="size-3.5" aria-hidden /> {duplicateCount} mungkin pendua
+                  <TriangleAlert className="size-3.5" aria-hidden /> {t("bulkAdd.duplicateRows", { count: duplicateCount })}
                 </span>
               )}
             </div>
 
             {notes.length > 0 && (
               <div role="status" data-testid="import-notes" className="rounded-[10px] border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-                <p className="font-medium text-foreground">Tidak dimasukkan / diabaikan</p>
+                <p className="font-medium text-foreground">{t("bulkAdd.notesTitle")}</p>
                 <ul className="mt-1 grid gap-0.5">
                   {notes.map((note, i) => (
-                    <li key={i}>{note.line ? `Baris ${note.line}: ` : ""}{note.message}</li>
+                    <li key={i}>{note.line ? t("bulkAdd.noteLine", { line: note.line, message: note.message }) : note.message}</li>
                   ))}
                 </ul>
               </div>
@@ -346,7 +343,7 @@ export function BulkAddMembersDialog({
 
             {rows.length === 0 ? (
               <p className="rounded-[10px] border border-dashed border-border px-3 py-6 text-center text-sm text-muted-foreground">
-                Semua baris telah dibuang.
+                {t("bulkAdd.allRemoved")}
               </p>
             ) : (
               <ol className="grid gap-2">
@@ -365,7 +362,7 @@ export function BulkAddMembersDialog({
                         <Input
                           value={row.name}
                           onChange={(event) => update(row.key, { name: event.target.value, distinct: false })}
-                          aria-label={`Nama baris ${index + 1}`}
+                          aria-label={t("bulkAdd.rowName", { n: index + 1 })}
                           aria-invalid={flag.blocking || undefined}
                           className="min-w-0 flex-1"
                         />
@@ -374,7 +371,7 @@ export function BulkAddMembersDialog({
                           variant="danger-outline"
                           size="icon"
                           onClick={() => remove(row.key)}
-                          aria-label={`Buang baris ${index + 1}`}
+                          aria-label={t("bulkAdd.rowRemove", { n: index + 1 })}
                           className="size-10 shrink-0 rounded-[10px]"
                         >
                           <X />
@@ -384,14 +381,14 @@ export function BulkAddMembersDialog({
                         <CategorySelect
                           value={row.category ?? NO_CATEGORY}
                           onChange={(value) => update(row.key, { category: value === NO_CATEGORY ? null : value, invalidCategory: null })}
-                          ariaLabel={`Kategori baris ${index + 1}`}
+                          ariaLabel={t("bulkAdd.rowCategory", { n: index + 1 })}
                         />
                         <Input
                           value={row.phone}
                           inputMode="tel"
                           onChange={(event) => update(row.key, { phone: event.target.value })}
-                          placeholder="No. telefon (pilihan)"
-                          aria-label={`No. telefon baris ${index + 1}`}
+                          placeholder={t("bulkAdd.phonePlaceholder")}
+                          aria-label={t("bulkAdd.rowPhone", { n: index + 1 })}
                           className="h-9 pointer-coarse:h-11"
                         />
                       </div>
@@ -414,7 +411,7 @@ export function BulkAddMembersDialog({
                           {flag.duplicate && (
                             <label className="flex w-fit cursor-pointer items-center gap-2 text-xs font-medium">
                               <Checkbox checked={row.distinct} onCheckedChange={(value) => update(row.key, { distinct: value === true })} />
-                              Orang berbeza; simpan juga
+                              {t("bulkAdd.distinct")}
                             </label>
                           )}
                         </div>
@@ -432,20 +429,20 @@ export function BulkAddMembersDialog({
         {step === "input" ? (
           <ModalFooter>
             <Button type="button" variant="ghost" onClick={() => close(false)}>
-              Batal
+              {t("bulkAdd.cancel")}
             </Button>
             <Button type="button" onClick={fromPaste} disabled={!pastedNames.length}>
-              Semak {pastedNames.length > 0 ? `${pastedNames.length} nama` : "senarai"}
+              {pastedNames.length > 0 ? t("bulkAdd.review", { count: pastedNames.length }) : t("bulkAdd.reviewEmpty")}
             </Button>
           </ModalFooter>
         ) : (
           <ModalFooter>
             <Button type="button" variant="ghost" onClick={() => setStep("input")} disabled={busy}>
-              Kembali
+              {t("bulkAdd.back")}
             </Button>
             <Button type="button" onClick={() => void save()} disabled={busy || rows.length === 0}>
               {busy && <Spinner className="size-4" />}
-              {busy ? "Menyimpan…" : `Simpan ${rows.length} ahli`}
+              {busy ? t("bulkAdd.saving") : t("bulkAdd.save", { count: rows.length })}
             </Button>
           </ModalFooter>
         )}
@@ -455,13 +452,14 @@ export function BulkAddMembersDialog({
 }
 
 function CategorySelect({ value, onChange, ariaLabel }: { value: CategoryValue; onChange: (value: CategoryValue) => void; ariaLabel: string }) {
+  const t = useT();
   return (
     <Select value={value} onValueChange={(next) => onChange(next as CategoryValue)}>
       <SelectTrigger aria-label={ariaLabel} className="w-full">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value={NO_CATEGORY}>Tiada kategori</SelectItem>
+        <SelectItem value={NO_CATEGORY}>{t("bulkAdd.noCategory")}</SelectItem>
         {(Object.keys(categoryLabels) as MemberCategory[]).map((key) => (
           <SelectItem key={key} value={key}>
             {categoryLabels[key]}

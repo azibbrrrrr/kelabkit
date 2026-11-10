@@ -345,8 +345,8 @@ export function BayaranPage() {
         <DialogContent size="md">
           <ModalHeader
             icon={ReceiptText}
-            title="Butiran bayaran"
-            description={selectedPayment ? `Dibayar ${formatDay(selectedPayment.paidOn)} oleh ${view.membersById.get(selectedPayment.memberId)?.name ?? "ahli"}.` : ""}
+            title={t("paymentsPage.detailsDialog.title")}
+            description={selectedPayment ? t("paymentsPage.detailsDialog.description", { date: formatDay(selectedPayment.paidOn), name: view.membersById.get(selectedPayment.memberId)?.name ?? t("paymentsPage.detailsDialog.memberFallback") }) : ""}
           />
           <ModalBody>
             {selectedPayment && (

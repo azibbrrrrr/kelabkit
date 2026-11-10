@@ -19,6 +19,9 @@ import { attachmentsEn } from "./screens/attachments.en";
 import { emojiEn } from "./screens/emoji.en";
 import { quickFillEn } from "./screens/quickFill.en";
 import { brandEn } from "./screens/brand.en";
+import { dialogsEn } from "./screens/dialogs.en";
+import { bulkAddEn } from "./screens/bulkAdd.en";
+import { themesEn } from "./screens/themes.en";
 
 export const en: Messages = {
   common: {
@@ -462,4 +465,7 @@ export const en: Messages = {
   emoji: emojiEn,
   quickFill: quickFillEn,
   brand: brandEn,
+  dialogs: dialogsEn,
+  bulkAdd: bulkAddEn,
+  themes: themesEn,
 };

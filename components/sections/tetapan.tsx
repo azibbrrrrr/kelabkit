@@ -26,7 +26,7 @@ import { auditActionLabels } from "@/lib/labels";
 import { sum } from "@/lib/money/amount";
 import { LanguagePill } from "@/components/language-pill";
 import { useT, type TFunction } from "@/lib/i18n/react";
-import { themes, type ThemeId } from "@/lib/themes";
+import { themeLabel, themeMood, themes, type ThemeId } from "@/lib/themes";
 import type { Club } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Check, Database, History, Languages, Palette, Plus, RotateCcw, School } from "lucide-react";
@@ -222,7 +222,7 @@ function ThemeCard() {
                 >
                   {selected && <Check className="size-5" strokeWidth={2.6} aria-hidden />}
                 </span>
-                <span className={cn("text-xs", selected ? "font-semibold text-foreground" : "text-muted-foreground")}>{th.label}</span>
+                <span className={cn("text-xs", selected ? "font-semibold text-foreground" : "text-muted-foreground")}>{themeLabel(th.id)}</span>
               </RadioGroupPrimitive.Item>
             );
           })}
@@ -260,7 +260,7 @@ function ThemeCard() {
           </div>
         </div>
         <p className="-mt-2 text-xs text-muted-foreground">
-          {t("settings.theme.previewNote", { theme: current.label })}
+          {t("settings.theme.previewNote", { theme: themeLabel(current.id) })}
         </p>
 
         <div className="grid gap-2">
@@ -273,10 +273,10 @@ function ThemeCard() {
                   <span className="size-8 shrink-0 rounded-lg" style={{ backgroundColor: th.swatch }} aria-hidden />
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-medium">
-                      {th.label}
+                      {themeLabel(th.id)}
                       {th.id === "rose" && <span className="font-normal text-muted-foreground"> {t("settings.theme.defaultTag")}</span>}
                     </span>
-                    <span className="block text-xs text-muted-foreground">{th.mood}</span>
+                    <span className="block text-xs text-muted-foreground">{themeMood(th.id)}</span>
                   </span>
                   <span
                     className={cn(
@@ -310,7 +310,7 @@ function DemoDataCard() {
     setBusy(true);
     try {
       await run((backend) => backend.resetDemo());
-      toast.success("Data demo telah dipulihkan kepada asal.");
+      toast.success(t("settings.demo.resetDone"));
       setOpen(false);
     } catch (cause) {
       toast.error(messageFor(cause));
@@ -331,18 +331,18 @@ function DemoDataCard() {
         <AlertDialog open={open} onOpenChange={(next) => !busy && setOpen(next)}>
           <AlertDialogTrigger asChild>
             <Button variant="danger-outline" className="w-fit">
-              <RotateCcw /> Set semula data demo
+              <RotateCcw /> {t("settings.demo.resetButton")}
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
-            <ModalHeader alert icon={RotateCcw} tone="danger" title="Set semula data demo?" />
+            <ModalHeader alert icon={RotateCcw} tone="danger" title={t("settings.demo.resetTitle")} />
             <ModalBody>
               <ModalText alert>
-                Semua ahli, kutipan, bayaran dan log audit yang anda tambah atau ubah dalam pelayar ini akan dipadam dan diganti dengan data contoh asal. Tindakan ini tidak boleh dibatalkan.
+                {t("settings.demo.resetWarning")}
               </ModalText>
             </ModalBody>
             <ModalFooter>
-              <AlertDialogCancel variant="ghost" disabled={busy}>Batal</AlertDialogCancel>
+              <AlertDialogCancel variant="ghost" disabled={busy}>{t("common.cancel")}</AlertDialogCancel>
               <AlertDialogAction
                 variant="danger"
                 disabled={busy}
@@ -353,7 +353,7 @@ function DemoDataCard() {
                 }}
               >
                 {busy && <Spinner className="size-4" />}
-                Ya, set semula
+                {t("settings.demo.resetConfirm")}
               </AlertDialogAction>
             </ModalFooter>
           </AlertDialogContent>

@@ -9,6 +9,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { normaliseName } from "@/lib/names";
+import { useT } from "@/lib/i18n/react";
 import { messageFor } from "@/lib/errors";
 import { formatMoney } from "@/lib/format";
 import { categoryLabels } from "@/lib/labels";
@@ -35,6 +36,7 @@ export function AddMemberDialog({
 }) {
   const { data } = useSnapshot();
   const { run } = useKelab();
+  const t = useT();
   const [name, setName] = useState("");
   const [category, setCategory] = useState<MemberCategory | null>("guru");
   const [phone, setPhone] = useState("");
@@ -56,8 +58,8 @@ export function AddMemberDialog({
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!name.trim()) return setError("Nama diperlukan.");
-    if (similar && !allowDuplicate) return setError("Nama ini sama dengan ahli sedia ada. Tandakan kotak di bawah jika memang orang berbeza.");
+    if (!name.trim()) return setError(t("dialogs.addMember.nameRequired"));
+    if (similar && !allowDuplicate) return setError(t("dialogs.addMember.similarBlocked"));
     setBusy(true);
     setError(null);
     try {
@@ -68,7 +70,7 @@ export function AddMemberDialog({
         }
         return ids;
       });
-      toast.success(`${name.trim()} ditambah${join.length ? ` ke ${join.length} kutipan` : ""}.`);
+      toast.success(join.length ? t("dialogs.addMember.addedTo", { name: name.trim(), count: join.length }) : t("dialogs.addMember.added", { name: name.trim() }));
       reset();
       onOpenChange(false);
       onAdded?.(id);
@@ -90,47 +92,47 @@ export function AddMemberDialog({
     >
       <DialogContent size="md" onCloseAutoFocus={onCloseAutoFocus}>
         <form onSubmit={submit} className={modalFormClass} noValidate>
-          <ModalHeader icon={UserPlus} title="Tambah ahli" description="Hanya nama diperlukan. Tiada No. KP atau maklumat peribadi lain." />
+          <ModalHeader icon={UserPlus} title={t("dialogs.addMember.title")} description={t("dialogs.addMember.description")} />
           <ModalBody>
-            <ModalSection label="Maklumat ahli">
+            <ModalSection label={t("dialogs.addMember.section")}>
               <ModalField
-                label="Nama penuh"
+                label={t("dialogs.addMember.name")}
                 htmlFor="member-name"
                 helper={
                   similar && (
                     <span className="flex items-start gap-1.5 text-st-partial">
-                      <TriangleAlert className="mt-px size-3.5 shrink-0" aria-hidden /> Mungkin sama dengan &quot;{similar.name}&quot;.
+                      <TriangleAlert className="mt-px size-3.5 shrink-0" aria-hidden /> {t("dialogs.addMember.similar", { name: similar.name })}
                     </span>
                   )
                 }
               >
-                <Input id="member-name" autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder="cth. Cikgu Nurul Ain" />
+                <Input id="member-name" autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder={t("dialogs.addMember.namePlaceholder")} />
               </ModalField>
               {similar && (
                 <label className="flex items-center gap-2 text-[13px]">
                   <Checkbox checked={allowDuplicate} onCheckedChange={(value) => setAllowDuplicate(value === true)} />
-                  Ini orang berbeza; simpan juga.
+                  {t("dialogs.addMember.distinct")}
                 </label>
               )}
-              <ModalField label="Kategori (pilihan)" labelId="member-category-label">
+              <ModalField label={t("dialogs.addMember.category")} labelId="member-category-label">
                 <SegmentedChoice<MemberCategory | "">
                   joined
-                  label="Kategori (pilihan)"
+                  label={t("dialogs.addMember.category")}
                   optional
                   value={category ?? ""}
                   onChange={(value) => setCategory(value || null)}
                   options={(Object.keys(categoryLabels) as MemberCategory[]).map((value) => ({ value, label: categoryLabels[value] }))}
                 />
               </ModalField>
-              <ModalField label="No. telefon (pilihan)" htmlFor="member-phone" helper="Untuk butang WhatsApp dalam Peringatan.">
-                <Input id="member-phone" inputMode="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="012-345 6789" />
+              <ModalField label={t("dialogs.addMember.phone")} htmlFor="member-phone" helper={t("dialogs.addMember.phoneHelper")}>
+                <Input id="member-phone" inputMode="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder={t("dialogs.addMember.phonePlaceholder")} />
               </ModalField>
             </ModalSection>
             {active.length > 0 && (
               <ModalSection divided>
-                <ModalField label="Sertakan dalam kutipan aktif?" labelId="member-join-label">
-                  <p className="-mt-0.5 text-xs leading-4 text-muted-foreground">Tidak ditanda secara lalai. Ahli baharu hanya dicaj untuk kutipan yang anda pilih.</p>
-                  <ModalCheckList label="Sertakan dalam kutipan aktif?">
+                <ModalField label={t("dialogs.addMember.joinTitle")} labelId="member-join-label">
+                  <p className="-mt-0.5 text-xs leading-4 text-muted-foreground">{t("dialogs.addMember.joinHint")}</p>
+                  <ModalCheckList label={t("dialogs.addMember.joinTitle")}>
                     {active.map((collection) => (
                       <ModalCheckRow
                         key={collection.id}
@@ -139,8 +141,8 @@ export function AddMemberDialog({
                         label={collection.name}
                         trailing={
                           <>
-                            {collection.defaultAmount !== null ? formatMoney(collection.defaultAmount) : "Sukarela"}
-                            {collection.type === "monthly" && "/bln"}
+                            {collection.defaultAmount !== null ? formatMoney(collection.defaultAmount) : t("dialogs.addMember.voluntary")}
+                            {collection.type === "monthly" && t("dialogs.addMember.perMonth")}
                           </>
                         }
                       />
@@ -153,11 +155,11 @@ export function AddMemberDialog({
           </ModalBody>
           <ModalFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>
-              Batal
+              {t("dialogs.addMember.cancel")}
             </Button>
             <Button type="submit" disabled={busy}>
               {busy && <Spinner className="size-4" />}
-              Simpan ahli
+              {t("dialogs.addMember.save")}
             </Button>
           </ModalFooter>
         </form>

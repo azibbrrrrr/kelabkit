@@ -64,4 +64,9 @@ export const paymentsPageMs = {
     showing: "Menunjukkan {shown} daripada {total} transaksi",
     more: "Tunjuk lagi",
   },
+  detailsDialog: {
+    title: "Butiran bayaran",
+    description: "Dibayar {date} oleh {name}.",
+    memberFallback: "ahli",
+  },
 } as const;

@@ -67,4 +67,9 @@ export const paymentsPageEn: DeepStringify<typeof paymentsPageMs> = {
     showing: "Showing {shown} of {total} transactions",
     more: "Show more",
   },
+  detailsDialog: {
+    title: "Payment details",
+    description: "Paid {date} by {name}.",
+    memberFallback: "member",
+  },
 };

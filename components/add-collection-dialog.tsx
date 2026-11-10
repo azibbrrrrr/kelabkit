@@ -10,6 +10,7 @@ import { ModalBody, ModalError, ModalField, ModalFooter, ModalHeader, ModalSecti
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { useT } from "@/lib/i18n/react";
 import { messageFor } from "@/lib/errors";
 import { formatMoney, today } from "@/lib/format";
 import { suggestIcon } from "@/lib/collection-icon";
@@ -40,6 +41,7 @@ export function AddCollectionDialog({
 }) {
   const { data } = useSnapshot();
   const { run } = useKelab();
+  const t = useT();
   const year = today().slice(0, 4);
   const [name, setName] = useState("");
   const [type, setType] = useState<CollectionType>("one_off");
@@ -57,15 +59,15 @@ export function AddCollectionDialog({
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!name.trim()) return setError("Nama kutipan diperlukan.");
+    if (!name.trim()) return setError(t("dialogs.addCollection.nameRequired"));
     let defaultAmount: Sen | null = null;
     if (type !== "voluntary") {
       const result = parseMoney(amount);
       if (result.error !== null) return setError(result.error);
-      if (result.sen === 0) return setError("Amaun mesti lebih daripada RM0.");
+      if (result.sen === 0) return setError(t("dialogs.addCollection.amountPositive"));
       defaultAmount = result.sen;
     }
-    if (type === "monthly" && endMonth < startMonth) return setError("Bulan akhir tidak boleh lebih awal daripada bulan mula.");
+    if (type === "monthly" && endMonth < startMonth) return setError(t("dialogs.addCollection.endBeforeStart"));
     setBusy(true);
     setError(null);
     try {
@@ -86,7 +88,7 @@ export function AddCollectionDialog({
           activate: true,
         }),
       );
-      toast.success(`Kutipan "${name.trim()}" ditambah untuk ${members.length} ahli.`);
+      toast.success(t("dialogs.addCollection.created", { name: name.trim(), count: members.length }));
       setName("");
       setAmount("");
       setDueDate("");
@@ -103,62 +105,62 @@ export function AddCollectionDialog({
     <Dialog open={open} onOpenChange={(next) => !busy && onOpenChange(next)}>
       <DialogContent size="md" onCloseAutoFocus={onCloseAutoFocus}>
         <form onSubmit={submit} className={modalFormClass} noValidate>
-          <ModalHeader icon={Layers} title="Tambah kutipan (lajur baharu)" description={`Untuk semua ${members.length} ahli aktif pada amaun yang sama.`} />
+          <ModalHeader icon={Layers} title={t("dialogs.addCollection.title")} description={t("dialogs.addCollection.description", { count: members.length })} />
           <ModalBody>
-            <ModalSection label="Butiran kutipan">
-              <ModalField label="Nama kutipan" htmlFor="col-name">
-                <Input id="col-name" autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder="cth. Jamuan Akhir Tahun" />
+            <ModalSection label={t("dialogs.addCollection.section")}>
+              <ModalField label={t("dialogs.addCollection.name")} htmlFor="col-name">
+                <Input id="col-name" autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder={t("dialogs.addCollection.namePlaceholder")} />
               </ModalField>
-              <ModalField label="Jenis" labelId="col-type-label">
+              <ModalField label={t("dialogs.addCollection.type")} labelId="col-type-label">
                 <SegmentedChoice<CollectionType>
                   joined
-                  label="Jenis"
+                  label={t("dialogs.addCollection.type")}
                   value={type}
                   onChange={setType}
                   options={(Object.keys(collectionTypeLabels) as CollectionType[]).map((value) => ({ value, label: collectionTypeLabels[value] }))}
                 />
               </ModalField>
               {type !== "voluntary" && (
-                <ModalField label={type === "monthly" ? "Amaun sebulan" : "Amaun seorang"} htmlFor="col-amount" error={parsed?.error}>
+                <ModalField label={type === "monthly" ? t("dialogs.addCollection.amountMonthly") : t("dialogs.addCollection.amountEach")} htmlFor="col-amount" error={parsed?.error}>
                   <MoneyInput id="col-amount" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="25.00" invalid={Boolean(parsed?.error)} />
                 </ModalField>
               )}
             </ModalSection>
             {(type === "one_off" || type === "monthly") && (
-              <ModalSection label="Tempoh" divided>
+              <ModalSection label={t("dialogs.addCollection.period")} divided>
                 {type === "one_off" && (
-                  <ModalField label="Tarikh akhir (pilihan)" htmlFor="col-due" helper="Tanpa tarikh akhir, caj tidak akan menjadi Lewat.">
-                    <DatePicker id="col-due" value={dueDate} onChange={setDueDate} clearable emptyLabel="Tiada tarikh akhir" clearLabel="Tiada tarikh akhir" />
+                  <ModalField label={t("dialogs.addCollection.due")} htmlFor="col-due" helper={t("dialogs.addCollection.dueHelper")}>
+                    <DatePicker id="col-due" value={dueDate} onChange={setDueDate} clearable emptyLabel={t("dialogs.addCollection.noDue")} clearLabel={t("dialogs.addCollection.noDue")} />
                   </ModalField>
                 )}
                 {type === "monthly" && (
                   <>
                     <div className="grid grid-cols-2 gap-3">
-                      <ModalField label="Bulan mula" htmlFor="col-start">
+                      <ModalField label={t("dialogs.addCollection.startMonth")} htmlFor="col-start">
                         <MonthPicker id="col-start" value={startMonth} onChange={setStartMonth} />
                       </ModalField>
-                      <ModalField label="Bulan akhir" htmlFor="col-end">
+                      <ModalField label={t("dialogs.addCollection.endMonth")} htmlFor="col-end">
                         <MonthPicker id="col-end" value={endMonth} min={startMonth} onChange={setEndMonth} />
                       </ModalField>
                     </div>
-                    <p className="-mt-2 text-xs leading-4 text-muted-foreground">Setiap bulan menjadi lajur sendiri, perlu dibayar sebelum 10hb.</p>
+                    <p className="-mt-2 text-xs leading-4 text-muted-foreground">{t("dialogs.addCollection.monthlyNote")}</p>
                   </>
                 )}
               </ModalSection>
             )}
             {total !== null && (
               <p className="rounded-[10px] bg-primary-tint px-3 py-2.5 text-sm">
-                Jangkaan kutipan: <b className="tabular-nums">{formatMoney(total)}</b>
+                {t("dialogs.addCollection.expected")} <b className="tabular-nums">{formatMoney(total)}</b>
                 <span className="text-muted-foreground">
                   {" "}
-                  ({members.length} ahli{type === "monthly" ? ` × ${months} bulan` : ""})
+                  {type === "monthly" ? t("dialogs.addCollection.expectedDetailMonths", { members: members.length, months }) : t("dialogs.addCollection.expectedDetail", { members: members.length })}
                 </span>
               </p>
             )}
             <p className="text-xs leading-4 text-muted-foreground">
-              Perlu pilih ahli tertentu atau amaun berbeza?{" "}
+              {t("dialogs.addCollection.morePrefix")}{" "}
               <Link href="/kutipan/baru/" className="font-medium text-primary-strong underline-offset-2 hover:underline">
-                Guna wizard penuh
+                {t("dialogs.addCollection.wizard")}
               </Link>
               .
             </p>
@@ -166,11 +168,11 @@ export function AddCollectionDialog({
           </ModalBody>
           <ModalFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>
-              Batal
+              {t("dialogs.addCollection.cancel")}
             </Button>
             <Button type="submit" disabled={busy}>
               {busy && <Spinner className="size-4" />}
-              Tambah lajur
+              {t("dialogs.addCollection.submit")}
             </Button>
           </ModalFooter>
         </form>
