@@ -5,13 +5,19 @@ import { cellStatusLabels } from "@/lib/labels";
 import type { MatrixCell } from "@/lib/view";
 import { cn } from "@/lib/utils";
 
-/** One month of a monthly collection; colour, word and amount all carry the status. */
+/**
+ * One month of a monthly collection; colour, word and amount all carry the status. The
+ * accessible name starts with the visible month and amount (label in name), then adds the words.
+ */
 export function MonthTile({ cell, onOpen }: { cell: MatrixCell; onOpen: () => void }) {
   const month = cell.column.period ? formatMonth(cell.column.period.month, false) : "";
   if (cell.kind !== "charge")
     return (
-      <span className="grid h-12 place-items-center rounded-lg bg-st-na-bg text-[10px] text-st-na" aria-label={`${month}: Tidak Berkaitan`}>
-        {month}
+      <span className="grid h-12 place-items-center rounded-lg bg-st-na-bg text-[10px] text-st-na">
+        <span>
+          {month}
+          <span className="sr-only">: Tidak Berkaitan</span>
+        </span>
       </span>
     );
   const { ledger, status } = cell;
@@ -35,17 +41,18 @@ export function MonthTile({ cell, onOpen }: { cell: MatrixCell; onOpen: () => vo
   ]
     .filter(Boolean)
     .join(", ");
+  const shown = status === "paid" || status === "exempt" ? null : formatMoneyShort(ledger.remaining);
   return (
     <button
       type="button"
       onClick={onOpen}
-      aria-label={`${month}: ${words}, baki ${formatMoney(ledger.remaining)}`}
+      aria-label={`${month}${shown ? ` ${shown}` : ""}: ${words}, baki ${formatMoney(ledger.remaining)}`}
       title={`${month}: ${words}`}
       className={cn("grid h-12 place-items-center rounded-lg text-[10px] leading-tight font-semibold transition-[scale] duration-150 ease-out motion-safe:active:scale-[0.96]", tone)}
     >
       {month}
       <span className="font-normal">
-        {status === "paid" ? "✓" : status === "exempt" ? "—" : formatMoneyShort(ledger.remaining)}
+        {shown ?? (status === "paid" ? "✓" : "—")}
       </span>
     </button>
   );

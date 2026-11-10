@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { messageFor } from "@/lib/errors";
 import { formatDay, formatMoney, formatMonthLong, today } from "@/lib/format";
@@ -59,25 +60,40 @@ export function CellEditor({
   );
 }
 
-function Tabs({ value, onChange, tabs }: { value: EditorTab; onChange: (tab: EditorTab) => void; tabs: [EditorTab, string][] }) {
+/**
+ * Where focus goes when the editor opens: the field marked data-autofocus in the visible panel
+ * (the amount on the pay tab), else the selected tab, else the first control. Hidden tab panels
+ * stay mounted to keep typed input, so anything inside [hidden] is skipped.
+ */
+export function focusEditorStart(root: HTMLElement) {
+  const visible = (el: HTMLElement) => !el.closest("[hidden]");
+  const pick = (selector: string) => [...root.querySelectorAll<HTMLElement>(selector)].find(visible);
+  const target =
+    pick("[data-autofocus]") ??
+    pick('[role="tab"][aria-selected="true"]') ??
+    pick('button:not([disabled]), input:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])');
+  target?.focus();
+  if (target instanceof HTMLInputElement && target.type === "text") target.setSelectionRange(target.value.length, target.value.length);
+}
+
+/** The editor's tab strip: Radix tabs (arrow keys, tabpanel wiring) in the editor's segmented look. */
+function EditorTabs({ tabs }: { tabs: [EditorTab, string][] }) {
   return (
-    <div role="tablist" className="grid gap-1 rounded-xl bg-primary-tint p-1" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
+    <TabsList
+      aria-label="Tindakan sel"
+      className="grid h-auto! w-full gap-1 rounded-xl bg-primary-tint p-1"
+      style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
+    >
       {tabs.map(([id, label]) => (
-        <button
+        <TabsTrigger
           key={id}
-          type="button"
-          role="tab"
-          aria-selected={value === id}
-          onClick={() => onChange(id)}
-          className={cn(
-            "min-h-9 rounded-lg px-1.5 text-[11.5px] font-medium whitespace-nowrap text-muted-foreground transition-colors",
-            value === id && "bg-card font-semibold text-primary-strong shadow-sm",
-          )}
+          value={id}
+          className="min-h-9 rounded-lg px-1.5 text-[11.5px] font-medium whitespace-nowrap text-muted-foreground transition-colors data-active:bg-card data-active:font-semibold data-active:text-primary-strong data-active:shadow-sm"
         >
           {label}
-        </button>
+        </TabsTrigger>
       ))}
-    </div>
+    </TabsList>
   );
 }
 
@@ -227,8 +243,14 @@ function ChargeEditor({
 }) {
   const { view } = useSnapshot();
   const [tab, setTab] = useState<EditorTab>(ledger.payable > 0 || initialInput ? "pay" : "history");
+  // Both forms stay mounted (hidden when inactive), so input typed on one tab survives a trip
+  // to another; each reports its own dirtiness and the editor is dirty if either is.
+  const [payDirty, setPayDirty] = useState(false);
+  const [amountDirty, setAmountDirty] = useState(false);
+  useEffect(() => onDirtyChange?.(payDirty || amountDirty), [payDirty, amountDirty, onDirtyChange]);
   const payments = view.paymentsFor(cell.member.id, [ledger.charge.id]);
   const count = payments.length;
+  const history = () => setTab("history");
 
   return (
     <>
@@ -248,18 +270,24 @@ function ChargeEditor({
           {formatMoney(ledger.pending)} menunggu semakan. Belum dikira dalam &quot;Diterima&quot;.
         </p>
       )}
-      <Tabs
-        value={tab}
-        onChange={setTab}
-        tabs={[
-          ["pay", "Rekod bayaran"],
-          ["amount", "Ubah amaun"],
-          ["history", `Sejarah (${count})`],
-        ]}
-      />
-      {tab === "pay" && <PayForm ledger={ledger} cell={cell} initialInput={initialInput} onDone={onDone} onDirtyChange={onDirtyChange} onHistory={() => setTab("history")} />}
-      {tab === "amount" && <AmountForm ledger={ledger} cell={cell} onDone={onDone} onDirtyChange={onDirtyChange} onHistory={() => setTab("history")} />}
-      {tab === "history" && <PaymentList payments={payments} highlightChargeIds={[ledger.charge.id]} empty="Belum ada bayaran untuk caj ini." />}
+      <Tabs value={tab} onValueChange={(value) => setTab(value as EditorTab)} className="gap-3">
+        <EditorTabs
+          tabs={[
+            ["pay", "Rekod bayaran"],
+            ["amount", "Ubah amaun"],
+            ["history", `Sejarah (${count})`],
+          ]}
+        />
+        <TabsContent value="pay" forceMount hidden={tab !== "pay"}>
+          <PayForm ledger={ledger} cell={cell} initialInput={initialInput} onDone={onDone} onDirtyChange={setPayDirty} onHistory={history} />
+        </TabsContent>
+        <TabsContent value="amount" forceMount hidden={tab !== "amount"}>
+          <AmountForm ledger={ledger} cell={cell} onDone={onDone} onDirtyChange={setAmountDirty} onHistory={history} />
+        </TabsContent>
+        <TabsContent value="history">
+          <PaymentList payments={payments} highlightChargeIds={[ledger.charge.id]} empty="Belum ada bayaran untuk caj ini." />
+        </TabsContent>
+      </Tabs>
     </>
   );
 }
@@ -282,12 +310,8 @@ function PayForm({
   const { run } = useKelab();
   const form = usePaymentForm(initialInput);
   const input = useRef<HTMLInputElement>(null);
+  const messageId = useId();
 
-  useEffect(() => {
-    input.current?.focus();
-    const el = input.current;
-    if (el && initialInput) el.setSelectionRange(el.value.length, el.value.length);
-  }, [initialInput]);
   useEffect(() => onDirtyChange?.(form.amount.trim() !== ""), [form.amount, onDirtyChange]);
 
   if (ledger.charge.exempt)
@@ -307,14 +331,22 @@ function PayForm({
   const sen = parsed?.sen ?? null;
   const tooMuch = sen !== null && sen > ledger.payable;
   const after = sen !== null && !tooMuch ? Math.max(0, ledger.remaining - (form.received ? sen : 0)) : null;
+  const invalid = Boolean(form.error) || tooMuch;
+
+  // Validation runs on submit, so Simpan stays reachable and says why it refused; focus goes
+  // back to the amount, whose aria-describedby carries the reason.
+  const fail = (message: string) => {
+    form.setError(message);
+    input.current?.focus();
+  };
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (form.busy) return;
     const result = parseMoney(form.amount);
-    if (result.error !== null) return form.setError(result.error);
-    if (result.sen === 0) return form.setError("Amaun mesti lebih daripada RM0.");
-    if (result.sen > ledger.payable) return form.setError(`Melebihi baki. Maksimum ${formatMoney(ledger.payable)}.`);
+    if (result.error !== null) return fail(result.error);
+    if (result.sen === 0) return fail("Amaun mesti lebih daripada RM0.");
+    if (result.sen > ledger.payable) return fail(`Melebihi baki. Maksimum ${formatMoney(ledger.payable)}.`);
     form.setBusy(true);
     form.setError(null);
     try {
@@ -349,7 +381,10 @@ function PayForm({
           </Label>
           <button
             type="button"
-            onClick={() => form.setAmount(senToInput(ledger.payable))}
+            onClick={() => {
+              form.setAmount(senToInput(ledger.payable));
+              form.setError(null);
+            }}
             className="rounded-lg px-1.5 py-0.5 text-xs font-medium text-primary-strong hover:bg-primary-tint"
           >
             Baki penuh {formatMoney(ledger.payable)}
@@ -358,20 +393,26 @@ function PayForm({
         <MoneyInput
           id="pay-amount"
           ref={input}
+          data-autofocus
           value={form.amount}
           onChange={(event) => {
             form.setAmount(event.target.value);
             form.setError(null);
           }}
           placeholder={senToInput(ledger.payable)}
-          invalid={Boolean(form.error) || tooMuch}
+          invalid={invalid}
+          aria-describedby={form.error || tooMuch || after !== null ? messageId : undefined}
         />
         {form.error ? (
-          <p className="text-xs font-medium text-st-unpaid">{form.error}</p>
+          <p id={messageId} role="alert" className="text-xs font-medium text-st-unpaid">
+            {form.error}
+          </p>
         ) : tooMuch ? (
-          <p className="text-xs font-medium text-st-unpaid">Melebihi baki. Maksimum {formatMoney(ledger.payable)}.</p>
+          <p id={messageId} className="text-xs font-medium text-st-unpaid">
+            Melebihi baki. Maksimum {formatMoney(ledger.payable)}.
+          </p>
         ) : after !== null ? (
-          <p className="text-xs text-muted-foreground">
+          <p id={messageId} className="text-xs text-muted-foreground">
             Selepas simpan: baki <b className="text-foreground">{formatMoney(after)}</b>
             {after === 0 ? " · Dibayar" : form.received ? " · Sebahagian" : " · menunggu semakan"}
           </p>
@@ -382,7 +423,8 @@ function PayForm({
         <Button type="button" variant="outline" onClick={onDone} disabled={form.busy}>
           Batal <kbd className="hidden text-[10px] text-muted-foreground sm:inline">Esc</kbd>
         </Button>
-        <Button type="submit" disabled={form.busy || !form.amount.trim() || tooMuch}>
+        {/* Disabled only while saving: the double-submit guard. Bad input is reported on submit. */}
+        <Button type="submit" disabled={form.busy}>
           {form.busy && <Spinner className="size-4" />}
           {form.busy ? "Menyimpan…" : "Simpan"} <kbd className="hidden text-[10px] opacity-80 sm:inline">↵</kbd>
         </Button>
@@ -407,22 +449,35 @@ function AmountForm({
   const { run } = useKelab();
   const [amount, setAmount] = useState(senToInput(ledger.charge.amount));
   const [reason, setReason] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setErrorState] = useState<{ message: string; field: "amount" | "reason" | null } | null>(null);
   const [busy, setBusy] = useState(false);
   const [exemptOpen, setExemptOpen] = useState(false);
+  const amountInput = useRef<HTMLInputElement>(null);
+  const reasonInput = useRef<HTMLTextAreaElement>(null);
+  const errorId = useId();
   const paidSoFar = ledger.confirmed + ledger.pending;
   const needsReason = paidSoFar > 0;
   const changed = amount !== senToInput(ledger.charge.amount);
 
   useEffect(() => onDirtyChange?.(changed || reason.trim() !== ""), [changed, reason, onDirtyChange]);
 
+  // A field error moves focus to that field, whose aria-describedby carries the message.
+  const setError = (message: string | null, field: "amount" | "reason" | null = null) => {
+    setErrorState(message === null ? null : { message, field });
+    if (field === "amount") amountInput.current?.focus();
+    if (field === "reason") reasonInput.current?.focus();
+  };
+  const fieldProps = (field: "amount" | "reason") =>
+    error?.field === field ? { "aria-invalid": true as const, "aria-describedby": errorId } : {};
+
   const saveAmount = async (event: FormEvent) => {
     event.preventDefault();
+    if (busy) return;
     const result = parseMoney(amount);
-    if (result.error !== null) return setError(result.error);
-    if (result.sen === 0) return setError("RM0 tidak dibenarkan. Gunakan Kecualikan di bawah.");
-    if (result.sen < paidSoFar) return setError(`Tidak boleh kurang daripada ${formatMoney(paidSoFar)} yang telah dibayar. Batalkan bayaran dahulu.`);
-    if (needsReason && !reason.trim()) return setError("Ahli ini sudah membayar. Nyatakan sebab perubahan.");
+    if (result.error !== null) return setError(result.error, "amount");
+    if (result.sen === 0) return setError("RM0 tidak dibenarkan. Gunakan Kecualikan di bawah.", "amount");
+    if (result.sen < paidSoFar) return setError(`Tidak boleh kurang daripada ${formatMoney(paidSoFar)} yang telah dibayar. Batalkan bayaran dahulu.`, "amount");
+    if (needsReason && !reason.trim()) return setError("Ahli ini sudah membayar. Nyatakan sebab perubahan.", "reason");
     setBusy(true);
     setError(null);
     try {
@@ -438,7 +493,7 @@ function AmountForm({
   };
 
   const toggleExempt = async () => {
-    if (!reason.trim()) return setError("Nyatakan sebab pengecualian.");
+    if (!reason.trim()) return setError("Nyatakan sebab pengecualian.", "reason");
     setBusy(true);
     setError(null);
     try {
@@ -477,7 +532,17 @@ function AmountForm({
               </button>
             )}
           </div>
-          <MoneyInput id="charge-amount" value={amount} onChange={(event) => setAmount(event.target.value)} invalid={Boolean(error)} />
+          <MoneyInput
+            id="charge-amount"
+            ref={amountInput}
+            value={amount}
+            onChange={(event) => {
+              setAmount(event.target.value);
+              if (error?.field === "amount") setError(null);
+            }}
+            invalid={error?.field === "amount"}
+            {...fieldProps("amount")}
+          />
         </div>
       )}
       {(needsReason || exemptOpen || ledger.charge.exempt) && (
@@ -485,13 +550,24 @@ function AmountForm({
           <Label htmlFor="charge-reason" className="text-xs text-muted-foreground">
             Sebab {needsReason || exemptOpen || ledger.charge.exempt ? "(wajib)" : ""}
           </Label>
-          <Textarea id="charge-reason" rows={2} value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Disimpan dalam log audit" />
+          <Textarea
+            id="charge-reason"
+            ref={reasonInput}
+            rows={2}
+            value={reason}
+            onChange={(event) => {
+              setReason(event.target.value);
+              if (error?.field === "reason") setError(null);
+            }}
+            placeholder="Disimpan dalam log audit"
+            {...fieldProps("reason")}
+          />
         </div>
       )}
       {error && (
-        <p className="text-xs font-medium text-st-unpaid">
-          {error}{" "}
-          {error.includes("Batalkan") && (
+        <p id={errorId} role="alert" className="text-xs font-medium text-st-unpaid">
+          {error.message}{" "}
+          {error.message.includes("Batalkan") && (
             <button type="button" onClick={onHistory} className="underline">
               Buka sejarah
             </button>
@@ -546,19 +622,22 @@ function VoluntaryEditor({
   const [tab, setTab] = useState<EditorTab>("pay");
   const form = usePaymentForm(initialInput);
   const input = useRef<HTMLInputElement>(null);
+  const errorId = useId();
   const payments = view.paymentsFor(cell.member.id, null, cell.column.collection.id);
 
-  useEffect(() => {
-    if (tab === "pay") input.current?.focus();
-  }, [tab]);
+  const fail = (message: string) => {
+    form.setError(message);
+    input.current?.focus();
+  };
+
   useEffect(() => onDirtyChange?.(form.amount.trim() !== ""), [form.amount, onDirtyChange]);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (form.busy) return;
     const result = parseMoney(form.amount);
-    if (result.error !== null) return form.setError(result.error);
-    if (result.sen === 0) return form.setError("Amaun mesti lebih daripada RM0.");
+    if (result.error !== null) return fail(result.error);
+    if (result.sen === 0) return fail("Amaun mesti lebih daripada RM0.");
     form.setBusy(true);
     form.setError(null);
     try {
@@ -590,42 +669,50 @@ function VoluntaryEditor({
       <p className="text-xs text-muted-foreground">
         Sumbangan sukarela: tiada amaun wajib dan tiada baki tertunggak. Jumlah setakat ini <Money sen={cell.received} className="font-semibold text-foreground" />.
       </p>
-      <Tabs
-        value={tab}
-        onChange={setTab}
-        tabs={[
-          ["pay", "Rekod sumbangan"],
-          ["history", `Sejarah (${payments.length})`],
-        ]}
-      />
-      {tab === "pay" ? (
-        <form onSubmit={submit} className="grid gap-2.5" noValidate>
-          <MoneyInput
-            ref={input}
-            aria-label="Amaun sumbangan"
-            value={form.amount}
-            onChange={(event) => {
-              form.setAmount(event.target.value);
-              form.setError(null);
-            }}
-            placeholder="0.00"
-            invalid={Boolean(form.error)}
-          />
-          {form.error && <p className="text-xs font-medium text-st-unpaid">{form.error}</p>}
-          <PaymentDetails {...form} />
-          <div className="grid grid-cols-2 gap-2">
-            <Button type="button" variant="outline" onClick={onDone} disabled={form.busy}>
-              Batal
-            </Button>
-            <Button type="submit" disabled={form.busy || !form.amount.trim()}>
-              {form.busy && <Spinner className="size-4" />}
-              Simpan
-            </Button>
-          </div>
-        </form>
-      ) : (
-        <PaymentList payments={payments} empty="Belum ada sumbangan." />
-      )}
+      {/* The form's state lives in this component, so it survives switching tabs. */}
+      <Tabs value={tab} onValueChange={(value) => setTab(value as EditorTab)} className="gap-3">
+        <EditorTabs
+          tabs={[
+            ["pay", "Rekod sumbangan"],
+            ["history", `Sejarah (${payments.length})`],
+          ]}
+        />
+        <TabsContent value="pay">
+          <form onSubmit={submit} className="grid gap-2.5" noValidate>
+            <MoneyInput
+              ref={input}
+              data-autofocus
+              aria-label="Amaun sumbangan"
+              value={form.amount}
+              onChange={(event) => {
+                form.setAmount(event.target.value);
+                form.setError(null);
+              }}
+              placeholder="0.00"
+              invalid={Boolean(form.error)}
+              aria-describedby={form.error ? errorId : undefined}
+            />
+            {form.error && (
+              <p id={errorId} role="alert" className="text-xs font-medium text-st-unpaid">
+                {form.error}
+              </p>
+            )}
+            <PaymentDetails {...form} />
+            <div className="grid grid-cols-2 gap-2">
+              <Button type="button" variant="outline" onClick={onDone} disabled={form.busy}>
+                Batal
+              </Button>
+              <Button type="submit" disabled={form.busy}>
+                {form.busy && <Spinner className="size-4" />}
+                Simpan
+              </Button>
+            </div>
+          </form>
+        </TabsContent>
+        <TabsContent value="history">
+          <PaymentList payments={payments} empty="Belum ada sumbangan." />
+        </TabsContent>
+      </Tabs>
     </>
   );
 }
@@ -636,6 +723,7 @@ function IncludeMember({ cell, onDone }: { cell: Extract<MatrixCell, { kind: "na
   const [amount, setAmount] = useState(collection.defaultAmount !== null ? senToInput(collection.defaultAmount) : "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const errorId = useId();
 
   const include = async () => {
     let override: Sen | null = null;
@@ -668,11 +756,22 @@ function IncludeMember({ cell, onDone }: { cell: Extract<MatrixCell, { kind: "na
           <Label htmlFor="include-amount" className="text-xs text-muted-foreground">
             Amaun {collection.type === "monthly" ? "sebulan" : "perlu dibayar"} jika disertakan
           </Label>
-          <MoneyInput id="include-amount" value={amount} onChange={(event) => setAmount(event.target.value)} invalid={Boolean(error)} />
+          <MoneyInput
+            id="include-amount"
+            data-autofocus
+            value={amount}
+            onChange={(event) => setAmount(event.target.value)}
+            invalid={Boolean(error)}
+            aria-describedby={error ? errorId : undefined}
+          />
           {collection.type === "monthly" && <p className="text-xs text-muted-foreground">Caj dicipta untuk setiap bulan dalam tempoh kutipan.</p>}
         </div>
       )}
-      {error && <p className="text-xs font-medium text-st-unpaid">{error}</p>}
+      {error && (
+        <p id={errorId} role="alert" className="text-xs font-medium text-st-unpaid">
+          {error}
+        </p>
+      )}
       <div className="grid grid-cols-2 gap-2">
         <Button type="button" variant="outline" onClick={onDone} disabled={busy}>
           Tutup

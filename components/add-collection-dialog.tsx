@@ -26,9 +26,12 @@ export function AddCollectionDialog({
   open,
   onOpenChange,
   onCreated,
+  onCloseAutoFocus,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Opened without a Trigger: lets the caller return focus to whatever opened it. */
+  onCloseAutoFocus?: (event: Event) => void;
   onCreated?: (collectionId: string) => void;
 }) {
   const { data } = useSnapshot();
@@ -92,7 +95,7 @@ export function AddCollectionDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => !busy && onOpenChange(next)}>
-      <DialogContent className="max-h-[92svh] overflow-y-auto rounded-2xl sm:max-w-md">
+      <DialogContent className="max-h-[92svh] overflow-y-auto rounded-2xl sm:max-w-md" onCloseAutoFocus={onCloseAutoFocus}>
         <form onSubmit={submit} className="grid gap-4" noValidate>
           <DialogHeader>
             <DialogTitle>Tambah kutipan (lajur baharu)</DialogTitle>
