@@ -225,7 +225,7 @@ export function BayaranPage() {
               <div className="grid gap-1">
                 <Label className="text-xs text-muted-foreground">Kaedah</Label>
                 <Select value={method} onValueChange={(value) => setMethod(value as PaymentMethod | "all")}>
-                  <SelectTrigger aria-label="Tapis kaedah" className="h-10 w-full rounded-xl bg-card sm:w-40">
+                  <SelectTrigger aria-label="Tapis kaedah" className="w-full sm:w-40">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -242,7 +242,7 @@ export function BayaranPage() {
                 <div className="grid gap-1">
                   <Label className="text-xs text-muted-foreground">Status</Label>
                   <Select value={state} onValueChange={(value) => setState(value as PaymentState | "all")}>
-                    <SelectTrigger aria-label="Tapis status" className="h-10 w-full rounded-xl bg-card sm:w-44">
+                    <SelectTrigger aria-label="Tapis status" className="w-full sm:w-44">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>

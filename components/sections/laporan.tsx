@@ -627,10 +627,10 @@ export function ReportsPage() {
               }}
               disabled={!allowAll && collectionOptions.length === 0}
             >
-              <SelectTrigger id="rpt-collection" className="h-10 w-full rounded-xl bg-card">
+              <SelectTrigger id="rpt-collection" className="w-full">
                 <SelectValue placeholder="Tiada kutipan yang sesuai" />
               </SelectTrigger>
-              <SelectContent position="popper">
+              <SelectContent>
                 {allowAll && <SelectItem value={ALL}>Semua kutipan</SelectItem>}
                 {collectionOptions.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
@@ -644,10 +644,10 @@ export function ReportsPage() {
             <div className="grid min-w-0 gap-1.5 sm:w-56">
               <Label htmlFor="rpt-month">Bulan</Label>
               <Select value={period?.id ?? ALL} onValueChange={setPeriodPick}>
-                <SelectTrigger id="rpt-month" className="h-10 w-full rounded-xl bg-card">
+                <SelectTrigger id="rpt-month" className="w-full">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent position="popper">
+                <SelectContent>
                   <SelectItem value={ALL}>Semua bulan setakat ini</SelectItem>
                   {periodOptions.map((p) => (
                     <SelectItem key={p.id} value={p.id}>

@@ -120,7 +120,7 @@ export function DesignSystemPage() {
             <div className="grid gap-1 text-xs text-muted-foreground">
               Pilihan
               <Select>
-                <SelectTrigger className="h-11 w-full rounded-xl bg-card">
+                <SelectTrigger className="h-11 w-full">
                   <SelectValue placeholder="Pilih kategori" />
                 </SelectTrigger>
                 <SelectContent>

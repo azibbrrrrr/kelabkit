@@ -429,7 +429,7 @@ export function EmojiPicker({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       {anchor ? <PopoverAnchor asChild>{children}</PopoverAnchor> : <PopoverTrigger asChild>{children}</PopoverTrigger>}
-      <PopoverContent align={align} className="w-[340px] gap-0 overflow-hidden rounded-2xl p-0" aria-label={`Ikon kutipan: ${label}`}
+      <PopoverContent align={align} className="w-[340px] gap-0 overflow-hidden p-0" aria-label={`Ikon kutipan: ${label}`}
         onCloseAutoFocus={onCloseAutoFocus}
         // Start in the search field, not on the first tab, so typing searches straight away.
         onOpenAutoFocus={(event) => {

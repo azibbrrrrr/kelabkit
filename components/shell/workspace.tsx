@@ -139,7 +139,7 @@ function PendingBell() {
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-80 rounded-2xl p-0">
+      <PopoverContent align="end" className="w-80 p-0">
         <div className="border-b px-4 py-3">
           <p className="text-sm font-semibold">Menunggu semakan</p>
           <p className="text-xs text-muted-foreground">Sahkan setelah wang diterima. Belum dikira sebagai kutipan.</p>

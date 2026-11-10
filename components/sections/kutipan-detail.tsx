@@ -42,6 +42,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Spinner } from "@/components/ui/spinner";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -470,20 +471,20 @@ function MonthPicker({
       <Label htmlFor="kutipan-month" className="shrink-0 text-sm font-medium">
         Paparan bulan
       </Label>
-      <select
-        id="kutipan-month"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="h-11 w-full rounded-xl border border-input bg-card px-3 text-sm font-medium outline-none focus:border-ring focus:ring-1 focus:ring-ring sm:w-64"
-      >
-        <option value="all">Semua bulan (ringkasan setiap ahli)</option>
-        {periods.map((period) => (
-          <option key={period.id} value={period.id}>
-            {formatMonthLong(period.month)}
-            {period.month === thisMonth ? " (bulan ini)" : period.month > thisMonth ? " (akan datang)" : ""}
-          </option>
-        ))}
-      </select>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger id="kutipan-month" className="h-11 w-full font-medium sm:w-72">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">Semua bulan (ringkasan setiap ahli)</SelectItem>
+          {periods.map((period) => (
+            <SelectItem key={period.id} value={period.id}>
+              {formatMonthLong(period.month)}
+              {period.month === thisMonth ? " (bulan ini)" : period.month > thisMonth ? " (akan datang)" : ""}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }

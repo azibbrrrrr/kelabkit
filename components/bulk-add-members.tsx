@@ -449,7 +449,7 @@ export function BulkAddMembersDialog({
 function CategorySelect({ value, onChange, ariaLabel }: { value: CategoryValue; onChange: (value: CategoryValue) => void; ariaLabel: string }) {
   return (
     <Select value={value} onValueChange={(next) => onChange(next as CategoryValue)}>
-      <SelectTrigger aria-label={ariaLabel} className="h-9 w-full rounded-xl bg-card">
+      <SelectTrigger aria-label={ariaLabel} className="w-full">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
