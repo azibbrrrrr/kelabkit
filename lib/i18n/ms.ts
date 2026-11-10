@@ -179,6 +179,8 @@ export const ms = {
     UNAUTHENTICATED: "Sesi anda telah tamat. Sila log masuk semula.",
     NO_CLUB: "Anda belum mempunyai kelab. Cipta kelab dahulu.",
     SESSION_REQUIRED: "Sesi diperlukan, contohnya 2026.",
+    SESSION_TOO_LONG: "Sesi terlalu panjang (maksimum 40 aksara).",
+    SCHOOL_TOO_LONG: "Nama sekolah terlalu panjang (maksimum 120 aksara).",
     CLUB_LIMIT: "Anda sudah mencapai had lima kelab.",
     PREFS_INVALID: "Tetapan paparan itu tidak dapat disimpan.",
     INTERNAL: "Sesuatu tidak kena. Cuba lagi.",

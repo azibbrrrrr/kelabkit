@@ -47,6 +47,7 @@ const userA = randomUUID();
 const userB = randomUUID();
 let clubA: string;
 let clubB: string;
+let clubC: string;
 let admin: ReturnType<typeof createPool>;
 
 const as = (userId: string | null, clubId: string | null, name = "Bendahari Ujian", fromCookie = false) => (state.current = userId ? { userId, clubId, name, fromCookie } : null);
@@ -97,10 +98,11 @@ beforeAll(async () => {
   for (const { id } of (await admin.query("select id from clubs where name like 'kk-test-%'")).rows) await dropClub(id);
   clubA = await newClub(userA, "neon-a");
   clubB = await newClub(userB, "neon-b");
+  clubC = await newClub(userA, "neon-c");
 });
 afterAll(async () => {
-  for (const club of [clubA, clubB]) if (club) await wipeStored(club);
-  for (const club of [clubA, clubB]) if (club) await dropClub(club);
+  for (const club of [clubA, clubB, clubC]) if (club) await wipeStored(club);
+  for (const club of [clubA, clubB, clubC]) if (club) await dropClub(club);
   await admin?.end();
   await closePool();
 });
@@ -308,6 +310,45 @@ describe("full flow as club A's owner", () => {
     expect(await confirmAttachmentUploads(payment, [meta])).toMatchObject({ ok: false, code: "ATTACHMENT_UPLOAD_FAILED" });
     expect(await storedKeys(`clubs/${clubA}/payments/${payment}/`)).toEqual([]);
     expect(Number((await admin.query("select count(*) n from attachments where payment_id = $1", [payment])).rows[0].n)).toBe(0);
+  });
+});
+
+describe("club settings (Tetapan > Maklumat kelab)", () => {
+  it("every field the form shows persists, each save leaves an audit row, and the snapshot returns it", async () => {
+    as(userA, clubC);
+    const auditCount = async () => (await backend.load()).audit.filter((a) => a.action === "club.update").length;
+    const before = await auditCount();
+    await backend.updateClub({ name: "  Kelab   Baharu ", school: "SMK Contoh", session: "2027", treasurerName: "Puan  Aminah" });
+    let snap = await backend.load();
+    expect(snap.club).toMatchObject({ id: clubC, name: "Kelab Baharu", school: "SMK Contoh", session: "2027", treasurerName: "Puan Aminah" });
+    expect(await auditCount()).toBe(before + 1);
+    // Stored, not just echoed: read through the owner connection.
+    const row = (await admin.query("select name, school, session, treasurer_name from clubs where id = $1", [clubC])).rows[0];
+    expect(row).toEqual({ name: "Kelab Baharu", school: "SMK Contoh", session: "2027", treasurer_name: "Puan Aminah" });
+    // A blank school clears it; fields not mentioned keep their value.
+    await backend.updateClub({ school: "  " });
+    snap = await backend.load();
+    expect(snap.club).toMatchObject({ school: null, name: "Kelab Baharu", session: "2027" });
+    expect(await auditCount()).toBe(before + 2);
+  });
+
+  it("is refused on the server with the form's limits, and a refusal writes nothing", async () => {
+    as(userA, clubC);
+    const audits = async () => Number((await admin.query("select count(*) n from audit_logs where club_id = $1", [clubC])).rows[0].n);
+    const n = await audits();
+    expect(await codeOf(backend.updateClub({ name: " " }))).toBe("NAME_REQUIRED");
+    expect(await codeOf(backend.updateClub({ name: "a".repeat(121) }))).toBe("NAME_TOO_LONG");
+    expect(await codeOf(backend.updateClub({ treasurerName: "" }))).toBe("NAME_REQUIRED");
+    expect(await codeOf(backend.updateClub({ session: "  " }))).toBe("SESSION_REQUIRED");
+    expect(await codeOf(backend.updateClub({ session: "s".repeat(41) }))).toBe("SESSION_TOO_LONG");
+    expect(await codeOf(backend.updateClub({ school: "s".repeat(121) }))).toBe("SCHOOL_TOO_LONG");
+    expect(await audits()).toBe(n);
+    expect((await admin.query("select name, session from clubs where id = $1", [clubC])).rows[0]).toEqual({ name: "Kelab Baharu", session: "2027" });
+  });
+
+  it("another user cannot change this club", async () => {
+    as(userB, clubC);
+    expect(await codeOf(backend.updateClub({ name: "Dirampas" }))).toBe("FORBIDDEN");
   });
 });
 

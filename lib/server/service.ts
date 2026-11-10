@@ -22,7 +22,7 @@ import type {
   PaymentInput,
 } from "@/lib/backend/types";
 import { attachmentKey, checkProofFile, isUuid, MAX_ACTIVE_ATTACHMENTS, type ProofCandidate } from "@/lib/attachments";
-import { checkAmount, checkReason, cleanName } from "@/lib/backend/rules";
+import { checkAmount, checkClubChanges, checkReason, cleanName } from "@/lib/backend/rules";
 import { checkCollectionIcon, describeIcon } from "@/lib/collection-icon";
 import { withClub, withUser, type Tx } from "@/lib/db/with-club";
 import { KelabError } from "@/lib/errors";
@@ -466,17 +466,19 @@ export async function attachmentDownloadUrl(ctx: Ctx, attachmentId: string): Pro
 
 // ---- club ----------------------------------------------------------------------------------
 
-export function updateClub(ctx: Ctx, changes: ClubChanges): Promise<void> {
+export function updateClub(ctx: Ctx, input: ClubChanges): Promise<void> {
+  // Refused before any statement runs, with the same limits the form and the demo apply.
+  const changes = checkClubChanges(input);
   return db(ctx, async (tx) => {
     const { rows } = await tx.query("select name, session, school, treasurer_name from clubs where id = $1 for update", [ctx.clubId]);
     const club = rows[0];
     if (!club) throw new KelabError("FORBIDDEN");
     await tx.query("update clubs set name = $2, session = $3, school = $4, treasurer_name = $5, updated_at = now() where id = $1", [
       ctx.clubId,
-      changes.name !== undefined ? cleanName(changes.name) : club.name,
-      changes.session !== undefined ? changes.session.trim() || club.session : club.session,
-      changes.school !== undefined ? changes.school?.trim() || null : club.school,
-      changes.treasurerName !== undefined ? cleanName(changes.treasurerName) : club.treasurer_name,
+      changes.name ?? club.name,
+      changes.session ?? club.session,
+      changes.school !== undefined ? changes.school : club.school,
+      changes.treasurerName ?? club.treasurer_name,
     ]);
     await audit(tx, ctx, "club.update", ctx.clubId, "Tetapan kelab dikemas kini");
   });
