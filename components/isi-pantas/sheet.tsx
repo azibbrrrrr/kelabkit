@@ -5,6 +5,7 @@
 // its ghost values stay visible); phones get a tall bottom sheet. Conversation state lives
 // in IsiPantasProvider; this file only draws it.
 
+import { ProofField } from "@/components/attachments";
 import { CollectionIcon } from "@/components/collection-icon";
 import { useKelab } from "@/components/data-provider";
 import { turnSummary, useIsiPantas, type Item, type Pick, type Turn } from "@/components/isi-pantas/provider";
@@ -438,6 +439,11 @@ function SuggestionCard({ item, data, view }: { item: Item; data: Snapshot; view
           {collection && <CollectionIcon collection={collection} size="xs" className="mr-1 inline-block align-[-2px]" />}
           {what.join(" · ")}
         </p>
+        {live && item.files.length > 0 && (
+          <p className="mt-0.5 flex items-center gap-1 text-[11px] text-primary-strong">
+            <Paperclip aria-hidden className="size-3 shrink-0" /> {item.files.length} bukti akan dilampirkan
+          </p>
+        )}
         {warn && (
           <ul id={issuesId} className="mt-0.5 grid gap-0.5 text-[11px] font-medium text-st-partial">
             {s.issues.map((code) => (
@@ -684,8 +690,9 @@ function DoneCard({ turn, onReveal }: { turn: Turn; onReveal?: () => void }) {
 }
 
 function Composer() {
-  const { draft, setDraft, submit, busy } = useIsiPantas();
+  const { draft, setDraft, draftFiles, setDraftFiles, submit, busy } = useIsiPantas();
   const [clipError, setClipError] = useState<string | null>(null);
+  const [proofOpen, setProofOpen] = useState(false);
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
       event.preventDefault();
@@ -722,9 +729,28 @@ function Composer() {
             {clipError}
           </p>
         )}
+        {(proofOpen || draftFiles.length > 0) && (
+          <div className="mt-2 border-t border-border pt-2">
+            <p className="mb-1.5 text-[11px] text-muted-foreground">Bukti dilampirkan pada setiap bayaran yang anda terima daripada tampalan ini.</p>
+            <ProofField staged={draftFiles} onChange={setDraftFiles} />
+          </div>
+        )}
         <div className="mt-1.5 flex items-center gap-1.5">
-          <Button variant="outline" size="icon-sm" className="size-7 rounded-lg" disabled aria-label="Lampir gambar atau PDF (akan datang)" title="Lampir gambar atau PDF (akan datang)">
+          <Button
+            variant="outline"
+            size="icon-sm"
+            className="relative size-7 rounded-lg"
+            aria-label="Lampirkan bukti (gambar atau PDF)"
+            aria-expanded={proofOpen || draftFiles.length > 0}
+            title="Lampirkan bukti (gambar atau PDF)"
+            onClick={() => setProofOpen((open) => !open)}
+          >
             <Paperclip />
+            {draftFiles.length > 0 && (
+              <span aria-hidden className="absolute -top-1 -right-1 grid size-3.5 place-items-center rounded-full bg-primary-fill text-[9px] font-bold text-primary-foreground">
+                {draftFiles.length}
+              </span>
+            )}
           </Button>
           <Button variant="outline" size="icon-sm" className="size-7 rounded-lg" aria-label="Tampal dari papan klip" title="Tampal dari papan klip" onClick={() => void paste()}>
             <ClipboardPaste />

@@ -121,6 +121,24 @@ export type Allocation = {
   amount: Sen;
 };
 
+/**
+ * Proof of payment (bank transfer screenshot, receipt photo, PDF). Only metadata lives in
+ * the snapshot; the bytes are stored separately (IndexedDB in the demo, private object
+ * storage in Phase 2). Removing keeps the row with `removedAt` and a reason; the bytes go.
+ */
+export type Attachment = {
+  id: string;
+  paymentId: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  /** Hex SHA-256 of the stored bytes; refuses the same file twice on one payment. */
+  sha256: string;
+  createdAt: string;
+  removedAt: string | null;
+  removedReason: string | null;
+};
+
 export type AuditAction =
   | "member.create"
   | "member.update"
@@ -137,6 +155,8 @@ export type AuditAction =
   | "payment.record"
   | "payment.confirm"
   | "payment.reverse"
+  | "attachment.add"
+  | "attachment.remove"
   | "club.update";
 
 export type AuditEntry = {
@@ -159,5 +179,7 @@ export type Snapshot = {
   charges: Charge[];
   payments: Payment[];
   allocations: Allocation[];
+  /** Snapshots saved before attachments existed have no key; `upgradeSnapshot` fills []. */
+  attachments: Attachment[];
   audit: AuditEntry[];
 };

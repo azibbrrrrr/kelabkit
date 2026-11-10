@@ -17,6 +17,10 @@ import type {
 } from "@/lib/backend/types";
 import { buildSeed } from "@/lib/backend/seed";
 import { checkCollectionIcon, describeIcon } from "@/lib/collection-icon";
+import { checkAttachmentBatch } from "@/lib/attachments";
+import { sha256Hex } from "@/lib/attachments-client";
+import { clearFiles, deleteFile, getFile, putFile } from "@/lib/backend/file-store";
+import { upgradeSnapshot } from "@/lib/backend/upgrade";
 import { KelabError } from "@/lib/errors";
 import { normaliseName } from "@/lib/names";
 import { formatMoney, today } from "@/lib/format";
@@ -35,7 +39,7 @@ function read(): Snapshot {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (raw) {
-      memory = upgrade(JSON.parse(raw) as Snapshot);
+      memory = upgradeSnapshot(JSON.parse(raw) as Snapshot);
       return memory;
     }
   } catch {
@@ -44,12 +48,6 @@ function read(): Snapshot {
   memory = buildSeed(today());
   write(memory);
   return memory;
-}
-
-/** Fills fields added since a snapshot was saved, so older demo data keeps working without a reset. */
-function upgrade(state: Snapshot): Snapshot {
-  for (const collection of state.collections) collection.icon ??= null;
-  return state;
 }
 
 function write(state: Snapshot) {
@@ -473,6 +471,80 @@ export const demoBackend: KelabBackend = {
     write(state);
   },
 
+  async addAttachments(paymentId, files) {
+    await wait();
+    const state = clone(read());
+    const payment = state.payments.find((row) => row.id === paymentId);
+    if (!payment) throw new KelabError("PAYMENT_NOT_FOUND");
+    const hashed = await Promise.all(
+      files.map(async (file) => ({ file, fileName: file.name, mimeType: file.type, sizeBytes: file.size, sha256: await sha256Hex(file) })),
+    );
+    const mimes = checkAttachmentBatch(hashed, payment, state.attachments.filter((row) => row.paymentId === paymentId));
+    const stored: string[] = [];
+    try {
+      for (const [i, item] of hashed.entries()) {
+        const id = uid("att");
+        // Bytes first: a metadata row never points at nothing. Failure rolls the bytes back.
+        await putFile(id, item.file.slice(0, item.file.size, mimes[i]));
+        stored.push(id);
+        state.attachments.push({
+          id,
+          paymentId,
+          fileName: item.fileName,
+          mimeType: mimes[i],
+          sizeBytes: item.sizeBytes,
+          sha256: item.sha256,
+          createdAt: now(),
+          removedAt: null,
+          removedReason: null,
+        });
+        audit(
+          state,
+          "attachment.add",
+          id,
+          `Bukti "${item.fileName}" dilampirkan pada bayaran ${formatMoney(payment.amount)} daripada ${memberName(state, payment.memberId)}`,
+        );
+      }
+    } catch (error) {
+      await Promise.all(stored.map((id) => deleteFile(id).catch(() => undefined)));
+      throw error;
+    }
+    write(state);
+    return stored;
+  },
+
+  async removeAttachment(attachmentId, reason) {
+    await wait();
+    const state = clone(read());
+    const attachment = state.attachments.find((row) => row.id === attachmentId);
+    if (!attachment) throw new KelabError("ATTACHMENT_NOT_FOUND");
+    if (attachment.removedAt) throw new KelabError("ATTACHMENT_ALREADY_REMOVED");
+    const payment = state.payments.find((row) => row.id === attachment.paymentId);
+    if (!payment) throw new KelabError("PAYMENT_NOT_FOUND");
+    if (payment.state === "reversed") throw new KelabError("ATTACHMENT_PAYMENT_REVERSED");
+    const why = checkReason(reason);
+    await deleteFile(attachmentId);
+    attachment.removedAt = now();
+    attachment.removedReason = why;
+    audit(
+      state,
+      "attachment.remove",
+      attachmentId,
+      `Bukti "${attachment.fileName}" dibuang daripada bayaran ${formatMoney(payment.amount)} daripada ${memberName(state, payment.memberId)}`,
+      why,
+    );
+    write(state);
+  },
+
+  async getAttachmentBlob(attachmentId) {
+    const attachment = read().attachments.find((row) => row.id === attachmentId);
+    if (!attachment) throw new KelabError("ATTACHMENT_NOT_FOUND");
+    if (attachment.removedAt) throw new KelabError("ATTACHMENT_ALREADY_REMOVED");
+    const blob = await getFile(attachmentId);
+    if (!blob) throw new KelabError("ATTACHMENT_FILE_MISSING");
+    return blob;
+  },
+
   async updateClub(changes: ClubChanges) {
     await wait();
     const state = clone(read());
@@ -487,6 +559,8 @@ export const demoBackend: KelabBackend = {
   async resetDemo() {
     await wait();
     memory = null;
+    // Bytes go with the metadata. If IndexedDB is unavailable there are no bytes to clear.
+    await clearFiles().catch(() => undefined);
     try {
       window.localStorage.removeItem(STORAGE_KEY);
     } catch {

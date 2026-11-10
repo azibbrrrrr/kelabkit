@@ -1,5 +1,6 @@
 "use client";
 
+import { AttachProofButton, PaymentAttachments, ProofChip } from "@/components/attachments";
 import { useKelab, useSnapshot } from "@/components/data-provider";
 import { ReasonDialog } from "@/components/reason-dialog";
 import { LabelChip } from "@/components/shared";
@@ -97,8 +98,12 @@ export function PaymentList({
                     </p>
                   )}
                 </div>
-                <LabelChip entry={paymentStateLabels[payment.state]} compact />
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  <LabelChip entry={paymentStateLabels[payment.state]} compact />
+                  <ProofChip payment={payment} />
+                </div>
               </div>
+              <PaymentAttachments payment={payment} />
               {payment.state !== "reversed" && (
                 <div className="mt-2.5 flex flex-wrap gap-2 border-t border-border pt-2.5">
                   {payment.state === "pending" && (
@@ -107,6 +112,7 @@ export function PaymentList({
                       Sahkan wang diterima
                     </Button>
                   )}
+                  <AttachProofButton payment={payment} />
                   <Button size="sm" variant="danger-outline" onClick={() => setReversing(payment)}>
                     <Undo2 /> Batalkan bayaran…
                   </Button>

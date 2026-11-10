@@ -94,6 +94,15 @@ export interface KelabBackend {
   confirmPayment(paymentId: string): Promise<void>;
   /** Keeps the payment and marks it reversed with a reason; never deletes. */
   reversePayment(paymentId: string, reason: string): Promise<void>;
+  /**
+   * Attaches proof (screenshot, receipt photo, PDF) to a payment, all or nothing. Refused for
+   * reversed payments, other file types, files over 10 MB, a sixth active file, and the same
+   * file twice on one payment. Returns the new attachment ids.
+   */
+  addAttachments(paymentId: string, files: File[]): Promise<string[]>;
+  /** Soft remove: keeps the metadata with removedAt and the reason, deletes the bytes. */
+  removeAttachment(attachmentId: string, reason: string): Promise<void>;
+  getAttachmentBlob(attachmentId: string): Promise<Blob>;
   updateClub(changes: ClubChanges): Promise<void>;
   resetDemo(): Promise<void>;
 }

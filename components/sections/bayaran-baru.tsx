@@ -1,5 +1,6 @@
 "use client";
 
+import { ProofField, attachStaged, type StagedFile } from "@/components/attachments";
 import { useKelab, useSnapshot } from "@/components/data-provider";
 import { ChoiceCard, ChoiceCards, SegmentedChoice } from "@/components/choice";
 import { DatePicker } from "@/components/date-picker";
@@ -285,6 +286,7 @@ function PaymentForm({ member, onChange, onSaved }: { member: Member; onChange: 
   const [paidOn, setPaidOn] = useState(view.today);
   const [reference, setReference] = useState("");
   const [note, setNote] = useState("");
+  const [staged, setStaged] = useState<StagedFile[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // One key per attempt: a double tap or retry returns the same payment instead of a second one.
@@ -393,6 +395,7 @@ function PaymentForm({ member, onChange, onSaved }: { member: Member; onChange: 
     setError(null);
     const key = attemptKey.current;
     const before = totals;
+    const paymentIds: string[] = [];
     const done = { payment: false, contributions: [] as { collection: Collection; amount: Sen }[] };
     const common = {
       memberId: member.id,
@@ -422,27 +425,32 @@ function PaymentForm({ member, onChange, onSaved }: { member: Member; onChange: 
     try {
       await run(async (backend) => {
         if (allocations.length) {
-          await backend.recordPayment({
+          const id = await backend.recordPayment({
             ...common,
             idempotencyKey: key,
             allocations: allocations.map((line) => ({ chargeId: line.item.ledger.charge.id, amount: line.amount })),
           });
+          paymentIds.push(id);
           done.payment = true;
         }
         for (const line of contributions) {
           // Derived from the attempt key, so a retry of this attempt never doubles a contribution.
-          await backend.recordContribution({ ...common, idempotencyKey: `${key}:${line.collection.id}`, collectionId: line.collection.id, amount: line.amount });
+          paymentIds.push(
+            await backend.recordContribution({ ...common, idempotencyKey: `${key}:${line.collection.id}`, collectionId: line.collection.id, amount: line.amount }),
+          );
           done.contributions.push(line);
         }
       });
       attemptKey.current = crypto.randomUUID();
       toast.success(`${formatMoney(grandTotal)} direkod untuk ${member.name}.`);
-      onSaved(report(null));
+      // The money is stored whatever happens to the files; a failure is shown on the success panel.
+      onSaved(report(await attachStaged(run, paymentIds, staged)));
     } catch (cause) {
       if (done.payment || done.contributions.length) {
         // Part of it is stored. Show exactly what was saved rather than pretending all or nothing.
         attemptKey.current = crypto.randomUUID();
-        onSaved(report(`Sebahagian tidak disimpan: ${messageFor(cause)} Rekod semula bahagian yang tinggal.`));
+        const attachWarning = await attachStaged(run, paymentIds, staged);
+        onSaved(report(`Sebahagian tidak disimpan: ${messageFor(cause)} Rekod semula bahagian yang tinggal.${attachWarning ? ` ${attachWarning}` : ""}`));
       } else setError(messageFor(cause));
     } finally {
       setBusy(false);
@@ -656,6 +664,7 @@ function PaymentForm({ member, onChange, onSaved }: { member: Member; onChange: 
               </Label>
               <Textarea id="pay-note" rows={2} value={note} onChange={(event) => setNote(event.target.value)} placeholder="cth. Diserahkan semasa mesyuarat guru" />
             </div>
+            <ProofField staged={staged} onChange={setStaged} />
             <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-border bg-card px-3 py-2.5">
               <Checkbox checked={received} onCheckedChange={(value) => setReceived(value === true)} className="mt-0.5" />
               <span className="text-xs leading-snug">
