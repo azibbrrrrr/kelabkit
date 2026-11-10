@@ -37,3 +37,18 @@ export function parseCsv(text: string, delimiter = ","): string[][] {
   }
   return rows.filter((cells) => cells.some((cell) => cell.trim() !== ""));
 }
+
+/**
+ * Serialises rows to CSV for a spreadsheet: every text cell quoted, quotes doubled, CRLF line
+ * ends, a BOM so Excel reads UTF-8. A text cell starting with = + - @ (or tab/CR) gets a leading
+ * apostrophe so a name or note cannot run as a formula when the file is opened. Numbers are
+ * written as given and are never prefixed.
+ */
+export function toCsv(rows: (string | number)[][]): string {
+  const cell = (value: string | number) => {
+    if (typeof value === "number") return String(value);
+    const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+    return `"${safe.replace(/"/g, '""')}"`;
+  };
+  return "﻿" + rows.map((row) => row.map(cell).join(",")).join("\r\n") + "\r\n";
+}

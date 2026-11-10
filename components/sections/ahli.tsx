@@ -17,13 +17,19 @@ import {
   type Column,
 } from "@/components/shared";
 import { Button } from "@/components/ui/button";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatMoney, formatNumber, initials } from "@/lib/format";
+import { downloadTextFile } from "@/lib/download";
 import { useT } from "@/lib/i18n/react";
 import { categoryLabels } from "@/lib/labels";
+import { TEMPLATE_FILENAME, buildMemberTemplate } from "@/lib/member-import";
+import { MEMBER_EXPORT_FILENAME, MEMBER_SORTS, buildMemberExport, parseMemberSort, sortMembers, DEFAULT_MEMBER_SORT, type MemberRow, type MemberSort } from "@/lib/member-list";
 import type { Member, Sen } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { ListPlus, SearchX, UserCheck, UserPlus, UsersRound, Wallet } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { Download, FileDown, FileUp, SearchX, UserCheck, UserPlus, UsersRound, Wallet } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 import { useDeferredValue, useMemo, useState } from "react";
 
 // The member register: who is in the club, which collections they are in, and what they
@@ -31,12 +37,23 @@ import { useDeferredValue, useMemo, useState } from "react";
 
 type Filter = "all" | "active" | "inactive" | "owing";
 
-type Row = { member: Member; collections: number; dueNow: Sen; overdue: number };
+type Row = MemberRow;
 
 export function AhliPage() {
   const t = useT();
   const { data, view } = useSnapshot();
   const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
+  // The sort lives only in ?isih=; the default (largest balance first) leaves the URL clean.
+  const sort = parseMemberSort(params.get("isih"));
+  const setSort = (next: MemberSort) => {
+    const search = new URLSearchParams(params.toString());
+    if (next === DEFAULT_MEMBER_SORT) search.delete("isih");
+    else search.set("isih", next);
+    const qs = search.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  };
   const [query, setQuery] = useState("");
   // The heavy filter/render follows the keystroke at lower priority, so typing never waits on it.
   const deferredQuery = useDeferredValue(query);
@@ -55,8 +72,7 @@ export function AhliPage() {
       .map((member) => {
         const totals = view.memberTotals(member.id);
         return { member, collections: joined.get(member.id)?.size ?? 0, dueNow: totals.dueNow, overdue: totals.counts.overdue };
-      })
-      .sort((a, b) => a.member.name.localeCompare(b.member.name, "ms"));
+      });
   }, [data.members, data.participants, view]);
 
   const counts = useMemo(
@@ -72,7 +88,7 @@ export function AhliPage() {
   const rows = useMemo(() => {
     const q = deferredQuery.trim().toLowerCase();
     const digits = q.replace(/\D/g, "");
-    return all.filter(({ member, dueNow }) => {
+    return sortMembers(all, sort).filter(({ member, dueNow }) => {
       if (filter === "active" && !member.active) return false;
       if (filter === "inactive" && member.active) return false;
       if (filter === "owing" && dueNow <= 0) return false;
@@ -80,7 +96,12 @@ export function AhliPage() {
       if (member.name.toLowerCase().includes(q)) return true;
       return digits.length >= 3 && (member.phone ?? "").replace(/\D/g, "").includes(digits);
     });
-  }, [all, filter, deferredQuery]);
+  }, [all, filter, deferredQuery, sort]);
+
+  const exportRows = () => {
+    downloadTextFile(MEMBER_EXPORT_FILENAME(view.today), buildMemberExport(rows));
+    toast.success(t("members.exported", { count: rows.length }));
+  };
 
   const owingTotal = all.reduce((total, row) => total + row.dueNow, 0);
 
@@ -137,12 +158,24 @@ export function AhliPage() {
         actions={
           <>
             <Button variant="brand" onClick={() => setAddMany(true)}>
-              <ListPlus /> {t("members.addBulk")}
+              <FileUp /> {t("members.import")}
             </Button>
             <Button onClick={() => setAddOne(true)}>
               <UserPlus /> {t("members.addOne")}
             </Button>
           </>
+        }
+        more={
+          data.members.length > 0 && (
+            <>
+              <DropdownMenuItem disabled={rows.length === 0} onSelect={exportRows}>
+                <FileDown /> {t("members.export")}
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => downloadTextFile(TEMPLATE_FILENAME, buildMemberTemplate())}>
+                <Download /> {t("bulkAdd.downloadTemplate")}
+              </DropdownMenuItem>
+            </>
+          )
         }
       />
 
@@ -154,7 +187,7 @@ export function AhliPage() {
           action={
             <div className="flex flex-wrap justify-center gap-2">
               <Button variant="brand" onClick={() => setAddMany(true)}>
-                <ListPlus /> {t("members.addBulk")}
+                <FileUp /> {t("members.import")}
               </Button>
               <Button onClick={() => setAddOne(true)}>
                 <UserPlus /> {t("members.addFirst")}
@@ -190,6 +223,26 @@ export function AhliPage() {
                   { value: "owing", label: t("members.filter.owing"), count: counts.owing },
                 ]}
               />
+            }
+            actions={
+              <>
+                <span className="text-small whitespace-nowrap text-muted-foreground tabular-nums" role="status">
+                  {t("members.count", { count: rows.length })}
+                </span>
+                <Select value={sort} onValueChange={(value) => setSort(value as MemberSort)}>
+                  <SelectTrigger className="w-full min-w-52 lg:w-auto" aria-label={t("members.sort.label")}>
+                    <span className="text-muted-foreground">{t("members.sort.label")}:</span>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent align="end">
+                    {MEMBER_SORTS.map((value) => (
+                      <SelectItem key={value} value={value}>
+                        {t(`members.sort.${value}` as const)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </>
             }
           />
 
