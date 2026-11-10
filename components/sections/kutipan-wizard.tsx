@@ -45,7 +45,7 @@ const typeHints: Record<CollectionType, string> = {
 };
 
 const fieldClass =
-  "h-11 w-full min-w-0 rounded-xl border border-input bg-card px-3 text-sm outline-none focus:border-primary focus:ring-3 focus:ring-ring/20 aria-invalid:border-destructive";
+  "h-11 w-full min-w-0 rounded-xl border border-input bg-card px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring aria-invalid:border-destructive";
 
 type Details = {
   name: string;
@@ -407,7 +407,7 @@ function Stepper({ step, onGo }: { step: Step; onGo: (step: Step) => void }) {
               <span
                 className={cn(
                   "grid size-8 shrink-0 place-items-center rounded-full text-sm font-semibold",
-                  state === "current" && "bg-primary text-primary-foreground",
+                  state === "current" && "bg-primary-fill text-primary-foreground",
                   state === "done" && "bg-primary-light text-primary-strong",
                   state === "todo" && "border border-border text-muted-foreground",
                 )}
@@ -486,7 +486,7 @@ function DetailsStep({
                     on ? "border-primary bg-primary-tint" : "border-border bg-card hover:bg-primary-tint/60",
                   )}
                 >
-                  <span className={cn("grid size-9 shrink-0 place-items-center rounded-xl", on ? "bg-primary text-primary-foreground" : "bg-primary-light text-primary-strong")}>
+                  <span className={cn("grid size-9 shrink-0 place-items-center rounded-xl", on ? "bg-primary-fill text-primary-foreground" : "bg-primary-light text-primary-strong")}>
                     <Icon className="size-4.5" aria-hidden />
                   </span>
                   <span className="min-w-0">

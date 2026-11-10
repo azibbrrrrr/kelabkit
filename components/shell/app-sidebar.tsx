@@ -54,7 +54,7 @@ export function AppSidebar() {
                     </SidebarMenuButton>
                     {count > 0 && (
                       <SidebarMenuBadge
-                        className="top-3 right-2 rounded-full bg-st-pending-bg text-st-pending peer-data-active/menu-button:bg-white/25 peer-data-active/menu-button:text-white"
+                        className="top-3 right-2 rounded-full bg-st-pending-bg text-st-pending peer-data-active/menu-button:bg-white peer-data-active/menu-button:text-primary-strong"
                         aria-label={`${count} bayaran menunggu semakan`}
                       >
                         {count}

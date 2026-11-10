@@ -19,6 +19,7 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-fill: var(--primary-fill);
   --color-primary-strong: var(--primary-strong);
   --color-primary-light: var(--primary-light);
   --color-primary-tint: var(--primary-tint);
@@ -87,7 +88,11 @@
   --card-foreground: #1f2937;
   --popover: #ffffff;
   --popover-foreground: #1f2937;
+  /* Brand accent: tints, charts, icons, decoration. Not a fill behind white text. */
   --primary: #e75480;
+  /* Solid fill behind white text and icons (buttons, selected pills, badges): white on it
+     is at least 4.5:1 in every theme. --primary-foreground is the text on this fill. */
+  --primary-fill: #d13f6e;
   --primary-foreground: #ffffff;
   /* Brand colour for text on white: #E75480 is 3.5:1, this is 5.9:1. */
   --primary-strong: #c2185b;
@@ -96,14 +101,19 @@
   --secondary: #fce4ec;
   --secondary-foreground: #b0234f;
   --muted: #f9eef2;
-  --muted-foreground: #6b7280;
+  /* 4.5:1 or better on every surface it sits on, tints included, in all five themes. */
+  --muted-foreground: #5f6672;
+  /* Decoration and disabled only; never text (2.5:1 on white). */
   --subtle: #9ca3af;
   --accent: #fff1f6;
   --accent-foreground: #b0234f;
-  --destructive: #ef4444;
+  /* Used as text (destructive buttons, field errors) and tinted fills: 5.5:1 on its 10% tint. */
+  --destructive: #b91c1c;
   --border: #f5d6df;
-  --input: #f0cdd8;
-  --ring: #e75480;
+  /* Control boundaries (inputs, checkboxes) need 3:1; --border stays decorative. */
+  --input: #b97e99;
+  /* Focus ring at full strength: 3:1 or better against white and the page background. */
+  --ring: var(--primary-fill);
   --success: #16a34a;
   --warning: #f59e0b;
   --info: #8b5cf6;
@@ -119,8 +129,10 @@
   --sidebar-accent: #fff1f6;
   --sidebar-accent-foreground: #b0234f;
   --sidebar-border: #f5d6df;
-  --sidebar-ring: #e75480;
-  --brand-gradient: linear-gradient(135deg, #f27aa0 0%, #e75480 100%);
+  --sidebar-ring: var(--primary-fill);
+  /* Carries white text and icons (active nav, BrandMark, FAB), so its lightest stop is the
+     AA fill and it darkens toward --primary-strong. */
+  --brand-gradient: linear-gradient(135deg, var(--primary-fill) 0%, var(--primary-strong) 100%);
   --page-glow: #fde3ec;
 
   /* Payment status: fixed across themes. Text colours meet 4.5:1 on their backgrounds. */
@@ -137,7 +149,7 @@
   --st-exempt-bg: #ede9fe;
   --st-pending: #c2410c;
   --st-pending-bg: #ffedd5;
-  --st-na: #6b7280;
+  --st-na: #4b5563;
   --st-na-bg: #f3f4f6;
   --st-future: #475569;
   --st-future-bg: #f1f5f9;
@@ -154,6 +166,7 @@
 [data-accent="lavender"] {
   --background: #faf8ff;
   --primary: #8e6bd8;
+  --primary-fill: #8662cf;
   --primary-strong: #6340b5;
   --primary-light: #ede7fb;
   --primary-tint: #f6f2fe;
@@ -163,8 +176,7 @@
   --accent: #f6f2fe;
   --accent-foreground: #5b3aa8;
   --border: #e2d9f7;
-  --input: #d9cdf3;
-  --ring: #8e6bd8;
+  --input: #9488bc;
   --chart-1: #8e6bd8;
   --chart-2: #b39ae8;
   --chart-3: #d3c5f3;
@@ -174,14 +186,13 @@
   --sidebar-accent: #f6f2fe;
   --sidebar-accent-foreground: #5b3aa8;
   --sidebar-border: #e2d9f7;
-  --sidebar-ring: #8e6bd8;
-  --brand-gradient: linear-gradient(135deg, #ab8ee6 0%, #8e6bd8 100%);
   --page-glow: #ece4fc;
 }
 
 [data-accent="teal"] {
   --background: #f6fcfb;
   --primary: #1e9e91;
+  --primary-fill: #008579;
   --primary-strong: #0f6e64;
   --primary-light: #d7f2ee;
   --primary-tint: #effaf8;
@@ -191,8 +202,7 @@
   --accent: #effaf8;
   --accent-foreground: #0f6e64;
   --border: #cdebe6;
-  --input: #bfe3dd;
-  --ring: #1e9e91;
+  --input: #6a9897;
   --chart-1: #1e9e91;
   --chart-2: #5cc2b7;
   --chart-3: #a5e0d9;
@@ -202,15 +212,14 @@
   --sidebar-accent: #effaf8;
   --sidebar-accent-foreground: #0f6e64;
   --sidebar-border: #cdebe6;
-  --sidebar-ring: #1e9e91;
-  --brand-gradient: linear-gradient(135deg, #3fb9ac 0%, #1e9e91 100%);
   --page-glow: #d9f3ef;
 }
 
 [data-accent="peach"] {
   --background: #fff9f5;
   --primary: #ee8455;
-  --primary-strong: #b4501f;
+  --primary-fill: #be5928;
+  --primary-strong: #a3461a;
   --primary-light: #fde5d8;
   --primary-tint: #fff3ec;
   --secondary: #fde5d8;
@@ -219,8 +228,7 @@
   --accent: #fff3ec;
   --accent-foreground: #a3461a;
   --border: #f8dacb;
-  --input: #f4cdb9;
-  --ring: #ee8455;
+  --input: #af8775;
   --chart-1: #ee8455;
   --chart-2: #f4a882;
   --chart-3: #f9cbb3;
@@ -230,14 +238,13 @@
   --sidebar-accent: #fff3ec;
   --sidebar-accent-foreground: #a3461a;
   --sidebar-border: #f8dacb;
-  --sidebar-ring: #ee8455;
-  --brand-gradient: linear-gradient(135deg, #f6a27c 0%, #ee8455 100%);
   --page-glow: #fde3d4;
 }
 
 [data-accent="sage"] {
   --background: #f8fbf7;
   --primary: #6e9e78;
+  --primary-fill: #52815d;
   --primary-strong: #456f4e;
   --primary-light: #e2eee2;
   --primary-tint: #f2f7f1;
@@ -247,8 +254,7 @@
   --accent: #f2f7f1;
   --accent-foreground: #3f6647;
   --border: #d8e6d6;
-  --input: #cbdcc9;
-  --ring: #6e9e78;
+  --input: #7f9587;
   --chart-1: #6e9e78;
   --chart-2: #95ba9c;
   --chart-3: #bfd6c2;
@@ -258,8 +264,6 @@
   --sidebar-accent: #f2f7f1;
   --sidebar-accent-foreground: #3f6647;
   --sidebar-border: #d8e6d6;
-  --sidebar-ring: #6e9e78;
-  --brand-gradient: linear-gradient(135deg, #8fb898 0%, #6e9e78 100%);
   --page-glow: #e1eee0;
 }
 
@@ -269,7 +273,7 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border outline-ring;
   }
   html {
     color-scheme: light;

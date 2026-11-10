@@ -142,7 +142,7 @@ export function AddCollectionDialog({
                 type="date"
                 value={dueDate}
                 onChange={(event) => setDueDate(event.target.value)}
-                className="h-11 rounded-xl border border-input bg-card px-3 text-sm outline-none focus:border-primary focus:ring-3 focus:ring-ring/20"
+                className="h-11 rounded-xl border border-input bg-card px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               />
               <p className="text-xs text-muted-foreground">Tanpa tarikh akhir, caj tidak akan menjadi Lewat.</p>
             </div>

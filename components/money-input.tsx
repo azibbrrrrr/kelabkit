@@ -21,7 +21,7 @@ export const MoneyInput = forwardRef<
         autoComplete="off"
         aria-invalid={invalid || undefined}
         className={cn(
-          "h-11 w-full rounded-xl border border-input bg-card pr-3 pl-11 text-[15px] font-medium tabular-nums outline-none placeholder:font-normal placeholder:text-subtle focus:border-primary focus:ring-3 focus:ring-ring/20",
+          "h-11 w-full rounded-xl border border-input bg-card pr-3 pl-11 text-[15px] font-medium tabular-nums outline-none placeholder:font-normal placeholder:text-muted-foreground focus:border-ring focus:ring-1 focus:ring-ring",
           invalid && "border-destructive focus:border-destructive focus:ring-destructive/20",
         )}
         {...props}

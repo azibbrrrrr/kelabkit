@@ -196,15 +196,16 @@ function ThemeCard() {
                 role="radio"
                 aria-checked={selected}
                 onClick={() => choose(t.id)}
-                className="group flex w-14 flex-col items-center gap-1.5 rounded-xl outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                className="group flex w-14 flex-col items-center gap-1.5 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
                 <span
                   className={cn(
                     "grid size-12 place-items-center rounded-full text-white transition-shadow",
                     selected ? "ring-3 ring-offset-2 ring-offset-card" : "group-hover:ring-2 group-hover:ring-offset-2 group-hover:ring-offset-card",
                   )}
-                  // Theme swatch colours are defined once in lib/themes.ts.
-                  style={{ backgroundColor: t.swatch, ["--tw-ring-color" as string]: `color-mix(in srgb, ${t.swatch} 45%, transparent)` }}
+                  // Theme colours are defined once in lib/themes.ts. The circle uses the AA fill so the
+                  // white check keeps 3:1; the row swatch below shows the reference accent.
+                  style={{ backgroundColor: t.fill, ["--tw-ring-color" as string]: `color-mix(in srgb, ${t.fill} 45%, transparent)` }}
                 >
                   {selected && <Check className="size-5" strokeWidth={2.6} aria-hidden />}
                 </span>
@@ -262,7 +263,7 @@ function ThemeCard() {
                   aria-checked={selected}
                   onClick={() => choose(t.id)}
                   className={cn(
-                    "flex items-center gap-3 rounded-xl border bg-card px-3 py-2.5 text-left transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+                    "flex items-center gap-3 rounded-xl border bg-card px-3 py-2.5 text-left transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                     selected ? "border-primary bg-primary-tint" : "border-border hover:bg-primary-tint/60",
                   )}
                 >
@@ -277,7 +278,7 @@ function ThemeCard() {
                   <span
                     className={cn(
                       "grid size-5 shrink-0 place-items-center rounded-full border",
-                      selected ? "border-transparent bg-primary text-primary-foreground" : "border-input bg-card",
+                      selected ? "border-transparent bg-primary-fill text-primary-foreground" : "border-input bg-card",
                     )}
                     aria-hidden
                   >

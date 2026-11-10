@@ -839,7 +839,7 @@ function ReportCards({ report }: { report: Report }) {
           return (
             <div key={col.key} className="flex min-w-0 items-baseline justify-between gap-3">
               <dt className="shrink-0 text-xs text-muted-foreground">{col.label}</dt>
-              <dd className={cn("min-w-0 text-right break-words", (col.kind === "money" || col.kind === "count") && "tabular-nums", total && "font-semibold", value === null && "text-subtle")}>
+              <dd className={cn("min-w-0 text-right break-words", (col.kind === "money" || col.kind === "count") && "tabular-nums", total && "font-semibold", value === null && "text-muted-foreground")}>
                 {col.kind === "status" && Array.isArray(value) && value.length > 0 ? (
                   <span className="inline-flex flex-wrap justify-end gap-1">
                     {value.map((chip) => (
@@ -872,7 +872,7 @@ function ValueCell({ col, value, total }: { col: Col; value: Value; total?: bool
         "px-3 py-2.5 align-top print:px-1.5 print:py-1",
         numeric && "text-right whitespace-nowrap tabular-nums",
         col.kind === "text" && "min-w-28 max-w-64 break-words whitespace-normal",
-        value === null && "text-subtle",
+        value === null && "text-muted-foreground",
         lowCol(col),
       )}
     >

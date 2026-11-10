@@ -589,7 +589,7 @@ function Grid({
                           "relative h-[58px] cursor-cell border-b border-l border-border px-2.5 align-middle outline-none",
                           ROW_FADE,
                           isActive
-                            ? "z-[5] bg-primary-tint ring-2 ring-primary ring-inset"
+                            ? "z-[5] bg-primary-tint ring-2 ring-ring ring-inset"
                             : column.period && column.period.month === monthOf(view.today)
                               ? "bg-primary-tint/30"
                               : ri % 2 === 1 && "bg-grid-zebra",
@@ -607,7 +607,7 @@ function Grid({
                               align="start"
                               sideOffset={8}
                               collisionPadding={12}
-                              className="max-h-[calc(100svh-24px)] w-[360px] overflow-y-auto rounded-2xl border-border p-4 shadow-[0_24px_48px_-20px_rgba(231,84,128,.35)]"
+                              className="max-h-[calc(100svh-24px)] w-[360px] overflow-y-auto rounded-2xl border-border p-4 shadow-[0_24px_48px_-20px_color-mix(in_srgb,var(--primary)_35%,transparent)]"
                               onOpenAutoFocus={(event) => event.preventDefault()}
                               onCloseAutoFocus={(event) => event.preventDefault()}
                               onInteractOutside={(event) => {
@@ -678,11 +678,11 @@ function describeCell(cell: MatrixCell) {
 
 /** What one grid cell shows: paid / required on top, derived status below. */
 function CellView({ cell }: { cell: MatrixCell }) {
-  if (cell.kind === "na") return <span className="text-xs text-subtle" title="Tidak Berkaitan">—</span>;
+  if (cell.kind === "na") return <span className="text-xs text-muted-foreground" title="Tidak Berkaitan">—</span>;
   if (cell.kind === "voluntary")
     return (
       <div className="grid gap-0.5">
-        <span className={cn("text-[12.5px] font-semibold tabular-nums", cell.received === 0 && "font-normal text-subtle")}>
+        <span className={cn("text-[12.5px] font-semibold tabular-nums", cell.received === 0 && "font-normal text-muted-foreground")}>
           {cell.received > 0 ? formatMoneyShort(cell.received) : "—"}
         </span>
         {cell.pending > 0 ? (
