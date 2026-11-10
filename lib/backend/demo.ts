@@ -21,7 +21,7 @@ import { checkAttachmentBatch } from "@/lib/attachments";
 import { sha256Hex } from "@/lib/attachments-client";
 import { clearFiles, deleteFile, getFile, putFile } from "@/lib/backend/file-store";
 import { upgradeSnapshot } from "@/lib/backend/upgrade";
-import { checkAmount, checkReason, cleanName } from "@/lib/backend/rules";
+import { checkAmount, checkClubChanges, checkReason, cleanName } from "@/lib/backend/rules";
 import { KelabError } from "@/lib/errors";
 import { normaliseName } from "@/lib/names";
 import { formatMoney, today } from "@/lib/format";
@@ -526,13 +526,14 @@ export const demoBackend: KelabBackend = {
     return blob;
   },
 
-  async updateClub(changes: ClubChanges) {
+  async updateClub(input: ClubChanges) {
     await wait();
+    const changes = checkClubChanges(input);
     const state = clone(read());
-    if (changes.name !== undefined) state.club.name = cleanName(changes.name);
-    if (changes.session !== undefined) state.club.session = changes.session.trim() || state.club.session;
-    if (changes.school !== undefined) state.club.school = changes.school?.trim() || null;
-    if (changes.treasurerName !== undefined) state.club.treasurerName = cleanName(changes.treasurerName);
+    if (changes.name !== undefined) state.club.name = changes.name;
+    if (changes.session !== undefined) state.club.session = changes.session;
+    if (changes.school !== undefined) state.club.school = changes.school;
+    if (changes.treasurerName !== undefined) state.club.treasurerName = changes.treasurerName;
     audit(state, "club.update", state.club.id, "Tetapan kelab dikemas kini");
     write(state);
   },

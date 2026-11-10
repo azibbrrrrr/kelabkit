@@ -177,6 +177,8 @@ export const en: Messages = {
     UNAUTHENTICATED: "Your session has ended. Please sign in again.",
     NO_CLUB: "You do not have a club yet. Create one first.",
     SESSION_REQUIRED: "Enter the session, for example 2026.",
+    SESSION_TOO_LONG: "The session is too long (40 characters at most).",
+    SCHOOL_TOO_LONG: "The school name is too long (120 characters at most).",
     CLUB_LIMIT: "You have reached the limit of five clubs.",
     PREFS_INVALID: "Those preferences could not be saved.",
     INTERNAL: "Something went wrong. Try again.",
