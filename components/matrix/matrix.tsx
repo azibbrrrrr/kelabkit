@@ -46,6 +46,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { CollectionIcon, CollectionName } from "@/components/collection-icon";
+import { EmojiPicker, useSetCollectionIcon } from "@/components/emoji-picker";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Spinner } from "@/components/ui/spinner";
@@ -70,6 +72,7 @@ import {
   LayoutGrid,
   MoveHorizontal,
   Pencil,
+  Smile,
   Plus,
   Rows3,
   Sheet as SheetIcon,
@@ -265,7 +268,7 @@ export function MatrixPage() {
                     onSelect={(event) => event.preventDefault()}
                     onCheckedChange={(value) => setHidden((current) => ({ ...current, [collection.id]: !value }))}
                   >
-                    <span className="truncate">{collection.name}</span>
+                    <CollectionName collection={collection} />
                   </DropdownMenuCheckboxItem>
                 ))}
                 <DropdownMenuSeparator />
@@ -1161,6 +1164,10 @@ function ColumnHeader({
   // and blur (commit) the rename field the moment it appears.
   const toRename = useRef(false);
   const renameInput = useRef<HTMLInputElement>(null);
+  // Same hand-off for "Tukar ikon": the picker opens once the menu has let go of focus.
+  const toIcon = useRef(false);
+  const [iconOpen, setIconOpen] = useState(false);
+  const saveIcon = useSetCollectionIcon();
   const progress = view.collectionProgress(collection.id);
 
   const finish = () => {
@@ -1194,103 +1201,131 @@ function ColumnHeader({
     // A one-off or voluntary header uses its column's full width; the name truncates only when the
     // column really is narrower. A monthly group's label pins beside the frozen Ahli column (its
     // th's px-3 included) while the group's months scroll under it, until the group scrolls out.
-    <div
-      className={cn("flex items-start justify-between gap-1 py-2", pinned && "sticky w-max gap-3")}
-      // Renaming a pinned label: take the label's full allowance so the input is not content-sized.
-      style={pinned ? { left: pinned.left, maxWidth: Math.min(260, pinned.maxWidth), width: renaming ? Math.min(260, pinned.maxWidth) : undefined } : undefined}
+    <EmojiPicker
+      anchor
+      open={iconOpen}
+      onOpenChange={setIconOpen}
+      value={collection.icon ?? null}
+      onChange={(icon) => void saveIcon(collection, icon)}
+      label={collection.name}
+      onCloseAutoFocus={(event) => {
+        event.preventDefault();
+        menuButton.current?.focus();
+      }}
     >
-      {/* data-fit: auto-fit measures this block, plus the menu button and gap beside it. While
-          renaming it grows to every pixel left of the ⋮ button, so the input fills the header. */}
-      <div className={cn("min-w-0", renaming && "flex-1")} data-fit={pinned ? undefined : 28}>
-        {renaming ? (
-          <Input
-            ref={renameInput}
-            // Double-click path; the menu path focuses it once the menu has let go of focus.
-            autoFocus={!toRename.current}
-            value={name}
-            disabled={busy}
-            onChange={(event) => setName(event.target.value)}
-            // Select the whole name on open: it shows from its first letter and typing replaces it.
-            onFocus={(event) => event.currentTarget.select()}
-            onBlur={() => void commit()}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") void commit();
-              if (event.key === "Escape") {
-                setName(collection.name);
-                finish();
-              }
-              event.stopPropagation();
-            }}
-            aria-label="Nama kutipan"
-            // w-full min-w-0: exactly the header's width beside the ⋮ button, never wider, even in a 120px column.
-            className="h-7 rounded-md border-primary bg-card px-1.5 py-0 text-[13px] font-semibold md:text-[13px]"
-          />
-        ) : (
-          // Plain text, not a button: renaming is a menu action (keyboard and touch). Double-click
-          // stays as a mouse shortcut; title shows the full name when truncated.
-          <span onDoubleClick={() => setRenaming(true)} title={collection.name} className="block max-w-full truncate text-left text-[13px] font-semibold">
-            {collection.name}
+      <div
+        className={cn("flex items-start justify-between gap-1 py-2", pinned && "sticky w-max gap-3")}
+        // Renaming a pinned label: take the label's full allowance so the input is not content-sized.
+        style={pinned ? { left: pinned.left, maxWidth: Math.min(260, pinned.maxWidth), width: renaming ? Math.min(260, pinned.maxWidth) : undefined } : undefined}
+      >
+        {/* data-fit: auto-fit measures this block, plus the menu button and gap beside it. While
+            renaming it grows to every pixel left of the ⋮ button, so the input fills the header. */}
+        <div className={cn("min-w-0", renaming && "flex-1")} data-fit={pinned ? undefined : 28}>
+          {renaming ? (
+            <Input
+              ref={renameInput}
+              // Double-click path; the menu path focuses it once the menu has let go of focus.
+              autoFocus={!toRename.current}
+              value={name}
+              disabled={busy}
+              onChange={(event) => setName(event.target.value)}
+              // Select the whole name on open: it shows from its first letter and typing replaces it.
+              onFocus={(event) => event.currentTarget.select()}
+              onBlur={() => void commit()}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") void commit();
+                if (event.key === "Escape") {
+                  setName(collection.name);
+                  finish();
+                }
+                event.stopPropagation();
+              }}
+              aria-label="Nama kutipan"
+              // w-full min-w-0: exactly the header's width beside the ⋮ button, never wider, even in a 120px column.
+              className="h-7 rounded-md border-primary bg-card px-1.5 py-0 text-[13px] font-semibold md:text-[13px]"
+            />
+          ) : (
+            // Plain text, not a button: renaming is a menu action (keyboard and touch). Double-click
+            // stays as a mouse shortcut; title shows the full name when truncated.
+            // The icon sits inline in the truncating line, so a narrow column still ellipsises the name.
+            <span onDoubleClick={() => setRenaming(true)} title={collection.name} className="block max-w-full truncate text-left text-[13px] font-semibold">
+              <CollectionIcon collection={collection} size="xs" className="mr-1.5 inline-block align-[-2px] text-primary-strong" />
+              {collection.name}
+            </span>
+          )}
+          <span className="block truncate text-[11px] font-normal text-muted-foreground">
+            {amount}
+            {collection.status === "draft" && " · Draf"}
+            {collection.status === "completed" && " · Selesai"}
+            {collection.type !== "voluntary" && ` · ${progress.settled}/${progress.total} selesai`}
           </span>
-        )}
-        <span className="block truncate text-[11px] font-normal text-muted-foreground">
-          {amount}
-          {collection.status === "draft" && " · Draf"}
-          {collection.status === "completed" && " · Selesai"}
-          {collection.type !== "voluntary" && ` · ${progress.settled}/${progress.total} selesai`}
-        </span>
-      </div>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button ref={menuButton} variant="ghost" size="icon-xs" aria-label={`Tindakan untuk ${collection.name}`} className="-mr-1 rounded-md text-muted-foreground hover:bg-primary-light aria-expanded:bg-primary-light">
-            <EllipsisVertical className="size-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          align="end"
-          className="w-56"
-          onCloseAutoFocus={(event) => {
-            if (!toRename.current) return;
-            toRename.current = false;
-            event.preventDefault();
-            renameInput.current?.focus();
-          }}
-        >
-          <DropdownMenuItem
-            onSelect={() => {
-              toRename.current = true;
-              setName(collection.name);
-              setRenaming(true);
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button ref={menuButton} variant="ghost" size="icon-xs" aria-label={`Tindakan untuk ${collection.name}`} className="-mr-1 rounded-md text-muted-foreground hover:bg-primary-light aria-expanded:bg-primary-light">
+              <EllipsisVertical className="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            className="w-56"
+            onCloseAutoFocus={(event) => {
+              if (toIcon.current) {
+                toIcon.current = false;
+                event.preventDefault();
+                setIconOpen(true);
+                return;
+              }
+              if (!toRename.current) return;
+              toRename.current = false;
+              event.preventDefault();
+              renameInput.current?.focus();
             }}
           >
-            <Pencil /> Namakan semula
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href={`/kutipan/${collection.id}/`}>
-              <ExternalLink /> Butiran & tetapan kutipan
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger>
-              <MoveHorizontal /> Lebar lajur
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-40">
-              <DropdownMenuItem onSelect={() => onWidth("narrow")}>Sempit</DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => onWidth("normal")}>Biasa</DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => onWidth("wide")}>Lebar</DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={() => onWidth("reset")}>Set semula</DropdownMenuItem>
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
-          <DropdownMenuItem onSelect={onHide}>
-            <EyeOff /> Sembunyikan lajur
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={onArchive} className="text-muted-foreground">
-            <Archive /> Arkibkan kutipan
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
+            <DropdownMenuItem
+              onSelect={() => {
+                toRename.current = true;
+                setName(collection.name);
+                setRenaming(true);
+              }}
+            >
+              <Pencil /> Namakan semula
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={() => {
+                toIcon.current = true;
+              }}
+            >
+              <Smile /> Tukar ikon
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href={`/kutipan/${collection.id}/`}>
+                <ExternalLink /> Butiran & tetapan kutipan
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <MoveHorizontal /> Lebar lajur
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="w-40">
+                <DropdownMenuItem onSelect={() => onWidth("narrow")}>Sempit</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => onWidth("normal")}>Biasa</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => onWidth("wide")}>Lebar</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => onWidth("reset")}>Set semula</DropdownMenuItem>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+            <DropdownMenuItem onSelect={onHide}>
+              <EyeOff /> Sembunyikan lajur
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={onArchive} className="text-muted-foreground">
+              <Archive /> Arkibkan kutipan
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </EmojiPicker>
   );
 }
 

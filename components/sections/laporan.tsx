@@ -1,5 +1,6 @@
 "use client";
 
+import { CollectionName } from "@/components/collection-icon";
 import { useSnapshot } from "@/components/data-provider";
 import { DatePicker } from "@/components/date-picker";
 import { EmptyState, FilterPills, LabelChip, PageHeader, PageShell, SectionCard } from "@/components/shared";
@@ -633,7 +634,7 @@ export function ReportsPage() {
                 {allowAll && <SelectItem value={ALL}>Semua kutipan</SelectItem>}
                 {collectionOptions.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
-                    {c.name}
+                    <CollectionName collection={c} />
                   </SelectItem>
                 ))}
               </SelectContent>

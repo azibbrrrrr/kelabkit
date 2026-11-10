@@ -4,7 +4,9 @@ import { useKelab, useSnapshot } from "@/components/data-provider";
 import { DatePicker } from "@/components/date-picker";
 import { CellEditor } from "@/components/matrix/cell-editor";
 import { MoneyInput, parseMoney } from "@/components/money-input";
-import { amountLabel, collectionTypeIcons, scheduleLabel } from "@/components/sections/kutipan";
+import { amountLabel, scheduleLabel } from "@/components/sections/kutipan";
+import { collectionTypeIcons } from "@/components/collection-icon";
+import { CollectionIconButton } from "@/components/emoji-picker";
 import { voluntarySummary } from "@/lib/money/ledger";
 import {
   ChargeStatusChips,
@@ -281,8 +283,9 @@ function TitleEditor({ collection }: { collection: Collection }) {
 
   if (!editing) {
     return (
-      <span className="inline-flex max-w-full items-start gap-2">
-        <span className="min-w-0 break-words">{collection.name}</span>
+      <span className="inline-flex max-w-full items-start gap-3">
+        <CollectionIconButton collection={collection} size="xl" className="mt-0.5 size-12 rounded-2xl bg-primary-light text-primary-strong md:size-13" />
+        <span className="min-w-0 self-center break-words">{collection.name}</span>
         {collection.status !== "archived" && (
           <Button
             variant="ghost"

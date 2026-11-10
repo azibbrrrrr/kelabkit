@@ -1,5 +1,6 @@
 "use client";
 
+import { CollectionName } from "@/components/collection-icon";
 import { useSnapshot } from "@/components/data-provider";
 import { EmptyState, FilterPills, LabelChip, Money, PageHeader, PageShell, SectionCard, StatusChip } from "@/components/shared";
 import { Button } from "@/components/ui/button";
@@ -365,7 +366,7 @@ export function RemindersPage() {
                   <SelectContent position="popper">
                     {mandatory.map((c) => (
                       <SelectItem key={c.id} value={c.id}>
-                        {c.name}
+                        <CollectionName collection={c} />
                       </SelectItem>
                     ))}
                   </SelectContent>

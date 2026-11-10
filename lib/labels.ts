@@ -60,6 +60,7 @@ export const auditActionLabels: Record<AuditAction, string> = {
   "member.reactivate": "Ahli diaktifkan semula",
   "collection.create": "Kutipan dicipta",
   "collection.rename": "Kutipan dinamakan semula",
+  "collection.icon": "Ikon kutipan ditukar",
   "collection.update": "Kutipan dikemas kini",
   "collection.status": "Status kutipan ditukar",
   "collection.participants": "Peserta kutipan dikemas kini",

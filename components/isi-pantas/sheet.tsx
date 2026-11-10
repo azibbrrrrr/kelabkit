@@ -5,6 +5,7 @@
 // its ghost values stay visible); phones get a tall bottom sheet. Conversation state lives
 // in IsiPantasProvider; this file only draws it.
 
+import { CollectionIcon } from "@/components/collection-icon";
 import { useKelab } from "@/components/data-provider";
 import { turnSummary, useIsiPantas, type Item, type Pick, type Turn } from "@/components/isi-pantas/provider";
 import { Button } from "@/components/ui/button";
@@ -433,7 +434,10 @@ function SuggestionCard({ item, data, view }: { item: Item; data: Snapshot; view
           {member?.name ?? "Ahli tidak dikenal pasti"}
           {s.issues.includes("NAME_AMBIGUOUS") && live && "?"}
         </p>
-        <p className="text-[11px] text-muted-foreground">{what.join(" · ")}</p>
+        <p className="text-[11px] text-muted-foreground">
+          {collection && <CollectionIcon collection={collection} size="xs" className="mr-1 inline-block align-[-2px]" />}
+          {what.join(" · ")}
+        </p>
         {warn && (
           <ul id={issuesId} className="mt-0.5 grid gap-0.5 text-[11px] font-medium text-st-partial">
             {s.issues.map((code) => (
@@ -503,11 +507,11 @@ function EditPicker({ item, data, view }: { item: Item; data: Snapshot; view: Vi
   const candidates = s.candidates.map((id) => view.membersById.get(id)).filter((m) => m !== undefined);
   const options = useMemo(() => {
     if (!memberId) return [];
-    const list: { value: string; label: string; note: string; disabled: boolean }[] = [];
+    const list: { value: string; label: string; note: string; disabled: boolean; collection: Collection }[] = [];
     for (const collection of data.collections.filter((c) => c.status === "active")) {
       if (collection.type === "voluntary") {
         if (view.participantsByCollection.get(collection.id)?.some((p) => p.memberId === memberId))
-          list.push({ value: `${collection.id}|`, label: collection.name, note: "sukarela", disabled: false });
+          list.push({ value: `${collection.id}|`, label: collection.name, note: "sukarela", disabled: false, collection });
         continue;
       }
       for (const charge of view.chargesByCollection.get(collection.id) ?? []) {
@@ -519,6 +523,7 @@ function EditPicker({ item, data, view }: { item: Item; data: Snapshot; view: Vi
           label: targetLabel(collection, month),
           note: ledger.payable > 0 ? `baki ${formatMoney(ledger.payable)}` : "selesai",
           disabled: ledger.payable === 0,
+          collection,
         });
       }
     }
@@ -599,6 +604,7 @@ function EditPicker({ item, data, view }: { item: Item; data: Snapshot; view: Vi
           <SelectContent className="max-h-72">
             {options.map((option) => (
               <SelectItem key={option.value} value={option.value} disabled={option.disabled}>
+                <CollectionIcon collection={option.collection} size="xs" />
                 {option.label} <span className="text-muted-foreground">· {option.note}</span>
               </SelectItem>
             ))}

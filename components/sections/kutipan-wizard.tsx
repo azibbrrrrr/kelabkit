@@ -5,7 +5,8 @@ import { ChoiceCard, ChoiceCards } from "@/components/choice";
 import { DatePicker } from "@/components/date-picker";
 import { MoneyInput, parseMoney } from "@/components/money-input";
 import { MonthPicker } from "@/components/month-picker";
-import { collectionTypeIcons } from "@/components/sections/kutipan";
+import { CollectionIcon, collectionTypeIcons } from "@/components/collection-icon";
+import { EmojiPicker } from "@/components/emoji-picker";
 import { DetailList, FilterPills, Money, PageHeader, PageShell, SearchInput, SectionCard, StatusChip, Toolbar } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -20,6 +21,7 @@ import { formatDay, formatMoney, formatMonth, today } from "@/lib/format";
 import { categoryLabels, collectionTypeLabels } from "@/lib/labels";
 import { senToInput } from "@/lib/money/amount";
 import { isMonth, monthOf, monthsBetween } from "@/lib/money/months";
+import { suggestIcon } from "@/lib/collection-icon";
 import { normaliseName } from "@/lib/names";
 import type { CollectionType, Member, MemberCategory, Sen } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -57,7 +59,14 @@ type Details = {
   dueDay: string;
   description: string;
   notes: string;
+  /** The treasurer's pick: an icon, null for none. Absent until they pick, so the name's suggestion applies. */
+  icon?: string | null;
 };
+
+/** The icon the collection will get: the treasurer's pick, else one suggested from the name. */
+function iconOf(details: Details) {
+  return details.icon !== undefined ? details.icon : suggestIcon(details.name);
+}
 
 type DetailErrors = Partial<Record<"name" | "amount" | "months" | "dueDay", string>>;
 type Exemption = { on: boolean; reason: string };
@@ -240,6 +249,7 @@ export function KutipanWizard() {
           endMonth: details.type === "monthly" ? details.endMonth : null,
           dueDay: details.type === "monthly" && day ? Number(day) : null,
           participants: participants(),
+          icon: iconOf(details),
           activate,
         }),
       );
@@ -450,22 +460,43 @@ function DetailsStep({
   errors: DetailErrors;
   months: number;
 }) {
+  const icon = iconOf(details);
   return (
     <SectionCard title="Butiran Kutipan" icon={FileText} description="Maklumat asas kutipan. Anda boleh ubah nama dan tarikh akhir kemudian.">
       <div className="grid gap-5">
         <div className="grid gap-1.5">
           <Label htmlFor="wz-name">Nama kutipan</Label>
-          <Input
-            id="wz-name"
-            value={details.name}
-            onChange={(event) => set("name", event.target.value)}
-            placeholder="cth. Jamuan Akhir Tahun"
-            className="h-11 rounded-xl"
-            maxLength={140}
-            aria-invalid={Boolean(errors.name)}
-            aria-describedby={errors.name ? "wz-name-error" : undefined}
-          />
+          <div className="flex gap-2">
+            <EmojiPicker value={icon} onChange={(next) => set("icon", next)} label={details.name.trim() || "Kutipan baharu"}>
+              <button
+                type="button"
+                aria-label="Pilih ikon kutipan"
+                aria-describedby="wz-icon-hint"
+                title="Pilih ikon"
+                className="grid size-11 shrink-0 cursor-pointer place-items-center rounded-xl border border-input bg-card text-primary-strong outline-none transition-colors hover:border-ring focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background aria-expanded:border-ring"
+              >
+                <CollectionIcon icon={icon} type={details.type} size="lg" />
+              </button>
+            </EmojiPicker>
+            <Input
+              id="wz-name"
+              value={details.name}
+              onChange={(event) => set("name", event.target.value)}
+              placeholder="cth. Jamuan Akhir Tahun"
+              className="h-11 min-w-0 flex-1 rounded-xl"
+              maxLength={140}
+              aria-invalid={Boolean(errors.name)}
+              aria-describedby={errors.name ? "wz-name-error wz-icon-hint" : "wz-icon-hint"}
+            />
+          </div>
           <FieldError id="wz-name-error" message={errors.name} />
+          <p id="wz-icon-hint" className="text-xs text-muted-foreground">
+            {details.icon !== undefined
+              ? "Ikon membantu guru mengenal kutipan sekilas pandang."
+              : icon
+                ? "Ikon dicadangkan daripada nama. Klik ikon untuk menukar."
+                : "Klik ikon untuk memilih emoji yang membantu guru mengenal kutipan ini."}
+          </p>
         </div>
 
         <fieldset className="grid gap-1.5">
@@ -923,7 +954,15 @@ function ReviewStep({
       >
         <DetailList
           items={[
-            { label: "Nama", value: details.name.trim() },
+            {
+              label: "Nama",
+              value: (
+                <span className="inline-flex items-center gap-1.5">
+                  <CollectionIcon icon={iconOf(details)} type={details.type} size="sm" />
+                  {details.name.trim()}
+                </span>
+              ),
+            },
             { label: "Jenis", value: collectionTypeLabels[details.type] },
             { label: "Amaun asal", value: voluntary ? "Ikut kemampuan" : defaultSen !== null ? `${formatMoney(defaultSen)}${details.type === "monthly" ? " sebulan" : " seorang"}` : "—" },
             ...(details.type === "monthly"
@@ -1032,7 +1071,10 @@ function LiveSummary({
         <dl className="grid gap-2.5 text-sm">
           <div className="flex justify-between gap-3">
             <dt className="text-muted-foreground">Nama</dt>
-            <dd className="min-w-0 truncate text-right font-medium">{details.name.trim() || "—"}</dd>
+            <dd className="flex min-w-0 items-center justify-end gap-1.5 font-medium">
+              {details.name.trim() && <CollectionIcon icon={iconOf(details)} type={details.type} size="xs" />}
+              <span className="truncate">{details.name.trim() || "—"}</span>
+            </dd>
           </div>
           <div className="flex justify-between gap-3">
             <dt className="text-muted-foreground">Jenis</dt>

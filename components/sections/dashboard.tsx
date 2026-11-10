@@ -1,6 +1,7 @@
 "use client";
 
 import { useSnapshot } from "@/components/data-provider";
+import { CollectionIcon } from "@/components/collection-icon";
 import { Blossom, Floral } from "@/components/floral";
 import { CardLink, LabelChip, PageShell, ProgressBar, SectionCard, StatCard } from "@/components/shared";
 import { Button } from "@/components/ui/button";
@@ -20,17 +21,12 @@ import {
   ChevronRight,
   Clock3,
   Database,
-  Gift,
   HandCoins,
-  HeartHandshake,
   MessageCircle,
   Plus,
   ReceiptText,
   Search,
-  Shirt,
   UsersRound,
-  UtensilsCrossed,
-  Wallet,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -40,16 +36,6 @@ import { useMemo, useState } from "react";
 // figure comes from the same ledger functions as the matrix and reports. Where the
 // reference showed growth comparisons or scheduled sending, this shows a meaningful
 // ratio or a link to the manual workflow instead (Phase 0 decision Q1).
-
-function collectionIcon(collection: Collection): LucideIcon {
-  const name = collection.name.toLowerCase();
-  if (collection.type === "voluntary") return HeartHandshake;
-  if (collection.type === "monthly") return Database;
-  if (name.includes("jamuan") || name.includes("makan")) return UtensilsCrossed;
-  if (name.includes("baju")) return Shirt;
-  if (name.includes("hadiah") || name.includes("persaraan")) return Gift;
-  return Wallet;
-}
 
 export function Dashboard() {
   const { data, view } = useSnapshot();
@@ -216,13 +202,12 @@ function CollectionsCard({ collections }: { collections: Collection[] }) {
         <ul className="grid grid-cols-1 gap-3">
           {collections.slice(0, 5).map((collection) => {
             const totals = view.collectionTotals(collection.id);
-            const Icon = collectionIcon(collection);
             const voluntary = collection.type === "voluntary";
             return (
               <li key={collection.id}>
                 <Link href={`/kutipan/${collection.id}/`} className="group flex items-center gap-3 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">
                   <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary-light text-primary-strong">
-                    <Icon className="size-[18px]" />
+                    <CollectionIcon collection={collection} size="md" />
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="flex items-baseline justify-between gap-2">
