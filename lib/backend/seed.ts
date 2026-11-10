@@ -383,6 +383,7 @@ export function buildSeed(todayDay: Day): Snapshot {
     charges,
     payments,
     allocations,
+    attachments: [],
     audit,
   };
 }

@@ -33,6 +33,18 @@ export const errorMessages = {
   REASON_REQUIRED: "Nyatakan sebab.",
   DATE_INVALID: "Tarikh tidak sah.",
   DATE_IN_FUTURE: "Tarikh bayaran tidak boleh pada masa hadapan.",
+  ATTACHMENT_TYPE:
+    "Jenis fail tidak disokong. Gunakan gambar (JPG, PNG, WebP, HEIC) atau PDF. Dokumen Office seperti .xlsx atau .docx tidak diterima.",
+  ATTACHMENT_EMPTY: "Fail ini kosong.",
+  ATTACHMENT_TOO_LARGE: "Fail melebihi had 10 MB.",
+  ATTACHMENT_LIMIT: "Satu bayaran boleh ada paling banyak 5 lampiran. Buang satu dahulu.",
+  ATTACHMENT_DUPLICATE: "Fail yang sama sudah dilampirkan pada bayaran ini.",
+  ATTACHMENT_PAYMENT_REVERSED: "Bayaran ini telah dibatalkan. Lampiran kekal boleh dilihat tetapi tidak boleh ditambah atau dibuang.",
+  ATTACHMENT_NOT_FOUND: "Lampiran tidak dijumpai.",
+  ATTACHMENT_ALREADY_REMOVED: "Lampiran ini sudah dibuang.",
+  ATTACHMENT_FILE_MISSING: "Fail tidak lagi ada dalam pelayar ini (data pelayar mungkin telah dibersihkan).",
+  FILE_STORAGE_UNAVAILABLE:
+    "Penyimpanan fail tidak tersedia dalam pelayar ini. Cuba tetingkap biasa (bukan mod peribadi) dan benarkan data tapak.",
   NETWORK: "Sambungan terputus. Cuba lagi.",
 } as const;
 

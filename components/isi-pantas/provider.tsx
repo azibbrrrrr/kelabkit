@@ -5,6 +5,7 @@
 // data. Nothing is stored until the treasurer accepts a suggestion; accepting records a
 // payment through `run()`, the same path as the cell editor, so every backend rule applies.
 
+import type { StagedFile } from "@/components/attachments";
 import { useKelab } from "@/components/data-provider";
 import type { KelabBackend } from "@/lib/backend/types";
 import { KelabError, messageFor } from "@/lib/errors";
@@ -21,6 +22,8 @@ export type Item = {
   key: string;
   status: ItemStatus;
   paymentId: string | null;
+  /** Proof picked with the paste; stored against the payment this card creates, when accepted. */
+  files: StagedFile[];
   /** Why the last accept or undo failed; shown on the card. */
   error: string | null;
 };
@@ -46,6 +49,9 @@ type IsiPantasState = {
   opener: React.RefObject<HTMLElement | null>;
   draft: string;
   setDraft: (text: string) => void;
+  /** Proof chosen in the composer; every suggestion from the next paste carries it. */
+  draftFiles: StagedFile[];
+  setDraftFiles: (files: StagedFile[]) => void;
   turns: Turn[];
   busy: boolean;
   submit: () => void;
@@ -98,11 +104,14 @@ export function IsiPantasProvider({ children }: { children: ReactNode }) {
   const { data, run } = useKelab();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
+  const [draftFiles, setDraftFiles] = useState<StagedFile[]>([]);
   const [turns, setTurns] = useState<Turn[]>([]);
   const [celebrate, setCelebrate] = useState(0);
   const opener = useRef<HTMLElement | null>(null);
   const openRef = useRef(open);
   openRef.current = open;
+  const draftFilesRef = useRef(draftFiles);
+  draftFilesRef.current = draftFiles;
   const dataRef = useRef(data);
   dataRef.current = data;
   const turnsRef = useRef(turns);
@@ -140,6 +149,8 @@ export function IsiPantasProvider({ children }: { children: ReactNode }) {
     const id = `t${Date.now().toString(36)}`;
     setTurns((current) => [...current, { id, text, phase: "thinking", step: 0, items: [] }]);
     setDraft("");
+    const files = draftFilesRef.current;
+    setDraftFiles([]);
     // The reading is instant; the steps show what is being checked, briefly.
     const stepMs = reducedMotion() ? 60 : 320;
     [1, 2, 3].forEach((step) =>
@@ -148,7 +159,7 @@ export function IsiPantasProvider({ children }: { children: ReactNode }) {
     setTimeout(() => {
       const snapshot = dataRef.current;
       const suggestions = snapshot ? parsePaste(text, contextOf(snapshot), { idPrefix: `${id}-` }) : [];
-      const items: Item[] = suggestions.map((s) => ({ s, key: `isi-${crypto.randomUUID()}`, status: "pending", paymentId: null, error: null }));
+      const items: Item[] = suggestions.map((s) => ({ s, key: `isi-${crypto.randomUUID()}`, status: "pending", paymentId: null, files, error: null }));
       setTurns((current) => current.map((turn) => (turn.id === id ? { ...turn, phase: "ready", step: 4, items } : turn)));
     }, 4 * stepMs);
   }, [draft]);
@@ -166,11 +177,15 @@ export function IsiPantasProvider({ children }: { children: ReactNode }) {
       const wanted = new Set(items.map((item) => item.s.id));
       patchItems((item) => (wanted.has(item.s.id) ? { ...item, status: "applying", error: null } : item));
       const results = new Map<string, { paymentId: string } | { error: string }>();
+      let proofFailed = 0;
       await run(async (backend) => {
         // One at a time: each payment is checked against the balance the previous one left.
         for (const item of items) {
           try {
-            results.set(item.s.id, { paymentId: await record(backend, snapshot, item) });
+            const paymentId = await record(backend, snapshot, item);
+            results.set(item.s.id, { paymentId });
+            // The payment stands even if its proof cannot be stored; the treasurer is told.
+            if (item.files.length) await backend.addAttachments(paymentId, item.files.map((row) => row.file)).catch(() => void proofFailed++);
           } catch (cause) {
             results.set(item.s.id, { error: messageFor(cause) });
           }
@@ -183,6 +198,7 @@ export function IsiPantasProvider({ children }: { children: ReactNode }) {
         if ("error" in result) return { ...item, status: "pending", error: result.error };
         return { ...item, status: "accepted", paymentId: result.paymentId, error: null };
       });
+      if (proofFailed) toast.warning(`${proofFailed} bayaran direkod tetapi bukti tidak dapat dilampirkan. Lampirkan semula dari Rekod Bayaran.`, { duration: 10000 });
       const ok = [...results.values()].filter((result) => "paymentId" in result).length;
       const failed = items.length - ok;
       if (items.length > 1) {
@@ -254,6 +270,7 @@ export function IsiPantasProvider({ children }: { children: ReactNode }) {
   const clear = useCallback(() => {
     setTurns([]);
     setDraft("");
+    setDraftFiles([]);
   }, []);
 
   const focusCard = useCallback((itemId: string) => {
@@ -296,8 +313,8 @@ export function IsiPantasProvider({ children }: { children: ReactNode }) {
   const busy = turns.some((turn) => turn.phase === "thinking" || turn.items.some((item) => item.status === "applying"));
 
   const value = useMemo<IsiPantasState>(
-    () => ({ open, openSheet, close, opener, draft, setDraft, turns, busy, submit, accept, acceptConfident, dismiss, edit, undo, clear, ghosts, focusCard, celebrate }),
-    [open, openSheet, close, draft, turns, busy, submit, accept, acceptConfident, dismiss, edit, undo, clear, ghosts, focusCard, celebrate],
+    () => ({ open, openSheet, close, opener, draft, setDraft, draftFiles, setDraftFiles, turns, busy, submit, accept, acceptConfident, dismiss, edit, undo, clear, ghosts, focusCard, celebrate }),
+    [open, openSheet, close, draft, draftFiles, turns, busy, submit, accept, acceptConfident, dismiss, edit, undo, clear, ghosts, focusCard, celebrate],
   );
   return <IsiPantasContext.Provider value={value}>{children}</IsiPantasContext.Provider>;
 }

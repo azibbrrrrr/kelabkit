@@ -69,5 +69,7 @@ export const auditActionLabels: Record<AuditAction, string> = {
   "payment.record": "Bayaran direkod",
   "payment.confirm": "Bayaran disahkan",
   "payment.reverse": "Bayaran dibatalkan",
+  "attachment.add": "Bukti bayaran dilampirkan",
+  "attachment.remove": "Bukti bayaran dibuang",
   "club.update": "Tetapan kelab dikemas kini",
 };

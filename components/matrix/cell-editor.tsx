@@ -1,5 +1,6 @@
 "use client";
 
+import { ProofField, attachStaged, type StagedFile } from "@/components/attachments";
 import { useKelab, useSnapshot } from "@/components/data-provider";
 import { SegmentedChoice } from "@/components/choice";
 import { DatePicker } from "@/components/date-picker";
@@ -134,6 +135,8 @@ function PaymentDetails({
   setReceived,
   reference,
   setReference,
+  staged,
+  setStaged,
 }: {
   method: PaymentMethod;
   setMethod: (method: PaymentMethod) => void;
@@ -143,6 +146,8 @@ function PaymentDetails({
   setReceived: (value: boolean) => void;
   reference: string;
   setReference: (value: string) => void;
+  staged: StagedFile[];
+  setStaged: (files: StagedFile[]) => void;
 }) {
   const id = useId();
   return (
@@ -176,6 +181,7 @@ function PaymentDetails({
           />
         </div>
       </div>
+      <ProofField staged={staged} onChange={setStaged} />
       <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-border bg-card px-3 py-2.5">
         <Checkbox checked={received} onCheckedChange={(value) => setReceived(value === true)} className="mt-0.5" />
         <span className="text-xs leading-snug">
@@ -195,6 +201,7 @@ function usePaymentForm(initialInput?: string) {
   const [paidOn, setPaidOn] = useState(today());
   const [received, setReceived] = useState(true);
   const [reference, setReference] = useState("");
+  const [staged, setStaged] = useState<StagedFile[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   // One key per attempt: a double-click or network retry returns the same payment.
@@ -210,6 +217,8 @@ function usePaymentForm(initialInput?: string) {
     setReceived,
     reference,
     setReference,
+    staged,
+    setStaged,
     error,
     setError,
     busy,
@@ -302,7 +311,7 @@ function PayForm({
   const input = useRef<HTMLInputElement>(null);
   const messageId = useId();
 
-  useEffect(() => onDirtyChange?.(form.amount.trim() !== ""), [form.amount, onDirtyChange]);
+  useEffect(() => onDirtyChange?.(form.amount.trim() !== "" || form.staged.length > 0), [form.amount, form.staged.length, onDirtyChange]);
 
   if (ledger.charge.exempt)
     return <p className="rounded-xl bg-st-exempt-bg px-3 py-2.5 text-sm text-st-exempt">Ahli ini dikecualikan: {ledger.charge.exemptReason ?? "tiada sebab dicatat"}. Buka &quot;Ubah amaun&quot; untuk menarik balik.</p>;
@@ -340,7 +349,7 @@ function PayForm({
     form.setBusy(true);
     form.setError(null);
     try {
-      await run((backend) =>
+      const paymentId = await run((backend) =>
         backend.recordPayment({
           idempotencyKey: form.attemptKey.current,
           memberId: cell.member.id,
@@ -353,6 +362,8 @@ function PayForm({
         }),
       );
       toast.success(`${formatMoney(result.sen)} direkod untuk ${cell.member.name}.`);
+      const warning = await attachStaged(run, [paymentId], form.staged);
+      if (warning) toast.warning(warning, { duration: 10000 });
       onDirtyChange?.(false);
       onDone();
     } catch (error) {
@@ -612,7 +623,7 @@ function VoluntaryEditor({
     input.current?.focus();
   };
 
-  useEffect(() => onDirtyChange?.(form.amount.trim() !== ""), [form.amount, onDirtyChange]);
+  useEffect(() => onDirtyChange?.(form.amount.trim() !== "" || form.staged.length > 0), [form.amount, form.staged.length, onDirtyChange]);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -623,7 +634,7 @@ function VoluntaryEditor({
     form.setBusy(true);
     form.setError(null);
     try {
-      await run((backend) =>
+      const paymentId = await run((backend) =>
         backend.recordContribution({
           idempotencyKey: form.attemptKey.current,
           memberId: cell.member.id,
@@ -637,6 +648,8 @@ function VoluntaryEditor({
         }),
       );
       toast.success(`Sumbangan ${formatMoney(result.sen)} direkod.`);
+      const warning = await attachStaged(run, [paymentId], form.staged);
+      if (warning) toast.warning(warning, { duration: 10000 });
       onDirtyChange?.(false);
       onDone();
     } catch (error) {

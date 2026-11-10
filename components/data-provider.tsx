@@ -13,6 +13,8 @@ type DataState = {
   loading: boolean;
   error: Error | null;
   demo: boolean;
+  /** For reads that must not reload the snapshot (e.g. file bytes). Changes go through `run`. */
+  backend: KelabBackend;
   refresh: () => Promise<void>;
   /** Runs a change through the backend, then reloads so every screen shows the result. */
   run: <T>(operation: (backend: KelabBackend) => Promise<T>) => Promise<T>;
@@ -54,8 +56,8 @@ export function KelabDataProvider({ children }: { children: ReactNode }) {
   const view = useMemo(() => (data ? buildView(data, today()) : null), [data]);
 
   const value = useMemo<DataState>(
-    () => ({ data, view, loading: !data, error, demo: backend.kind === "demo", refresh, run }),
-    [data, view, error, backend.kind, refresh, run],
+    () => ({ data, view, loading: !data, error, demo: backend.kind === "demo", backend, refresh, run }),
+    [data, view, error, backend, refresh, run],
   );
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }
