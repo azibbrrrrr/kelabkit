@@ -16,26 +16,23 @@ import {
   Toolbar,
 } from "@/components/shared";
 import { RestoreCollectionDialog } from "@/components/restore-collection-dialog";
+import { CollectionIconButton } from "@/components/emoji-picker";
 import { Button } from "@/components/ui/button";
 import { formatDay, formatMoney, formatMonth, formatPercent } from "@/lib/format";
 import { totalsOf } from "@/lib/money/ledger";
 import { collectionStatusLabels, collectionTypeLabels } from "@/lib/labels";
-import type { Collection, CollectionStatus, CollectionType, Payment } from "@/lib/types";
+import type { Collection, CollectionStatus, Payment } from "@/lib/types";
 import { sortCollections, type View } from "@/lib/view";
 import { cn } from "@/lib/utils";
 import {
-  CalendarRange,
-  HandHeart,
   Hourglass,
   Plus,
-  ReceiptText,
   SearchX,
   Users,
   WalletCards,
   ArchiveRestore,
   CircleCheck,
   CircleAlert,
-  type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
@@ -43,12 +40,6 @@ import { useMemo, useRef, useState } from "react";
 // Kutipan KGK: every collection as a card, grouped by status. Figures come from
 // view.collectionTotals (charges and confirmed allocations); pending money is shown
 // beside received, never inside it, and voluntary collections never show debt.
-
-export const collectionTypeIcons: Record<CollectionType, LucideIcon> = {
-  one_off: ReceiptText,
-  monthly: CalendarRange,
-  voluntary: HandHeart,
-};
 
 /** "RM25.00 seorang", "RM10.00 sebulan" or "Ikut kemampuan". */
 export function amountLabel(collection: Collection) {
@@ -241,7 +232,6 @@ export function KutipanList() {
 }
 
 function CollectionCard({ collection, view, payments, onRestore }: { collection: Collection; view: View; payments: Payment[]; onRestore: () => void }) {
-  const Icon = collectionTypeIcons[collection.type];
   const totals = view.collectionTotals(collection.id);
   const voluntary = collection.type === "voluntary";
   const contributions = voluntary ? voluntarySummary(payments, collection.id) : null;
@@ -262,9 +252,8 @@ function CollectionCard({ collection, view, payments, onRestore }: { collection:
       )}
     >
       <div className="flex items-start gap-3">
-        <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary-light text-primary-strong">
-          <Icon className="size-5" aria-hidden />
-        </span>
+        {/* z-10 lifts the icon button above the title link stretched over the card. */}
+        <CollectionIconButton collection={collection} size="lg" className="relative z-10 size-11 rounded-xl bg-primary-light text-primary-strong" />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1">
             <h3 className="min-w-0 text-[15px] leading-snug font-semibold break-words group-hover:text-primary-strong">

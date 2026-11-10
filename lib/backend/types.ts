@@ -38,6 +38,8 @@ export type NewCollection = {
   endMonth: Month | null;
   dueDay: number | null;
   participants: NewParticipant[];
+  /** One emoji, "lucide:<name>" or null for the type's icon. Omitted means null. */
+  icon?: string | null;
   /** False saves a draft. */
   activate: boolean;
 };
@@ -80,6 +82,8 @@ export interface KelabBackend {
   createCollection(input: NewCollection): Promise<string>;
   updateCollection(id: string, changes: CollectionChanges): Promise<void>;
   setCollectionStatus(id: string, status: CollectionStatus): Promise<void>;
+  /** Sets or clears (null) a collection's icon. Refused for archived collections and invalid icons. */
+  setCollectionIcon(id: string, icon: string | null): Promise<void>;
   /** Adds members to a collection and creates their charges. */
   addParticipants(collectionId: string, participants: NewParticipant[]): Promise<void>;
   /** Changes what one member owes. Refused below what they have already paid. */

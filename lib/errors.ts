@@ -10,6 +10,7 @@ export const errorMessages = {
   AMOUNT_ZERO: "Amaun mesti lebih daripada RM0. Gunakan pengecualian jika ahli tidak perlu membayar.",
   OVERPAYMENT: "Amaun melebihi baki yang perlu dibayar.",
   AMOUNT_BELOW_PAID: "Amaun baharu lebih rendah daripada yang telah dibayar. Batalkan bayaran yang berkaitan dahulu.",
+  ICON_INVALID: "Ikon tidak sah. Pilih satu emoji atau satu ikon daripada senarai.",
   NAME_REQUIRED: "Nama diperlukan.",
   NAME_TOO_LONG: "Nama terlalu panjang (maksimum 120 aksara).",
   MEMBER_DUPLICATE: "Ahli dengan nama ini sudah wujud.",

@@ -147,6 +147,7 @@ export function buildSeed(todayDay: Day): Snapshot {
     startMonth: `${year}-01`,
     endMonth: `${year}-12`,
     dueDay: 10,
+    icon: "💰",
     description: "Yuran bulanan ahli KGK.",
   });
   for (const month of monthsBetween(yuran.startMonth!, yuran.endMonth!)) {
@@ -195,6 +196,7 @@ export function buildSeed(todayDay: Day): Snapshot {
     startMonth: null,
     endMonth: null,
     dueDay: null,
+    icon: "🍽️",
     description: "Jamuan penutup sesi bersama keluarga KGK.",
   });
   active.slice(0, 20).forEach((member) => {
@@ -235,6 +237,7 @@ export function buildSeed(todayDay: Day): Snapshot {
     startMonth: null,
     endMonth: null,
     dueDay: null,
+    icon: "👕",
     description: "Baju korporat KGK, tempahan kedua.",
   });
   active.slice(4, 19).forEach((member) => {
@@ -268,6 +271,7 @@ export function buildSeed(todayDay: Day): Snapshot {
     startMonth: null,
     endMonth: null,
     dueDay: null,
+    icon: "🎁",
   });
   active
     .filter((member) => member.id !== "m-19")
@@ -300,6 +304,7 @@ export function buildSeed(todayDay: Day): Snapshot {
     startMonth: null,
     endMonth: null,
     dueDay: null,
+    icon: "🤝",
     description: "Tabung kebajikan untuk ahli yang ditimpa musibah.",
   });
   active.forEach((member) =>
@@ -327,6 +332,7 @@ export function buildSeed(todayDay: Day): Snapshot {
     startMonth: null,
     endMonth: null,
     dueDay: null,
+    icon: "👩‍🏫",
   });
   active.forEach((member) => {
     participants.push({ collectionId: hariGuru.id, memberId: member.id, amountOverride: null, exempt: false, note: null });

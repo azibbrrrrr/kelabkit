@@ -50,6 +50,12 @@ export type Collection = {
   endMonth: Month | null;
   /** Monthly only: day of the month the period is due, clamped to the month's last day. */
   dueDay: number | null;
+  /**
+   * What tells collections apart at a glance: one emoji ("🍽️"), "lucide:<name>" from the
+   * allowlist in lib/collection-icon.ts, or null for the collection type's icon. Snapshots
+   * saved before this field existed have no key; readers treat that as null.
+   */
+  icon: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -122,6 +128,7 @@ export type AuditAction =
   | "member.reactivate"
   | "collection.create"
   | "collection.rename"
+  | "collection.icon"
   | "collection.update"
   | "collection.status"
   | "collection.participants"

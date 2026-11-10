@@ -16,6 +16,7 @@ import type {
   PaymentInput,
 } from "@/lib/backend/types";
 import { buildSeed } from "@/lib/backend/seed";
+import { checkCollectionIcon, describeIcon } from "@/lib/collection-icon";
 import { KelabError } from "@/lib/errors";
 import { normaliseName } from "@/lib/names";
 import { formatMoney, today } from "@/lib/format";
@@ -34,7 +35,7 @@ function read(): Snapshot {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (raw) {
-      memory = JSON.parse(raw) as Snapshot;
+      memory = upgrade(JSON.parse(raw) as Snapshot);
       return memory;
     }
   } catch {
@@ -43,6 +44,12 @@ function read(): Snapshot {
   memory = buildSeed(today());
   write(memory);
   return memory;
+}
+
+/** Fills fields added since a snapshot was saved, so older demo data keeps working without a reset. */
+function upgrade(state: Snapshot): Snapshot {
+  for (const collection of state.collections) collection.icon ??= null;
+  return state;
 }
 
 function write(state: Snapshot) {
@@ -207,6 +214,7 @@ export const demoBackend: KelabBackend = {
       if (input.dueDay !== null && (input.dueDay < 1 || input.dueDay > 31)) throw new KelabError("DUE_DAY_INVALID");
     }
     if (input.activate && !input.participants.length) throw new KelabError("COLLECTION_NO_MEMBERS");
+    const icon = checkCollectionIcon(input.icon);
     const at = now();
     const collection: Collection = {
       id: uid("c"),
@@ -220,6 +228,7 @@ export const demoBackend: KelabBackend = {
       startMonth: input.type === "monthly" ? input.startMonth : null,
       endMonth: input.type === "monthly" ? input.endMonth : null,
       dueDay: input.type === "monthly" ? input.dueDay : null,
+      icon,
       createdAt: at,
       updatedAt: at,
     };
@@ -273,6 +282,20 @@ export const demoBackend: KelabBackend = {
     collection.status = status;
     collection.updatedAt = now();
     audit(state, "collection.status", id, `Status "${collection.name}" ditukar`);
+    write(state);
+  },
+
+  async setCollectionIcon(id, input) {
+    await wait();
+    const state = clone(read());
+    const collection = findCollection(state, id);
+    if (collection.status === "archived") throw new KelabError("COLLECTION_ARCHIVED");
+    const icon = checkCollectionIcon(input);
+    const before = collection.icon ?? null;
+    if (icon === before) return;
+    collection.icon = icon;
+    collection.updatedAt = now();
+    audit(state, "collection.icon", id, `Ikon kutipan "${collection.name}" ditukar: ${describeIcon(before)} → ${describeIcon(icon)}`);
     write(state);
   },
 
