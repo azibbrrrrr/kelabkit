@@ -2,6 +2,8 @@
 
 import { ghostKey, useIsiPantas, type Ghost } from "@/components/isi-pantas/provider";
 import { formatMoneyShort } from "@/lib/format";
+import { t as tNow } from "@/lib/i18n";
+import { useT, type TFunction } from "@/lib/i18n/react";
 import { cn } from "@/lib/utils";
 import { Check, Sparkles } from "lucide-react";
 
@@ -11,8 +13,9 @@ export function useGhost() {
   return (memberId: string, collectionId: string, periodId: string | null) => ghosts.get(ghostKey(memberId, collectionId, periodId)) ?? null;
 }
 
-export function describeGhost(ghost: Ghost) {
-  return ghost.state === "recorded" ? `Isi Pantas: +${formatMoneyShort(ghost.amountSen)} direkod` : `Isi Pantas: cadangan +${formatMoneyShort(ghost.amountSen)}`;
+/** `t` defaults to the current locale; pass the component's own `useT()` result so the text follows a language switch on re-render. */
+export function describeGhost(ghost: Ghost, t: TFunction = tNow) {
+  return t(ghost.state === "recorded" ? "quickFill.ghost.recorded" : "quickFill.ghost.suggested", { amount: formatMoneyShort(ghost.amountSen) });
 }
 
 /**
@@ -21,6 +24,7 @@ export function describeGhost(ghost: Ghost) {
  * same text and the grid keeps its single tab stop. Clicking brings the matching card up.
  */
 export function GhostValue({ ghost }: { ghost: Ghost }) {
+  const t = useT();
   const { focusCard } = useIsiPantas();
   const recorded = ghost.state === "recorded";
   return (
@@ -29,7 +33,7 @@ export function GhostValue({ ghost }: { ghost: Ghost }) {
       tabIndex={-1}
       aria-hidden
       data-isi-ghost={ghost.state}
-      title={recorded ? "Direkod melalui Isi Pantas" : "Cadangan Isi Pantas: klik untuk lihat kad"}
+      title={recorded ? t("quickFill.ghost.titleRecorded") : t("quickFill.ghost.titleSuggested")}
       onClick={(event) => {
         event.stopPropagation();
         focusCard(ghost.itemId);
@@ -39,18 +43,19 @@ export function GhostValue({ ghost }: { ghost: Ghost }) {
     >
       {recorded ? <Check className="size-3 shrink-0" /> : <Sparkles className="size-3 shrink-0" />}
       <b className="font-semibold tabular-nums">+{formatMoneyShort(ghost.amountSen)}</b>
-      <span className="truncate font-medium">{recorded ? "direkod" : "cadangan"}</span>
+      <span className="truncate font-medium">{recorded ? t("quickFill.ghost.wordRecorded") : t("quickFill.ghost.wordSuggested")}</span>
     </button>
   );
 }
 
 /** Small "+RMx" chip on a card line while suggestions wait. Decorative: the line's label carries the words. */
 export function GhostBadge({ amountSen, className }: { amountSen: number; className?: string }) {
+  const t = useT();
   return (
     <span
       aria-hidden
       data-isi-ghost-badge
-      title="Cadangan Isi Pantas belum direkod"
+      title={t("quickFill.ghost.badge")}
       className={cn("isi-ghost isi-ghost-pulse cursor-default inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums", className)}
     >
       <Sparkles className="size-3" />+{formatMoneyShort(amountSen)}

@@ -18,6 +18,7 @@ import {
 } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { formatMoney, formatNumber, initials } from "@/lib/format";
+import { useT } from "@/lib/i18n/react";
 import { categoryLabels } from "@/lib/labels";
 import type { Member, Sen } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -33,6 +34,7 @@ type Filter = "all" | "active" | "inactive" | "owing";
 type Row = { member: Member; collections: number; dueNow: Sen; overdue: number };
 
 export function AhliPage() {
+  const t = useT();
   const { data, view } = useSnapshot();
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -85,7 +87,7 @@ export function AhliPage() {
   const columns: Column<Row>[] = [
     {
       key: "name",
-      header: "Nama",
+      header: t("members.columns.name"),
       cell: ({ member }) => (
         <span className="flex min-w-0 items-center gap-2.5">
           <Initials name={member.name} muted={!member.active} />
@@ -95,31 +97,31 @@ export function AhliPage() {
     },
     {
       key: "category",
-      header: "Kategori",
+      header: t("members.columns.category"),
       cell: ({ member }) => <span className="text-muted-foreground">{member.category ? categoryLabels[member.category] : "—"}</span>,
     },
     {
       key: "phone",
-      header: "Telefon",
+      header: t("members.columns.phone"),
       hideBelow: "lg",
       cell: ({ member }) => <span className="text-muted-foreground tabular-nums">{member.phone ?? "—"}</span>,
     },
-    { key: "status", header: "Status", cell: ({ member }) => <MemberStatus active={member.active} /> },
+    { key: "status", header: t("members.columns.status"), cell: ({ member }) => <MemberStatus active={member.active} /> },
     {
       key: "collections",
-      header: "Kutipan",
+      header: t("members.columns.collections"),
       align: "right",
       hideBelow: "lg",
       cell: ({ collections }) => <span className="text-muted-foreground">{collections}</span>,
     },
     {
       key: "due",
-      header: "Baki semasa",
+      header: t("members.columns.due"),
       align: "right",
       cell: ({ dueNow, overdue }) => (
         <span className="inline-flex flex-col items-end">
           <span className={cn("font-semibold", dueNow > 0 ? "text-st-unpaid" : "text-st-paid")}>{formatMoney(dueNow)}</span>
-          {overdue > 0 && <span className="text-[11px] font-normal text-st-unpaid">{overdue} caj lewat</span>}
+          {overdue > 0 && <span className="text-[11px] font-normal text-st-unpaid">{t("members.overdueCharges", { count: overdue })}</span>}
         </span>
       ),
     },
@@ -130,15 +132,15 @@ export function AhliPage() {
   return (
     <PageShell>
       <PageHeader
-        title="Ahli"
-        description="Senarai guru dan kakitangan kelab. Klik nama untuk melihat penyertaan kutipan dan sejarah bayaran."
+        title={t("members.title")}
+        description={t("members.description")}
         actions={
           <>
             <Button variant="brand" onClick={() => setAddMany(true)}>
-              <ListPlus /> Tambah pukal
+              <ListPlus /> {t("members.addBulk")}
             </Button>
             <Button onClick={() => setAddOne(true)}>
-              <UserPlus /> Tambah ahli
+              <UserPlus /> {t("members.addOne")}
             </Button>
           </>
         }
@@ -147,15 +149,15 @@ export function AhliPage() {
       {data.members.length === 0 ? (
         <EmptyState
           icon={UsersRound}
-          title="Belum ada ahli"
-          description="Tambah guru dan kakitangan satu per satu, atau tampal senarai nama sekali gus."
+          title={t("members.empty.title")}
+          description={t("members.empty.description")}
           action={
             <div className="flex flex-wrap justify-center gap-2">
               <Button variant="brand" onClick={() => setAddMany(true)}>
-                <ListPlus /> Tambah pukal
+                <ListPlus /> {t("members.addBulk")}
               </Button>
               <Button onClick={() => setAddOne(true)}>
-                <UserPlus /> Tambah ahli pertama
+                <UserPlus /> {t("members.addFirst")}
               </Button>
             </div>
           }
@@ -163,29 +165,29 @@ export function AhliPage() {
       ) : (
         <>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <StatCard label="Jumlah ahli" value={formatNumber(counts.all)} icon={UsersRound} hint={`${counts.inactive} tidak aktif`} />
-            <StatCard label="Ahli aktif" value={formatNumber(counts.active)} icon={UserCheck} tone="paid" hint="Dipaparkan dalam Matriks" />
+            <StatCard label={t("members.stats.total")} value={formatNumber(counts.all)} icon={UsersRound} hint={t("members.stats.inactiveHint", { count: counts.inactive })} />
+            <StatCard label={t("members.stats.active")} value={formatNumber(counts.active)} icon={UserCheck} tone="paid" hint={t("members.stats.activeHint")} />
             <StatCard
-              label="Ada baki semasa"
+              label={t("members.stats.owing")}
               value={formatNumber(counts.owing)}
               icon={Wallet}
               tone={counts.owing > 0 ? "unpaid" : "paid"}
-              hint={`Jumlah ${formatMoney(owingTotal)}`}
+              hint={t("members.stats.owingHint", { amount: formatMoney(owingTotal) })}
             />
           </div>
 
           <Toolbar
-            search={<SearchInput id="member-search" value={query} onChange={setQuery} placeholder="Cari nama atau telefon…" />}
+            search={<SearchInput id="member-search" value={query} onChange={setQuery} placeholder={t("members.searchPlaceholder")} />}
             tabs={
               <FilterPills
-                label="Tapis ahli"
+                label={t("members.filter.label")}
                 value={filter}
                 onChange={setFilter}
                 options={[
-                  { value: "all", label: "Semua", count: counts.all },
-                  { value: "active", label: "Aktif", count: counts.active },
-                  { value: "inactive", label: "Tidak aktif", count: counts.inactive },
-                  { value: "owing", label: "Ada baki", count: counts.owing },
+                  { value: "all", label: t("members.filter.all"), count: counts.all },
+                  { value: "active", label: t("members.filter.active"), count: counts.active },
+                  { value: "inactive", label: t("members.filter.inactive"), count: counts.inactive },
+                  { value: "owing", label: t("members.filter.owing"), count: counts.owing },
                 ]}
               />
             }
@@ -199,9 +201,9 @@ export function AhliPage() {
             empty={
               <EmptyState
                 icon={SearchX}
-                title="Tiada ahli sepadan"
+                title={t("members.noMatch.title")}
                 description={
-                  filter === "owing" && !query ? "Tiada ahli dengan baki semasa. Semua caj yang sudah tiba tempoh telah dijelaskan." : "Cuba carian atau penapis lain."
+                  filter === "owing" && !query ? t("members.noMatch.owing") : t("members.noMatch.other")
                 }
                 action={
                   (query || filter !== "all") && (
@@ -212,7 +214,7 @@ export function AhliPage() {
                         setFilter("all");
                       }}
                     >
-                      Kosongkan carian
+                      {t("members.noMatch.clear")}
                     </Button>
                   )
                 }
@@ -222,7 +224,7 @@ export function AhliPage() {
               <MobileRow
                 title={member.name}
                 amount={<span className={dueNow > 0 ? "text-st-unpaid" : "text-st-paid"}>{formatMoney(dueNow)}</span>}
-                meta={[member.category ? categoryLabels[member.category] : null, `${collections} kutipan`, member.phone].filter(Boolean).join(" · ")}
+                meta={[member.category ? categoryLabels[member.category] : null, t("members.collectionsCount", { count: collections }), member.phone].filter(Boolean).join(" · ")}
                 status={<MemberStatus active={member.active} />}
               />
             )}
@@ -237,7 +239,8 @@ export function AhliPage() {
 }
 
 export function MemberStatus({ active }: { active: boolean }) {
-  return active ? <StatusChip label="Aktif" tone="brand" compact /> : <StatusChip label="Tidak aktif" tone="na" compact />;
+  const t = useT();
+  return active ? <StatusChip label={t("members.status.active")} tone="brand" compact /> : <StatusChip label={t("members.status.inactive")} tone="na" compact />;
 }
 
 function Initials({ name, muted }: { name: string; muted?: boolean }) {

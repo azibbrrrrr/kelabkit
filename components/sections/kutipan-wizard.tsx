@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { NewParticipant } from "@/lib/backend/types";
 import { errorMessages, messageFor } from "@/lib/errors";
 import { formatDay, formatMoney, formatMonth, today } from "@/lib/format";
+import { useT } from "@/lib/i18n/react";
 import { categoryLabels, collectionTypeLabels } from "@/lib/labels";
 import { senToInput } from "@/lib/money/amount";
 import { isMonth, monthOf, monthsBetween } from "@/lib/money/months";
@@ -36,18 +37,6 @@ import { toast } from "sonner";
 
 type Step = 0 | 1 | 2;
 type CategoryFilter = "all" | MemberCategory | "none";
-
-const steps: { title: string; hint: string }[] = [
-  { title: "Butiran Kutipan", hint: "Nama, jenis dan amaun" },
-  { title: "Pilih Ahli", hint: "Siapa yang terlibat" },
-  { title: "Semak & Cipta", hint: "Sahkan sebelum simpan" },
-];
-
-const typeHints: Record<CollectionType, string> = {
-  one_off: "Satu amaun untuk setiap ahli, cth. jamuan atau baju.",
-  monthly: "Caj berasingan setiap bulan, cth. yuran KGK.",
-  voluntary: "Ahli menyumbang ikut kemampuan. Tiada hutang.",
-};
 
 type Details = {
   name: string;
@@ -72,6 +61,7 @@ type DetailErrors = Partial<Record<"name" | "amount" | "months" | "dueDay", stri
 type Exemption = { on: boolean; reason: string };
 
 export function KutipanWizard() {
+  const t = useT();
   const { data } = useSnapshot();
   const { run } = useKelab();
   const router = useRouter();
@@ -184,7 +174,7 @@ export function KutipanWizard() {
       for (const member of chosen) {
         const exemption = exemptions[member.id];
         if (exemption?.on) {
-          if (!exemption.reason.trim()) errors[member.id] = "Nyatakan sebab pengecualian. Ia disimpan dalam log audit.";
+          if (!exemption.reason.trim()) errors[member.id] = t("wizard.messages.exemptionReason");
           continue;
         }
         const raw = overrides[member.id]?.trim();
@@ -196,11 +186,11 @@ export function KutipanWizard() {
     }
     setMemberErrors(errors);
     if (requireOne && chosen.length === 0) {
-      setStepError("Pilih sekurang-kurangnya seorang ahli.");
+      setStepError(t("wizard.messages.pickOne"));
       return false;
     }
     const count = Object.keys(errors).length;
-    setStepError(count ? `Betulkan ${count} ralat dalam senarai ahli.` : null);
+    setStepError(count ? t(count === 1 ? "wizard.messages.fixErrorsOne" : "wizard.messages.fixErrors", { count }) : null);
     return count === 0;
   };
 
@@ -254,7 +244,11 @@ export function KutipanWizard() {
         }),
       );
       setSaved(true);
-      toast.success(activate ? `Kutipan "${details.name.trim()}" dicipta untuk ${chosen.length} ahli.` : `Draf "${details.name.trim()}" disimpan.`);
+      toast.success(
+        activate
+          ? t(chosen.length === 1 ? "wizard.messages.createdOne" : "wizard.messages.created", { name: details.name.trim(), count: chosen.length })
+          : t("wizard.messages.draftSaved", { name: details.name.trim() }),
+      );
       router.push(`/kutipan/${id}/`);
     } catch (cause) {
       setSubmitError(messageFor(cause));
@@ -263,7 +257,7 @@ export function KutipanWizard() {
   };
 
   const leave = () => {
-    if (dirty && !window.confirm("Buang kutipan yang belum disimpan?")) return;
+    if (dirty && !window.confirm(t("wizard.messages.confirmLeave"))) return;
     setSaved(true);
     router.push("/kutipan/");
   };
@@ -273,9 +267,9 @@ export function KutipanWizard() {
   return (
     <PageShell className="pb-28 md:pb-7">
       <PageHeader
-        title="Tambah Kutipan"
-        description="Cipta kutipan baharu dan pilih ahli yang terlibat. Ahli baharu tidak dimasukkan secara automatik ke mana-mana kutipan."
-        back={{ href: "/kutipan/", label: "Kutipan KGK" }}
+        title={t("wizard.header.title")}
+        description={t("wizard.header.description")}
+        back={{ href: "/kutipan/", label: t("nav.collections") }}
       />
 
       <Stepper step={step} onGo={(next) => next < step && goTo(next)} />
@@ -328,27 +322,27 @@ export function KutipanWizard() {
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex gap-2">
               <Button variant="outline" size="lg" onClick={leave} disabled={busy !== null} className="hidden md:inline-flex">
-                Batal
+                {t("common.cancel")}
               </Button>
               <Button variant="outline" size="lg" onClick={() => void save(false)} disabled={busy !== null} className="w-full sm:w-auto">
                 {busy === "draft" ? <Spinner className="size-4" /> : <Save />}
-                Simpan sebagai draf
+                {t("wizard.actions.saveDraft")}
               </Button>
             </div>
             <div className="hidden gap-2 md:flex">
               {step > 0 && (
                 <Button variant="outline" size="lg" onClick={() => goTo((step - 1) as Step)} disabled={busy !== null}>
-                  <ArrowLeft /> Kembali
+                  <ArrowLeft /> {t("common.back")}
                 </Button>
               )}
               {last ? (
                 <Button size="lg" onClick={() => void save(true)} disabled={busy !== null}>
                   {busy === "create" ? <Spinner className="size-4" /> : <Check />}
-                  Cipta kutipan
+                  {t("wizard.actions.create")}
                 </Button>
               ) : (
                 <Button size="lg" onClick={() => goTo((step + 1) as Step)} disabled={busy !== null}>
-                  Seterusnya <ArrowRight />
+                  {t("wizard.actions.next")} <ArrowRight />
                 </Button>
               )}
             </div>
@@ -371,21 +365,21 @@ export function KutipanWizard() {
         <div className="flex gap-2">
           {step > 0 ? (
             <Button variant="outline" size="lg" className="flex-1" onClick={() => goTo((step - 1) as Step)} disabled={busy !== null}>
-              <ArrowLeft /> Kembali
+              <ArrowLeft /> {t("common.back")}
             </Button>
           ) : (
             <Button variant="outline" size="lg" className="flex-1" onClick={leave} disabled={busy !== null}>
-              Batal
+              {t("common.cancel")}
             </Button>
           )}
           {last ? (
             <Button size="lg" className="flex-1" onClick={() => void save(true)} disabled={busy !== null}>
               {busy === "create" ? <Spinner className="size-4" /> : <Check />}
-              Cipta
+              {t("wizard.actions.createShort")}
             </Button>
           ) : (
             <Button size="lg" className="flex-1" onClick={() => goTo((step + 1) as Step)} disabled={busy !== null}>
-              Seterusnya <ArrowRight />
+              {t("wizard.actions.next")} <ArrowRight />
             </Button>
           )}
         </div>
@@ -397,8 +391,14 @@ export function KutipanWizard() {
 // Stepper ------------------------------------------------------------------------------------
 
 function Stepper({ step, onGo }: { step: Step; onGo: (step: Step) => void }) {
+  const t = useT();
+  const steps = [
+    { title: t("wizard.stepper.detailsTitle"), hint: t("wizard.stepper.detailsHint") },
+    { title: t("wizard.stepper.membersTitle"), hint: t("wizard.stepper.membersHint") },
+    { title: t("wizard.stepper.reviewTitle"), hint: t("wizard.stepper.reviewHint") },
+  ];
   return (
-    <ol className="grid grid-cols-3 gap-2 rounded-2xl border border-border bg-card p-2 md:gap-3 md:p-3" aria-label="Langkah">
+    <ol className="grid grid-cols-3 gap-2 rounded-2xl border border-border bg-card p-2 md:gap-3 md:p-3" aria-label={t("wizard.stepper.label")}>
       {steps.map((item, index) => {
         const state = index < step ? "done" : index === step ? "current" : "todo";
         return (
@@ -460,19 +460,20 @@ function DetailsStep({
   errors: DetailErrors;
   months: number;
 }) {
+  const t = useT();
   const icon = iconOf(details);
   return (
-    <SectionCard title="Butiran Kutipan" icon={FileText} description="Maklumat asas kutipan. Anda boleh ubah nama dan tarikh akhir kemudian.">
+    <SectionCard title={t("wizard.details.title")} icon={FileText} description={t("wizard.details.description")}>
       <div className="grid gap-5">
         <div className="grid gap-1.5">
-          <Label htmlFor="wz-name">Nama kutipan</Label>
+          <Label htmlFor="wz-name">{t("wizard.details.nameLabel")}</Label>
           <div className="flex gap-2">
-            <EmojiPicker value={icon} onChange={(next) => set("icon", next)} label={details.name.trim() || "Kutipan baharu"}>
+            <EmojiPicker value={icon} onChange={(next) => set("icon", next)} label={details.name.trim() || t("wizard.details.newCollection")}>
               <button
                 type="button"
-                aria-label="Pilih ikon kutipan"
+                aria-label={t("wizard.details.pickIconAria")}
                 aria-describedby="wz-icon-hint"
-                title="Pilih ikon"
+                title={t("wizard.details.pickIconTitle")}
                 className="grid size-11 shrink-0 cursor-pointer place-items-center rounded-xl border border-input bg-card text-primary-strong outline-none transition-colors hover:border-ring focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background aria-expanded:border-ring"
               >
                 <CollectionIcon icon={icon} type={details.type} size="lg" />
@@ -482,7 +483,7 @@ function DetailsStep({
               id="wz-name"
               value={details.name}
               onChange={(event) => set("name", event.target.value)}
-              placeholder="cth. Jamuan Akhir Tahun"
+              placeholder={t("wizard.details.namePlaceholder")}
               className="h-11 min-w-0 flex-1 rounded-xl"
               maxLength={140}
               aria-invalid={Boolean(errors.name)}
@@ -492,16 +493,16 @@ function DetailsStep({
           <FieldError id="wz-name-error" message={errors.name} />
           <p id="wz-icon-hint" className="text-xs text-muted-foreground">
             {details.icon !== undefined
-              ? "Ikon membantu guru mengenal kutipan sekilas pandang."
+              ? t("wizard.details.iconHintPicked")
               : icon
-                ? "Ikon dicadangkan daripada nama. Klik ikon untuk menukar."
-                : "Klik ikon untuk memilih emoji yang membantu guru mengenal kutipan ini."}
+                ? t("wizard.details.iconHintSuggested")
+                : t("wizard.details.iconHintNone")}
           </p>
         </div>
 
         <fieldset className="grid gap-1.5">
-          <legend className="mb-1.5 text-sm font-medium">Jenis kutipan</legend>
-          <ChoiceCards label="Jenis kutipan" value={details.type} onChange={(value) => set("type", value)} className="grid gap-2 sm:grid-cols-3">
+          <legend className="mb-1.5 text-sm font-medium">{t("wizard.details.typeLabel")}</legend>
+          <ChoiceCards label={t("wizard.details.typeLabel")} value={details.type} onChange={(value) => set("type", value)} className="grid gap-2 sm:grid-cols-3">
             {(Object.keys(collectionTypeLabels) as CollectionType[]).map((value) => {
               const Icon = collectionTypeIcons[value];
               const on = details.type === value;
@@ -512,7 +513,7 @@ function DetailsStep({
                   </span>
                   <span className="min-w-0">
                     <span className={cn("block text-sm font-semibold", !on && "text-foreground")}>{collectionTypeLabels[value]}</span>
-                    <span className="block text-xs text-muted-foreground">{typeHints[value]}</span>
+                    <span className="block text-xs text-muted-foreground">{t(`wizard.typeHints.${value}`)}</span>
                   </span>
                 </ChoiceCard>
               );
@@ -522,7 +523,7 @@ function DetailsStep({
 
         {details.type !== "voluntary" ? (
           <div className="grid gap-1.5 sm:max-w-xs">
-            <Label htmlFor="wz-amount">{details.type === "monthly" ? "Amaun sebulan (asal)" : "Amaun seorang (asal)"}</Label>
+            <Label htmlFor="wz-amount">{details.type === "monthly" ? t("wizard.details.amountMonthly") : t("wizard.details.amountOneOff")}</Label>
             <MoneyInput
               id="wz-amount"
               value={details.amount}
@@ -535,21 +536,21 @@ function DetailsStep({
               <FieldError id="wz-amount-error" message={errors.amount} />
             ) : (
               <p id="wz-amount-hint" className="text-xs text-muted-foreground">
-                Amaun berbeza untuk ahli tertentu boleh ditetapkan dalam langkah seterusnya.
+                {t("wizard.details.amountHint")}
               </p>
             )}
           </div>
         ) : (
           <p className="rounded-xl bg-primary-tint px-3 py-2.5 text-sm text-muted-foreground">
-            Sumbangan sukarela tiada amaun tetap dan tidak mencipta hutang. Setiap sumbangan direkod apabila diterima.
+            {t("wizard.details.voluntaryNote")}
           </p>
         )}
 
         {details.type === "one_off" && (
           <div className="grid gap-1.5 sm:max-w-xs">
-            <Label htmlFor="wz-due">Tarikh akhir (pilihan)</Label>
-            <DatePicker id="wz-due" value={details.dueDate} onChange={(day) => set("dueDate", day)} clearable emptyLabel="Tiada tarikh akhir" clearLabel="Tiada tarikh akhir" />
-            <p className="text-xs text-muted-foreground">Tanpa tarikh akhir, caj tidak akan menjadi Lewat.</p>
+            <Label htmlFor="wz-due">{t("wizard.details.dueDateLabel")}</Label>
+            <DatePicker id="wz-due" value={details.dueDate} onChange={(day) => set("dueDate", day)} clearable emptyLabel={t("wizard.details.noDeadline")} clearLabel={t("wizard.details.noDeadline")} />
+            <p className="text-xs text-muted-foreground">{t("wizard.details.dueDateHint")}</p>
           </div>
         )}
 
@@ -557,7 +558,7 @@ function DetailsStep({
           <div className="grid gap-3">
             <div className="grid grid-cols-1 gap-3 min-[400px]:grid-cols-2 sm:max-w-md">
               <div className="grid min-w-0 gap-1.5">
-                <Label htmlFor="wz-start">Bulan mula</Label>
+                <Label htmlFor="wz-start">{t("wizard.details.startMonth")}</Label>
                 <MonthPicker
                   id="wz-start"
                   value={details.startMonth}
@@ -567,7 +568,7 @@ function DetailsStep({
                 />
               </div>
               <div className="grid min-w-0 gap-1.5">
-                <Label htmlFor="wz-end">Bulan akhir</Label>
+                <Label htmlFor="wz-end">{t("wizard.details.endMonth")}</Label>
                 <MonthPicker
                   id="wz-end"
                   value={details.endMonth}
@@ -581,10 +582,10 @@ function DetailsStep({
             {errors.months ? (
               <FieldError id="wz-months-error" message={errors.months} />
             ) : (
-              months > 0 && <p className="text-xs text-muted-foreground">{months} bulan. Setiap bulan menjadi caj berasingan untuk setiap ahli.</p>
+              months > 0 && <p className="text-xs text-muted-foreground">{t(months === 1 ? "wizard.details.monthsHintOne" : "wizard.details.monthsHint", { count: months })}</p>
             )}
             <div className="grid gap-1.5 sm:max-w-xs">
-              <Label htmlFor="wz-dueday">Hari akhir bayaran setiap bulan</Label>
+              <Label htmlFor="wz-dueday">{t("wizard.details.dueDayLabel")}</Label>
               <Input
                 id="wz-dueday"
                 type="text"
@@ -597,7 +598,7 @@ function DetailsStep({
               />
               <FieldError id="wz-dueday-error" message={errors.dueDay} />
               <p id="wz-dueday-hint" className="text-xs text-muted-foreground">
-                1 hingga 31. Hari yang melebihi hujung bulan menjadi hari terakhir bulan itu (cth. 31 → 28 Februari). Kosongkan jika tiada tarikh akhir.
+                {t("wizard.details.dueDayHint")}
               </p>
             </div>
           </div>
@@ -605,12 +606,12 @@ function DetailsStep({
 
         <div className="grid gap-3 md:grid-cols-2">
           <div className="grid gap-1.5">
-            <Label htmlFor="wz-desc">Penerangan (pilihan)</Label>
-            <Textarea id="wz-desc" value={details.description} onChange={(event) => set("description", event.target.value)} rows={3} placeholder="Dilihat oleh bendahari dalam butiran kutipan." />
+            <Label htmlFor="wz-desc">{t("wizard.details.descriptionLabel")}</Label>
+            <Textarea id="wz-desc" value={details.description} onChange={(event) => set("description", event.target.value)} rows={3} placeholder={t("wizard.details.descriptionPlaceholder")} />
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="wz-notes">Nota dalaman (pilihan)</Label>
-            <Textarea id="wz-notes" value={details.notes} onChange={(event) => set("notes", event.target.value)} rows={3} placeholder="cth. diluluskan dalam mesyuarat AJK 3 Mac." />
+            <Label htmlFor="wz-notes">{t("wizard.details.notesLabel")}</Label>
+            <Textarea id="wz-notes" value={details.notes} onChange={(event) => set("notes", event.target.value)} rows={3} placeholder={t("wizard.details.notesPlaceholder")} />
           </div>
         </div>
       </div>
@@ -649,6 +650,7 @@ function MembersStep({
   payingCount: number;
   exemptCount: number;
 }) {
+  const t = useT();
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<CategoryFilter>("all");
   const [bulk, setBulk] = useState("");
@@ -692,29 +694,29 @@ function MembersStep({
       for (const member of visibleSelected) next[member.id] = value;
       return next;
     });
-    toast.success(`Amaun ${formatMoney(parsed.sen)} ditetapkan untuk ${visibleSelected.length} ahli.`);
+    toast.success(t(visibleSelected.length === 1 ? "wizard.messages.bulkAppliedOne" : "wizard.messages.bulkApplied", { amount: formatMoney(parsed.sen), count: visibleSelected.length }));
     setBulk("");
   };
 
   const categories: { value: CategoryFilter; label: string; count: number }[] = [
-    { value: "all", label: "Semua", count: members.length },
+    { value: "all", label: t("wizard.members.all"), count: members.length },
     ...(Object.keys(categoryLabels) as MemberCategory[]).map((value) => ({
       value,
       label: categoryLabels[value],
       count: members.filter((member) => member.category === value).length,
     })),
-    ...(hasUncategorised ? [{ value: "none" as const, label: "Tiada kategori", count: members.filter((m) => m.category === null).length }] : []),
+    ...(hasUncategorised ? [{ value: "none" as const, label: t("wizard.members.noCategory"), count: members.filter((m) => m.category === null).length }] : []),
   ];
 
   return (
     <SectionCard
-      title="Pilih Ahli"
+      title={t("wizard.members.title")}
       icon={UsersRound}
-      description={voluntary ? "Ahli yang dijemput menyumbang. Mereka tidak berhutang apa-apa." : "Hanya ahli yang dipilih akan mendapat caj."}
+      description={voluntary ? t("wizard.members.descriptionVoluntary") : t("wizard.members.description")}
     >
       <div className="grid gap-4">
         <ChoiceCards
-          label="Skop ahli"
+          label={t("wizard.members.scopeLabel")}
           value={allSelected ? "all" : "some"}
           onChange={(value) => {
             if (value === "all") setSelected(new Set(members.map((m) => m.id)));
@@ -724,8 +726,8 @@ function MembersStep({
           className="grid gap-2 sm:grid-cols-2"
         >
           {[
-            { value: "all", on: allSelected, label: `Semua ahli aktif (${members.length})`, hint: "Pilihan biasa untuk yuran dan jamuan." },
-            { value: "some", on: !allSelected, label: "Ahli terpilih sahaja", hint: "Mulakan dengan senarai kosong dan tanda sendiri." },
+            { value: "all", on: allSelected, label: t("wizard.members.scopeAll", { count: members.length }), hint: t("wizard.members.scopeAllHint") },
+            { value: "some", on: !allSelected, label: t("wizard.members.scopeSome"), hint: t("wizard.members.scopeSomeHint") },
           ].map((option) => (
             <ChoiceCard key={option.value} value={option.value} checked={option.on} indicator>
               <span className="min-w-0">
@@ -737,17 +739,17 @@ function MembersStep({
         </ChoiceCards>
 
         <div className="flex flex-wrap items-center gap-2 rounded-xl bg-primary-tint px-3 py-2.5 text-sm" aria-live="polite">
-          <span className="font-semibold">{selected.size} ahli dipilih</span>
+          <span className="font-semibold">{t(selected.size === 1 ? "wizard.members.selectedCountOne" : "wizard.members.selectedCount", { count: selected.size })}</span>
           {!voluntary && (
             <>
               <span className="text-muted-foreground">·</span>
               <span>
-                <b className="tabular-nums">{payingCount}</b> perlu bayar
+                <b className="tabular-nums">{payingCount}</b> {t("wizard.members.payingCount")}
               </span>
               {exemptCount > 0 && (
                 <>
                   <span className="text-muted-foreground">·</span>
-                  <span>{exemptCount} dikecualikan</span>
+                  <span>{t("wizard.members.exemptCount", { count: exemptCount })}</span>
                 </>
               )}
             </>
@@ -755,14 +757,14 @@ function MembersStep({
         </div>
 
         <Toolbar
-          search={<SearchInput id="wz-member-search" value={query} onChange={setQuery} placeholder="Cari ahli…" />}
-          tabs={<FilterPills label="Tapis kategori" value={category} onChange={setCategory} options={categories} />}
+          search={<SearchInput id="wz-member-search" value={query} onChange={setQuery} placeholder={t("wizard.members.searchPlaceholder")} />}
+          tabs={<FilterPills label={t("wizard.members.categoryFilter")} value={category} onChange={setCategory} options={categories} />}
         />
 
         {!voluntary && (
           <div className="grid gap-1.5 rounded-xl border border-dashed border-border p-3">
             <Label htmlFor="wz-bulk" className="text-xs text-muted-foreground">
-              Set amaun untuk dipilih ({visibleSelected.length} ahli dalam paparan ini)
+              {t(visibleSelected.length === 1 ? "wizard.members.bulkLabelOne" : "wizard.members.bulkLabel", { count: visibleSelected.length })}
             </Label>
             <div className="flex flex-col gap-2 min-[400px]:flex-row">
               <MoneyInput
@@ -777,7 +779,7 @@ function MembersStep({
                 className="min-w-0 flex-1 min-[400px]:max-w-48"
               />
               <Button variant="brand" size="lg" onClick={applyBulk} disabled={!visibleSelected.length || !bulk.trim()}>
-                Set amaun
+                {t("wizard.members.bulkApply")}
               </Button>
             </div>
             {bulkError && <p className="text-xs font-medium text-st-unpaid">{bulkError}</p>}
@@ -786,16 +788,16 @@ function MembersStep({
 
         {members.length === 0 ? (
           <p className="rounded-xl border border-dashed border-border px-3 py-6 text-center text-sm text-muted-foreground">
-            Tiada ahli aktif. Tambah ahli di halaman Ahli dahulu, atau simpan kutipan ini sebagai draf.
+            {t("wizard.members.noActive")}
           </p>
         ) : (
           <div className="min-w-0 overflow-hidden rounded-2xl border border-border">
             <label className="flex min-h-12 cursor-pointer items-center gap-3 border-b border-border bg-primary-tint px-3 text-xs font-semibold text-muted-foreground">
               <Checkbox checked={allVisibleSelected ? true : visibleSelected.length ? "indeterminate" : false} onCheckedChange={(value) => toggleVisible(value === true)} />
-              {allVisibleSelected ? "Nyahpilih semua dalam paparan" : "Pilih semua dalam paparan"} ({visible.length})
+              {allVisibleSelected ? t("wizard.members.deselectAllVisible") : t("wizard.members.selectAllVisible")} ({visible.length})
             </label>
             {visible.length === 0 ? (
-              <p className="px-3 py-6 text-center text-sm text-muted-foreground">Tiada ahli sepadan dengan carian atau kategori ini.</p>
+              <p className="px-3 py-6 text-center text-sm text-muted-foreground">{t("wizard.members.noMatch")}</p>
             ) : (
               <ul className="divide-y divide-border">
                 {visible.map((member) => (
@@ -848,6 +850,7 @@ function MemberRow({
   setExemption: (value: Exemption) => void;
   error?: string;
 }) {
+  const t = useT();
   const checkboxId = `wz-m-${member.id}`;
   return (
     <li className={cn("grid gap-2.5 px-3 py-3", on ? "bg-card" : "bg-muted/40")}>
@@ -855,10 +858,10 @@ function MemberRow({
         <Checkbox id={checkboxId} checked={on} onCheckedChange={(value) => onToggle(value === true)} className="size-5" />
         <label htmlFor={checkboxId} className="min-w-0 flex-1 cursor-pointer">
           <span className="block text-sm font-medium break-words">{member.name}</span>
-          <span className="block text-xs text-muted-foreground">{member.category ? categoryLabels[member.category] : "Tiada kategori"}</span>
+          <span className="block text-xs text-muted-foreground">{member.category ? categoryLabels[member.category] : t("wizard.members.noCategory")}</span>
         </label>
-        {on && !voluntary && exemption.on && <StatusChip label="Dikecualikan" tone="exempt" compact />}
-        {on && !voluntary && !exemption.on && override.trim() && <StatusChip label="Amaun khas" tone="brand" compact />}
+        {on && !voluntary && exemption.on && <StatusChip label={t("labels.status.exempt")} tone="exempt" compact />}
+        {on && !voluntary && !exemption.on && override.trim() && <StatusChip label={t("wizard.members.specialAmount")} tone="brand" compact />}
       </div>
 
       {on && !voluntary && (
@@ -867,31 +870,31 @@ function MemberRow({
             {!exemption.on && (
               <div className="flex min-w-0 items-center gap-1.5">
                 <MoneyInput
-                  aria-label={`Amaun ${monthly ? "sebulan " : ""}untuk ${member.name}`}
+                  aria-label={t(monthly ? "wizard.members.amountMonthlyAria" : "wizard.members.amountAria", { name: member.name })}
                   value={override}
                   onChange={(event) => setOverride(event.target.value)}
-                  placeholder={defaultSen !== null ? senToInput(defaultSen) : "Amaun asal"}
+                  placeholder={defaultSen !== null ? senToInput(defaultSen) : t("wizard.members.defaultPlaceholder")}
                   invalid={Boolean(error)}
                   className="w-36 min-w-0"
                 />
                 {override.trim() && (
                   <Button variant="outline" size="sm" onClick={() => setOverride("")} className="h-11">
-                    <RotateCcw /> Set semula ke asal
+                    <RotateCcw /> {t("wizard.members.resetToDefault")}
                   </Button>
                 )}
               </div>
             )}
             <label className="flex min-h-11 cursor-pointer items-center gap-2 text-xs font-medium text-muted-foreground">
-              <Switch checked={exemption.on} onCheckedChange={(value) => setExemption({ ...exemption, on: value })} aria-label={`Kecualikan ${member.name}`} />
-              Kecualikan
+              <Switch checked={exemption.on} onCheckedChange={(value) => setExemption({ ...exemption, on: value })} aria-label={t("wizard.members.exemptAria", { name: member.name })} />
+              {t("wizard.members.exempt")}
             </label>
           </div>
           {exemption.on && (
             <Input
               value={exemption.reason}
               onChange={(event) => setExemption({ ...exemption, reason: event.target.value })}
-              placeholder="Sebab pengecualian, cth. cuti tanpa gaji"
-              aria-label={`Sebab pengecualian untuk ${member.name}`}
+              placeholder={t("wizard.members.reasonPlaceholder")}
+              aria-label={t("wizard.members.reasonAria", { name: member.name })}
               aria-invalid={Boolean(error)}
             />
           )}
@@ -927,33 +930,34 @@ function ReviewStep({
   expectedTotal: Sen | null;
   onEdit: (step: Step) => void;
 }) {
+  const t = useT();
   const voluntary = details.type === "voluntary";
   const due =
     details.type === "one_off"
       ? details.dueDate
         ? formatDay(details.dueDate)
-        : "Tiada tarikh akhir"
+        : t("wizard.details.noDeadline")
       : details.type === "monthly"
         ? details.dueDay.trim()
-          ? `Sebelum ${Number(details.dueDay)}hb setiap bulan (hari terakhir bulan jika lebih)`
-          : "Tiada tarikh akhir"
-        : "Tiada tarikh akhir";
+          ? t("wizard.review.dueMonthly", { day: Number(details.dueDay) })
+          : t("wizard.details.noDeadline")
+        : t("wizard.details.noDeadline");
 
   return (
     <div className="grid gap-4">
       <SectionCard
-        title="Semak butiran"
+        title={t("wizard.review.detailsTitle")}
         icon={FileText}
         action={
           <Button variant="outline" size="sm" onClick={() => onEdit(0)}>
-            Ubah
+            {t("wizard.review.edit")}
           </Button>
         }
       >
         <DetailList
           items={[
             {
-              label: "Nama",
+              label: t("wizard.review.name"),
               value: (
                 <span className="inline-flex items-center gap-1.5">
                   <CollectionIcon icon={iconOf(details)} type={details.type} size="sm" />
@@ -961,29 +965,45 @@ function ReviewStep({
                 </span>
               ),
             },
-            { label: "Jenis", value: collectionTypeLabels[details.type] },
-            { label: "Amaun asal", value: voluntary ? "Ikut kemampuan" : defaultSen !== null ? `${formatMoney(defaultSen)}${details.type === "monthly" ? " sebulan" : " seorang"}` : "—" },
+            { label: t("wizard.review.type"), value: collectionTypeLabels[details.type] },
+            {
+              label: t("wizard.review.defaultAmount"),
+              value: voluntary
+                ? t("wizard.review.anyAmount")
+                : defaultSen !== null
+                  ? t(details.type === "monthly" ? "wizard.review.perMonthly" : "wizard.review.perPerson", { amount: formatMoney(defaultSen) })
+                  : "—",
+            },
             ...(details.type === "monthly"
-              ? [{ label: "Tempoh", value: months.length ? `${formatMonth(months[0])} – ${formatMonth(months[months.length - 1])} (${months.length} bulan)` : "—" }]
+              ? [{
+                  label: t("wizard.review.period"),
+                  value: months.length
+                    ? t(months.length === 1 ? "wizard.review.periodValueOne" : "wizard.review.periodValue", {
+                        from: formatMonth(months[0]),
+                        to: formatMonth(months[months.length - 1]),
+                        count: months.length,
+                      })
+                    : "—",
+                }]
               : []),
-            { label: "Tarikh akhir", value: due },
-            { label: "Penerangan", value: details.description.trim() },
-            { label: "Nota", value: details.notes.trim() },
+            { label: t("wizard.review.dueDate"), value: due },
+            { label: t("wizard.review.description"), value: details.description.trim() },
+            { label: t("wizard.review.notes"), value: details.notes.trim() },
           ]}
         />
       </SectionCard>
 
       <SectionCard
-        title={voluntary ? `Ahli dijemput (${paying.length})` : `Ahli perlu bayar (${paying.length})`}
+        title={voluntary ? t("wizard.review.invitedTitle", { count: paying.length }) : t("wizard.review.payingTitle", { count: paying.length })}
         icon={UsersRound}
         action={
           <Button variant="outline" size="sm" onClick={() => onEdit(1)}>
-            Ubah
+            {t("wizard.review.edit")}
           </Button>
         }
       >
         {paying.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Tiada ahli dipilih. Kutipan hanya boleh disimpan sebagai draf.</p>
+          <p className="text-sm text-muted-foreground">{t("wizard.review.noMembers")}</p>
         ) : (
           <ul className="grid max-h-80 gap-1 overflow-y-auto overscroll-contain pr-1">
             {paying.map((member) => {
@@ -994,7 +1014,7 @@ function ReviewStep({
                   {!voluntary && (
                     <span className={cn("shrink-0 tabular-nums", amount !== defaultSen && "font-semibold text-primary-strong")}>
                       {amount !== null ? formatMoney(amount) : "—"}
-                      {details.type === "monthly" && <span className="text-xs font-normal text-muted-foreground"> /bln</span>}
+                      {details.type === "monthly" && <span className="text-xs font-normal text-muted-foreground"> {t("wizard.review.perMonthShort")}</span>}
                     </span>
                   )}
                 </li>
@@ -1005,7 +1025,7 @@ function ReviewStep({
       </SectionCard>
 
       {exempt.length > 0 && (
-        <SectionCard title={`Dikecualikan (${exempt.length})`} description="Termasuk dalam kutipan tetapi tidak perlu membayar.">
+        <SectionCard title={t("wizard.review.exemptTitle", { count: exempt.length })} description={t("wizard.review.exemptDescription")}>
           <ul className="grid gap-1.5">
             {exempt.map((member) => (
               <li key={member.id} className="flex flex-col gap-0.5 rounded-lg bg-st-exempt-bg/60 px-2.5 py-2 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3">
@@ -1020,21 +1040,20 @@ function ReviewStep({
       <div className="rounded-2xl border border-primary/30 bg-primary-tint p-4 md:p-5">
         {voluntary ? (
           <p className="text-sm">
-            <b>Tiada jumlah dijangka.</b> Sumbangan sukarela tidak mencipta hutang; jumlah terkumpul dikira daripada sumbangan yang disahkan.
+            <b>{t("wizard.review.noExpectedTitle")}</b> {t("wizard.review.noExpectedBody")}
           </p>
         ) : (
           <>
-            <p className="text-[13px] font-medium text-muted-foreground">Jumlah dijangka</p>
+            <p className="text-[13px] font-medium text-muted-foreground">{t("wizard.review.expectedTotal")}</p>
             <p className="mt-0.5 text-[26px] leading-tight font-bold tracking-[-.02em] tabular-nums">{expectedTotal !== null ? formatMoney(expectedTotal) : "—"}</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              {paying.length} ahli
-              {details.type === "monthly" && perPeriodTotal !== null && (
-                <>
-                  {" "}
-                  · {formatMoney(perPeriodTotal)} sebulan × {months.length} bulan
-                </>
-              )}
-              {exempt.length > 0 && <> · {exempt.length} dikecualikan tidak dikira</>}
+              {[
+                t(paying.length === 1 ? "wizard.review.summaryMembersOne" : "wizard.review.summaryMembers", { count: paying.length }),
+                ...(details.type === "monthly" && perPeriodTotal !== null
+                  ? [t("wizard.review.summaryMonthly", { amount: formatMoney(perPeriodTotal), months: months.length })]
+                  : []),
+                ...(exempt.length > 0 ? [t("wizard.review.summaryExempt", { count: exempt.length })] : []),
+              ].join(" · ")}
             </p>
           </>
         )}
@@ -1062,44 +1081,45 @@ function LiveSummary({
   exempt: number;
   expectedTotal: Sen | null;
 }) {
+  const t = useT();
   const voluntary = details.type === "voluntary";
   return (
-    <aside className="hidden lg:sticky lg:top-24 lg:block" aria-label="Ringkasan">
-      <SectionCard title="Ringkasan">
+    <aside className="hidden lg:sticky lg:top-24 lg:block" aria-label={t("wizard.summary.title")}>
+      <SectionCard title={t("wizard.summary.title")}>
         <dl className="grid gap-2.5 text-sm">
           <div className="flex justify-between gap-3">
-            <dt className="text-muted-foreground">Nama</dt>
+            <dt className="text-muted-foreground">{t("wizard.summary.name")}</dt>
             <dd className="flex min-w-0 items-center justify-end gap-1.5 font-medium">
               {details.name.trim() && <CollectionIcon icon={iconOf(details)} type={details.type} size="xs" />}
               <span className="truncate">{details.name.trim() || "—"}</span>
             </dd>
           </div>
           <div className="flex justify-between gap-3">
-            <dt className="text-muted-foreground">Jenis</dt>
+            <dt className="text-muted-foreground">{t("wizard.summary.type")}</dt>
             <dd className="text-right">{collectionTypeLabels[details.type]}</dd>
           </div>
           {!voluntary && (
             <div className="flex justify-between gap-3">
-              <dt className="text-muted-foreground">Amaun asal</dt>
+              <dt className="text-muted-foreground">{t("wizard.summary.defaultAmount")}</dt>
               <dd className="text-right tabular-nums">{defaultSen !== null ? <Money sen={defaultSen} /> : "—"}</dd>
             </div>
           )}
           {details.type === "monthly" && (
             <div className="flex justify-between gap-3">
-              <dt className="text-muted-foreground">Tempoh</dt>
-              <dd className="text-right tabular-nums">{months ? `${months} bulan` : "—"}</dd>
+              <dt className="text-muted-foreground">{t("wizard.summary.period")}</dt>
+              <dd className="text-right tabular-nums">{months ? t(months === 1 ? "wizard.summary.periodValueOne" : "wizard.summary.periodValue", { count: months }) : "—"}</dd>
             </div>
           )}
           <div className="flex justify-between gap-3">
-            <dt className="text-muted-foreground">Ahli dipilih</dt>
+            <dt className="text-muted-foreground">{t("wizard.summary.chosen")}</dt>
             <dd className="text-right tabular-nums">
               {chosen}
-              {exempt > 0 && <span className="text-muted-foreground"> ({exempt} dikecualikan)</span>}
+              {exempt > 0 && <span className="text-muted-foreground"> {t("wizard.summary.chosenExempt", { count: exempt })}</span>}
             </dd>
           </div>
           <div className="mt-1 border-t border-border pt-2.5">
-            <dt className="text-xs text-muted-foreground">{voluntary ? "Jumlah dijangka" : `Jumlah dijangka (${paying} ahli)`}</dt>
-            <dd className="mt-0.5 text-xl font-bold tabular-nums">{voluntary ? "Tiada" : expectedTotal !== null ? formatMoney(expectedTotal) : "—"}</dd>
+            <dt className="text-xs text-muted-foreground">{voluntary ? t("wizard.summary.expectedTotal") : t(paying === 1 ? "wizard.summary.expectedTotalMembersOne" : "wizard.summary.expectedTotalMembers", { count: paying })}</dt>
+            <dd className="mt-0.5 text-xl font-bold tabular-nums">{voluntary ? t("wizard.summary.none") : expectedTotal !== null ? formatMoney(expectedTotal) : "—"}</dd>
           </div>
         </dl>
       </SectionCard>

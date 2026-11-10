@@ -17,6 +17,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { formatDayShort, formatMoney, formatMonth, initials, today } from "@/lib/format";
+import { useT, type TFunction } from "@/lib/i18n/react";
 import { chargeFor, CONFIDENT, isConfident, type IssueCode } from "@/lib/isi-pantas/parse";
 import { currentSection } from "@/lib/nav";
 import type { Collection, Snapshot } from "@/lib/types";
@@ -26,23 +27,24 @@ import { Check, ClipboardPaste, Eraser, Flower2, Landmark, MessageCircle, Notebo
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
 
+// The sample pastes are BM on purpose: they are what the parser reads. Only the card titles follow the locale.
 const EXAMPLES = [
   {
     icon: MessageCircle,
-    title: "Mesej WhatsApp kumpulan",
+    title: "quickFill.empty.whatsapp",
     text: "Farah dah bank in 5 utk jamuan ye kak\nSiti bayar yuran nov 10 cash\nAmir baju 15 transfer semalam\nTan Mei Ling 25 jamuan",
   },
-  { icon: Landmark, title: "Salinan penyata bank", text: "10/11 DUITNOW FR SITI AISYAH 10.00" },
-  { icon: NotebookPen, title: "Senarai sendiri", text: "Amir 15 baju, Tan 25 jamuan tunai" },
+  { icon: Landmark, title: "quickFill.empty.bank", text: "10/11 DUITNOW FR SITI AISYAH 10.00" },
+  { icon: NotebookPen, title: "quickFill.empty.list", text: "Amir 15 baju, Tan 25 jamuan tunai" },
 ] as const;
 
-const METHOD_SHORT = { cash: "Tunai", transfer: "Pindahan", other: "Lain-lain" } as const;
 const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 // Entry points ------------------------------------------------------------------------------
 
 /** Top bar: gradient button with the "/" shortcut. Desktop and tablet; phones use the pill. */
 export function IsiPantasButton() {
+  const t = useT();
   const { open, openSheet, close, opener } = useIsiPantas();
   return (
     <button
@@ -50,7 +52,7 @@ export function IsiPantasButton() {
       aria-keyshortcuts="/"
       aria-expanded={open}
       aria-controls="isi-pantas"
-      title="Isi Pantas (/)"
+      title={t("quickFill.nameWithKey")}
       onClick={(event) => {
         if (!open) return openSheet(event.currentTarget);
         close();
@@ -59,7 +61,7 @@ export function IsiPantasButton() {
       className="isi-spark-btn hidden h-9 shrink-0 items-center gap-2 rounded-[10px] px-3 text-[13px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background md:inline-flex print:hidden"
     >
       <Sparkles className="size-4" aria-hidden />
-      Isi Pantas
+      {t("quickFill.name")}
       <kbd aria-hidden className="rounded-[5px] bg-white/20 px-1.5 font-mono text-[10.5px] leading-[18px]">
         /
       </kbd>
@@ -69,6 +71,7 @@ export function IsiPantasButton() {
 
 /** Phones: a floating pill above the bottom nav on the pages where payments are entered. */
 export function IsiPantasPill() {
+  const t = useT();
   const pathname = usePathname();
   const { open, openSheet } = useIsiPantas();
   const path = pathname.endsWith("/") ? pathname : `${pathname}/`;
@@ -88,7 +91,7 @@ export function IsiPantasPill() {
       )}
     >
       <Sparkles className="size-4" aria-hidden />
-      Isi Pantas
+      {t("quickFill.name")}
     </button>
   );
 }
@@ -181,6 +184,7 @@ export function IsiPantasSheet() {
 }
 
 function Body({ data, view, onClose, mobile = false }: { data: Snapshot; view: View; onClose: () => void; mobile?: boolean }) {
+  const t = useT();
   const pathname = usePathname();
   const { turns, busy, clear, celebrate } = useIsiPantas();
   const feed = useRef<HTMLDivElement>(null);
@@ -194,16 +198,16 @@ function Body({ data, view, onClose, mobile = false }: { data: Snapshot; view: V
   const last = turns.at(-1);
   const lastSummary = last ? turnSummary(last) : null;
   const subtitle = !turns.length
-    ? "Tampal teks, saya cadangkan isian"
+    ? t("quickFill.subtitle.empty")
     : thinking
-      ? `Memadankan dengan ${activeMembers} ahli…`
+      ? t("quickFill.subtitle.matching", { count: activeMembers })
       : open.length
-        ? `${open.length} cadangan · belum disimpan`
+        ? t("quickFill.subtitle.open", { count: open.length })
         : lastSummary && lastSummary.count
-          ? `${lastSummary.count} bayaran direkod`
+          ? t(lastSummary.count === 1 ? "quickFill.subtitle.recordedOne" : "quickFill.subtitle.recordedMany", { count: lastSummary.count })
           : lastSummary && lastSummary.undone
-            ? `${lastSummary.undone} bayaran dibatalkan`
-            : "Tampal teks lagi bila-bila masa";
+            ? t(lastSummary.undone === 1 ? "quickFill.subtitle.undoneOne" : "quickFill.subtitle.undoneMany", { count: lastSummary.undone })
+            : t("quickFill.subtitle.again");
 
   // New paste or new results: bring the latest exchange into view.
   const phaseKey = turns.map((turn) => `${turn.id}:${turn.phase}`).join(",");
@@ -230,7 +234,7 @@ function Body({ data, view, onClose, mobile = false }: { data: Snapshot; view: V
         </span>
         <div className="min-w-0">
           <Title id="isi-title" className="font-display text-[15px] leading-tight font-bold text-foreground">
-            Isi Pantas
+            {t("quickFill.name")}
           </Title>
           <Description id="isi-sub" aria-live="polite" className="truncate text-[11.5px] text-muted-foreground">
             {subtitle}
@@ -238,24 +242,24 @@ function Body({ data, view, onClose, mobile = false }: { data: Snapshot; view: V
         </div>
         <div className="ml-auto flex shrink-0 gap-1.5">
           {turns.length > 0 && (
-            <Button variant="outline" size="icon-sm" className="bg-card" aria-label="Kosongkan perbualan" title="Kosongkan perbualan" disabled={busy} onClick={clear}>
+            <Button variant="outline" size="icon-sm" className="bg-card" aria-label={t("quickFill.clear")} title={t("quickFill.clear")} disabled={busy} onClick={clear}>
               <Eraser />
             </Button>
           )}
-          <Button variant="outline" size="icon-sm" className="bg-card" aria-label="Tutup Isi Pantas" onClick={onClose}>
+          <Button variant="outline" size="icon-sm" className="bg-card" aria-label={t("quickFill.close")} onClick={onClose}>
             <X />
           </Button>
         </div>
       </div>
-      <ul aria-label="Konteks" className="relative mx-4 mb-2 flex flex-wrap gap-1.5 text-[11px] text-muted-foreground">
+      <ul aria-label={t("quickFill.context.label")} className="relative mx-4 mb-2 flex flex-wrap gap-1.5 text-[11px] text-muted-foreground">
         <li className="rounded-full border border-border bg-card px-2.5 py-0.5">
-          Konteks: <b className="font-semibold text-foreground">{page}</b>
+          {t("quickFill.context.page")} <b className="font-semibold text-foreground">{page}</b>
         </li>
         <li className="rounded-full border border-border bg-card px-2.5 py-0.5">
-          <b className="font-semibold text-foreground">{activeMembers}</b> ahli
+          <b className="font-semibold text-foreground">{activeMembers}</b> {t(activeMembers === 1 ? "quickFill.context.membersOne" : "quickFill.context.membersMany")}
         </li>
         <li className="rounded-full border border-border bg-card px-2.5 py-0.5">
-          <b className="font-semibold text-foreground">{activeCollections}</b> kutipan aktif
+          <b className="font-semibold text-foreground">{activeCollections}</b> {t(activeCollections === 1 ? "quickFill.context.collectionsOne" : "quickFill.context.collectionsMany")}
         </li>
       </ul>
       <div ref={feed} className="relative flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto overscroll-contain px-4 pt-1 pb-2.5">
@@ -268,15 +272,16 @@ function Body({ data, view, onClose, mobile = false }: { data: Snapshot; view: V
 }
 
 function EmptyFeed() {
+  const t = useT();
   const { setDraft } = useIsiPantas();
   return (
     <div className="grid gap-2.5 py-1.5">
       <div className="px-1.5 pt-2.5 pb-0.5 text-center">
         <Flower2 aria-hidden className="mx-auto size-8 text-primary" />
-        <p className="mt-1 font-semibold">Malas taip satu-satu?</p>
-        <p className="mt-1 text-[12.5px] text-muted-foreground">Tampal mesej atau senarai bayaran. Saya padankan dengan ahli dan kutipan, anda pilih yang betul.</p>
+        <p className="mt-1 font-semibold">{t("quickFill.empty.title")}</p>
+        <p className="mt-1 text-[12.5px] text-muted-foreground">{t("quickFill.empty.text")}</p>
       </div>
-      <ul className="grid gap-2" aria-label="Contoh">
+      <ul className="grid gap-2" aria-label={t("quickFill.empty.examples")}>
         {EXAMPLES.map((example) => (
           <li key={example.title}>
             <button
@@ -291,7 +296,7 @@ function EmptyFeed() {
                 <example.icon className="size-3.5" />
               </span>
               <span className="min-w-0">
-                <span className="block font-medium">{example.title}</span>
+                <span className="block font-medium">{t(example.title)}</span>
                 <span className="block truncate text-[11px] text-muted-foreground">“{example.text.split("\n")[0]}”</span>
               </span>
             </button>
@@ -312,21 +317,27 @@ function BotLine({ children, className }: { children: ReactNode; className?: str
 }
 
 function TurnView({ turn, data, view, activeMembers, onReveal }: { turn: Turn; data: Snapshot; view: View; activeMembers: number; onReveal?: () => void }) {
+  const t = useT();
   const lines = turn.text.split(/\r?\n/).filter((line) => line.trim()).length;
   const confident = turn.items.filter((item) => isConfident(item.s)).length;
   const summary = turnSummary(turn);
-  const steps = [`Baca ${lines} baris`, "Kenal pasti amaun & kaedah", `Padankan nama dengan ${activeMembers} ahli`, "Semak baki & pendua"];
+  const steps = [
+    t(lines === 1 ? "quickFill.turn.stepReadOne" : "quickFill.turn.stepReadMany", { count: lines }),
+    t("quickFill.turn.stepAmount"),
+    t(activeMembers === 1 ? "quickFill.turn.stepMatchOne" : "quickFill.turn.stepMatchMany", { count: activeMembers }),
+    t("quickFill.turn.stepCheck"),
+  ];
   return (
     <div data-turn className="flex scroll-mt-2 flex-col gap-2.5">
       <div className="isi-bubble max-w-[88%] self-end rounded-[16px_16px_4px_16px] px-3 py-2.5 text-[12.5px] break-words whitespace-pre-wrap">
         <span className="mb-1 flex items-center gap-1 text-[10.5px] font-semibold">
-          <ClipboardPaste aria-hidden className="size-3" /> Ditampal · {lines} baris
+          <ClipboardPaste aria-hidden className="size-3" /> {t(lines === 1 ? "quickFill.turn.pastedOne" : "quickFill.turn.pastedMany", { count: lines })}
         </span>
         {turn.text}
       </div>
       {turn.phase === "thinking" ? (
         <BotLine className="w-[240px]">
-          <ol className="grid gap-1 text-[11.5px] text-muted-foreground" aria-label="Langkah">
+          <ol className="grid gap-1 text-[11.5px] text-muted-foreground" aria-label={t("quickFill.turn.steps")}>
             {steps.map((label, i) => (
               <li key={label} className={cn(i < turn.step && "text-st-paid", i === turn.step && "font-semibold text-primary-strong")}>
                 {i < turn.step ? "✓" : i === turn.step ? "●" : "○"} {label}
@@ -341,15 +352,17 @@ function TurnView({ turn, data, view, activeMembers, onReveal }: { turn: Turn; d
         <>
           <BotLine>
             {turn.items.length === 0 ? (
-              <>Saya tidak jumpa sebarang amaun. Tulis nama, amaun dan kutipan, contohnya “Farah 5 jamuan tunai”.</>
+              <>{t("quickFill.turn.none")}</>
             ) : (
               <>
-                Saya jumpa <b>{turn.items.length}</b> bayaran.{" "}
+                {t("quickFill.turn.foundBefore")}
+                <b>{turn.items.length}</b>
+                {t(turn.items.length === 1 ? "quickFill.turn.foundAfterOne" : "quickFill.turn.foundAfterMany")}{" "}
                 {confident === turn.items.length
-                  ? "Semua padan dengan yakin."
+                  ? t("quickFill.turn.allConfident")
                   : confident === 0
-                    ? `${turn.items.length} perlu semakan.`
-                    : `${confident} padan dengan yakin, ${turn.items.length - confident} perlu semakan.`}
+                    ? t("quickFill.turn.noneConfident", { count: turn.items.length })
+                    : t("quickFill.turn.someConfident", { confident, review: turn.items.length - confident })}
               </>
             )}
           </BotLine>
@@ -365,23 +378,24 @@ function TurnView({ turn, data, view, activeMembers, onReveal }: { turn: Turn; d
 
 // Suggestion card ---------------------------------------------------------------------------
 
-function issueText(code: IssueCode, item: Item, data: Snapshot, view: View) {
+function issueText(t: TFunction, code: IssueCode, item: Item, data: Snapshot, view: View) {
   const { s } = item;
-  if (code === "NAME_UNMATCHED") return "Nama tidak dijumpai dalam senarai ahli";
-  if (code === "NAME_AMBIGUOUS") return `Mungkin ${s.candidates.map((id) => view.membersById.get(id)?.name ?? id).join(" atau ")}`;
-  if (code === "POSSIBLE_DUPLICATE") return "Mungkin pendua: amaun sama direkod dalam 7 hari lalu";
-  if (code === "COLLECTION_UNKNOWN") return s.collectionId ? "Ahli ini tiada caj dalam kutipan ini" : "Kutipan tidak dikenal pasti";
+  if (code === "NAME_UNMATCHED") return t("quickFill.issue.nameUnmatched");
+  if (code === "NAME_AMBIGUOUS") return t("quickFill.issue.nameAmbiguous", { names: s.candidates.map((id) => view.membersById.get(id)?.name ?? id).join(t("quickFill.issue.or")) });
+  if (code === "POSSIBLE_DUPLICATE") return t("quickFill.issue.duplicate");
+  if (code === "COLLECTION_UNKNOWN") return s.collectionId ? t("quickFill.issue.noCharge") : t("quickFill.issue.collectionUnknown");
   const charge = s.memberId && s.collectionId ? chargeFor(data, s.memberId, s.collectionId, s.periodId) : null;
   const ledger = charge ? view.ledgers.get(charge.id) : null;
-  return ledger ? `Melebihi baki ${formatMoney(ledger.payable)}` : "Melebihi baki";
+  return ledger ? t("quickFill.issue.overBalanceAmount", { amount: formatMoney(ledger.payable) }) : t("quickFill.issue.overBalance");
 }
 
-function targetLabel(collection: Collection | undefined, periodMonth: string | null) {
-  if (!collection) return "Kutipan belum dipilih";
+function targetLabel(t: TFunction, collection: Collection | undefined, periodMonth: string | null) {
+  if (!collection) return t("quickFill.card.collectionNotChosen");
   return periodMonth ? `${collection.name} · ${formatMonth(periodMonth, false)}` : collection.name;
 }
 
 function SuggestionCard({ item, data, view }: { item: Item; data: Snapshot; view: View }) {
+  const t = useT();
   const { accept, dismiss, busy } = useIsiPantas();
   const { s, status } = item;
   const member = s.memberId ? view.membersById.get(s.memberId) : undefined;
@@ -391,14 +405,22 @@ function SuggestionCard({ item, data, view }: { item: Item; data: Snapshot; view
   const warn = live && s.issues.length > 0;
   const canRecord = Boolean(s.memberId && s.collectionId) && !s.issues.includes("OVER_BALANCE") && !s.issues.includes("COLLECTION_UNKNOWN");
   const nameIssue = s.issues.includes("NAME_AMBIGUOUS") || s.issues.includes("NAME_UNMATCHED");
-  const primary = !canRecord ? "Terima" : status === "undone" ? "Rekod semula" : nameIssue ? "Sahkan ahli" : s.issues.includes("POSSIBLE_DUPLICATE") ? "Rekod juga" : "Terima";
+  const primary = !canRecord
+    ? t("quickFill.card.accept")
+    : status === "undone"
+      ? t("quickFill.card.recordAgain")
+      : nameIssue
+        ? t("quickFill.card.confirmMember")
+        : s.issues.includes("POSSIBLE_DUPLICATE")
+          ? t("quickFill.card.recordAnyway")
+          : t("quickFill.card.accept");
   const pct = Math.round(s.confidence * 100);
   const issuesId = `isi-issues-${s.id}`;
   const today_ = today();
   const what = [
-    targetLabel(collection, period?.month ?? null),
-    METHOD_SHORT[s.method],
-    s.method === "transfer" ? "Menunggu semakan" : null,
+    targetLabel(t, collection, period?.month ?? null),
+    t(`quickFill.method.${s.method}`),
+    s.method === "transfer" ? t("quickFill.card.pendingReview") : null,
     s.paidOn !== today_ ? formatDayShort(s.paidOn) : null,
   ].filter(Boolean);
 
@@ -406,10 +428,10 @@ function SuggestionCard({ item, data, view }: { item: Item; data: Snapshot; view
     return (
       <div id={`isi-card-${s.id}`} tabIndex={-1} className="flex items-center gap-2 rounded-xl border border-dashed border-border px-3 py-1.5 text-[11.5px] text-muted-foreground outline-none">
         <span className="min-w-0 flex-1 truncate">
-          Dibuang: {member?.name ?? "Ahli tidak dikenal pasti"} · {formatMoney(s.amountSen)}
+          {t("quickFill.card.dismissed", { name: member?.name ?? t("quickFill.card.unknownMember"), amount: formatMoney(s.amountSen) })}
         </span>
         <Button variant="link" size="xs" className="h-auto px-0" onClick={() => dismiss(s.id, true)}>
-          Kembalikan
+          {t("quickFill.card.restore")}
         </Button>
       </div>
     );
@@ -420,7 +442,7 @@ function SuggestionCard({ item, data, view }: { item: Item; data: Snapshot; view
     <article
       id={`isi-card-${s.id}`}
       tabIndex={-1}
-      aria-label={`${member?.name ?? "Ahli tidak dikenal pasti"}, ${formatMoney(s.amountSen)}`}
+      aria-label={`${member?.name ?? t("quickFill.card.unknownMember")}, ${formatMoney(s.amountSen)}`}
       className={cn(
         "isi-card grid grid-cols-[30px_minmax(0,1fr)_auto] items-start gap-x-2.5 gap-y-2 rounded-2xl border border-border bg-card px-3 py-2.5 outline-none focus-visible:ring-2 focus-visible:ring-ring",
         warn && "isi-card-warn",
@@ -432,7 +454,7 @@ function SuggestionCard({ item, data, view }: { item: Item; data: Snapshot; view
       </span>
       <div className="min-w-0">
         <p className="text-[12.5px] leading-tight font-semibold">
-          {member?.name ?? "Ahli tidak dikenal pasti"}
+          {member?.name ?? t("quickFill.card.unknownMember")}
           {s.issues.includes("NAME_AMBIGUOUS") && live && "?"}
         </p>
         <p className="text-[11px] text-muted-foreground">
@@ -441,7 +463,7 @@ function SuggestionCard({ item, data, view }: { item: Item; data: Snapshot; view
         </p>
         {live && item.files.length > 0 && (
           <p className="mt-0.5 flex items-center gap-1 text-[11px] text-primary-strong">
-            <Paperclip aria-hidden className="size-3 shrink-0" /> {item.files.length} bukti akan dilampirkan
+            <Paperclip aria-hidden className="size-3 shrink-0" /> {t(item.files.length === 1 ? "quickFill.card.proofOne" : "quickFill.card.proofMany", { count: item.files.length })}
           </p>
         )}
         {warn && (
@@ -449,7 +471,7 @@ function SuggestionCard({ item, data, view }: { item: Item; data: Snapshot; view
             {s.issues.map((code) => (
               <li key={code} className="flex items-start gap-1">
                 <TriangleAlert aria-hidden className="mt-[2px] size-3 shrink-0" />
-                {issueText(code, item, data, view)}
+                {issueText(t, code, item, data, view)}
               </li>
             ))}
           </ul>
@@ -464,18 +486,18 @@ function SuggestionCard({ item, data, view }: { item: Item; data: Snapshot; view
         <p className="text-[13px] font-semibold whitespace-nowrap tabular-nums">{formatMoney(s.amountSen)}</p>
         <p className="mt-0.5 flex items-center justify-end gap-1 text-[10.5px] text-muted-foreground">
           <span aria-hidden className={cn("isi-ring size-3.5 rounded-full", s.confidence < CONFIDENT && "isi-ring-low")} style={{ "--p": `${pct}%` } as CSSProperties} />
-          <span className="sr-only">Keyakinan</span>
+          <span className="sr-only">{t("quickFill.card.confidence")}</span>
           {pct}%
         </p>
       </div>
       <div className="col-span-full flex flex-wrap items-center gap-1.5">
         {status === "accepted" ? (
           <span className="inline-flex items-center gap-1 rounded-full bg-st-paid-bg px-2.5 py-0.5 text-[11.5px] font-semibold text-st-paid">
-            <Check aria-hidden className="size-3.5" /> Direkod{s.method === "transfer" ? " · menunggu semakan" : ""}
+            <Check aria-hidden className="size-3.5" /> {s.method === "transfer" ? t("quickFill.card.recordedPending") : t("quickFill.card.recorded")}
           </span>
         ) : status === "applying" ? (
           <span className="inline-flex items-center gap-1.5 text-[11.5px] font-medium text-muted-foreground">
-            <Spinner className="size-3.5" /> Merekod…
+            <Spinner className="size-3.5" /> {t("quickFill.card.recording")}
           </span>
         ) : (
           <>
@@ -484,17 +506,17 @@ function SuggestionCard({ item, data, view }: { item: Item; data: Snapshot; view
             </Button>
             {status === "pending" && <EditPicker item={item} data={data} view={view} />}
             {status === "pending" && (
-              <Button variant="danger-outline" size="icon-sm" className="size-7 rounded-[9px]" aria-label="Buang cadangan" title="Buang cadangan" disabled={busy} onClick={() => dismiss(s.id)}>
+              <Button variant="danger-outline" size="icon-sm" className="size-7 rounded-[9px]" aria-label={t("quickFill.card.dismiss")} title={t("quickFill.card.dismiss")} disabled={busy} onClick={() => dismiss(s.id)}>
                 <X />
               </Button>
             )}
-            {status === "undone" && <span className="text-[11px] text-muted-foreground">Dibatalkan · kekal dalam sejarah</span>}
+            {status === "undone" && <span className="text-[11px] text-muted-foreground">{t("quickFill.card.undone")}</span>}
           </>
         )}
       </div>
       {item.error && (
         <p role="alert" className="col-span-full -mt-1 text-[11.5px] font-medium text-destructive">
-          Tidak direkod: {item.error}
+          {t("quickFill.card.notRecorded", { error: item.error })}
         </p>
       )}
     </article>
@@ -503,6 +525,7 @@ function SuggestionCard({ item, data, view }: { item: Item; data: Snapshot; view
 
 /** "Ubah": pick the member and the charge (collection, month) this money belongs to. */
 function EditPicker({ item, data, view }: { item: Item; data: Snapshot; view: View }) {
+  const t = useT();
   const { edit, busy } = useIsiPantas();
   const { s } = item;
   const [open, setOpen] = useState(false);
@@ -517,7 +540,7 @@ function EditPicker({ item, data, view }: { item: Item; data: Snapshot; view: Vi
     for (const collection of data.collections.filter((c) => c.status === "active")) {
       if (collection.type === "voluntary") {
         if (view.participantsByCollection.get(collection.id)?.some((p) => p.memberId === memberId))
-          list.push({ value: `${collection.id}|`, label: collection.name, note: "sukarela", disabled: false, collection });
+          list.push({ value: `${collection.id}|`, label: collection.name, note: t("quickFill.edit.voluntary"), disabled: false, collection });
         continue;
       }
       for (const charge of view.chargesByCollection.get(collection.id) ?? []) {
@@ -526,15 +549,15 @@ function EditPicker({ item, data, view }: { item: Item; data: Snapshot; view: Vi
         const month = charge.periodId ? (view.periodsByCollection.get(collection.id)?.find((p) => p.id === charge.periodId)?.month ?? null) : null;
         list.push({
           value: `${collection.id}|${charge.periodId ?? ""}`,
-          label: targetLabel(collection, month),
-          note: ledger.payable > 0 ? `baki ${formatMoney(ledger.payable)}` : "selesai",
+          label: targetLabel(t, collection, month),
+          note: ledger.payable > 0 ? t("quickFill.edit.balance", { amount: formatMoney(ledger.payable) }) : t("quickFill.edit.settled"),
           disabled: ledger.payable === 0,
           collection,
         });
       }
     }
     return list;
-  }, [memberId, data.collections, view]);
+  }, [memberId, data.collections, view, t]);
 
   const save = () => {
     const [collectionId, periodId] = target ? target.split("|") : [null, null];
@@ -556,13 +579,13 @@ function EditPicker({ item, data, view }: { item: Item; data: Snapshot; view: Vi
     >
       <PopoverTrigger asChild>
         <Button variant="outline" size="sm" className="h-7 rounded-[9px] bg-card px-2.5 text-[11.5px] font-semibold" disabled={busy}>
-          Ubah
+          {t("quickFill.edit.button")}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-[300px] p-3.5" aria-label="Ubah cadangan">
-        <p className="mb-2.5 text-[13px] font-semibold">Ubah cadangan · {formatMoney(s.amountSen)}</p>
+      <PopoverContent align="start" className="w-[300px] p-3.5" aria-label={t("quickFill.edit.title")}>
+        <p className="mb-2.5 text-[13px] font-semibold">{t("quickFill.edit.titleAmount", { amount: formatMoney(s.amountSen) })}</p>
         <label className="mb-1 block text-xs font-medium" htmlFor={`isi-member-${s.id}`}>
-          Ahli
+          {t("quickFill.edit.member")}
         </label>
         <Select
           value={memberId}
@@ -572,13 +595,13 @@ function EditPicker({ item, data, view }: { item: Item; data: Snapshot; view: Vi
           }}
         >
           <SelectTrigger id={`isi-member-${s.id}`} className="w-full">
-            <SelectValue placeholder="Pilih ahli" />
+            <SelectValue placeholder={t("quickFill.edit.memberPlaceholder")} />
           </SelectTrigger>
           <SelectContent className="max-h-72">
             {candidates.length > 0 && (
               <>
                 <SelectGroup>
-                  <SelectLabel>Cadangan</SelectLabel>
+                  <SelectLabel>{t("quickFill.edit.suggested")}</SelectLabel>
                   {candidates.map((m) => (
                     <SelectItem key={`c-${m.id}`} value={m.id}>
                       {m.name}
@@ -589,7 +612,7 @@ function EditPicker({ item, data, view }: { item: Item; data: Snapshot; view: Vi
               </>
             )}
             <SelectGroup>
-              <SelectLabel>Semua ahli</SelectLabel>
+              <SelectLabel>{t("quickFill.edit.allMembers")}</SelectLabel>
               {members
                 .filter((m) => !s.candidates.includes(m.id))
                 .map((m) => (
@@ -601,11 +624,11 @@ function EditPicker({ item, data, view }: { item: Item; data: Snapshot; view: Vi
           </SelectContent>
         </Select>
         <label className="mt-3 mb-1 block text-xs font-medium" htmlFor={`isi-target-${s.id}`}>
-          Kutipan
+          {t("quickFill.edit.collection")}
         </label>
         <Select value={target} onValueChange={setTarget} disabled={!memberId}>
           <SelectTrigger id={`isi-target-${s.id}`} className="w-full">
-            <SelectValue placeholder={memberId ? "Pilih kutipan" : "Pilih ahli dahulu"} />
+            <SelectValue placeholder={memberId ? t("quickFill.edit.collectionPlaceholder") : t("quickFill.edit.memberFirst")} />
           </SelectTrigger>
           <SelectContent className="max-h-72">
             {options.map((option) => (
@@ -618,10 +641,10 @@ function EditPicker({ item, data, view }: { item: Item; data: Snapshot; view: Vi
         </Select>
         <div className="mt-3.5 flex justify-end gap-2">
           <Button variant="outline" size="sm" onClick={() => setOpen(false)}>
-            Batal
+            {t("common.cancel")}
           </Button>
           <Button size="sm" disabled={!memberId || !target} onClick={save}>
-            Simpan
+            {t("common.save")}
           </Button>
         </div>
       </PopoverContent>
@@ -632,6 +655,7 @@ function EditPicker({ item, data, view }: { item: Item; data: Snapshot; view: Vi
 // Bulk, done, composer ----------------------------------------------------------------------
 
 function BulkBar({ items }: { items: Item[] }) {
+  const t = useT();
   const { acceptConfident, busy } = useIsiPantas();
   if (!items.length) return null;
   const confident = items.filter((item) => item.status === "pending" && isConfident(item.s)).length;
@@ -639,16 +663,17 @@ function BulkBar({ items }: { items: Item[] }) {
   return (
     <div className="isi-bulk relative mx-4 mb-2 flex items-center gap-2 rounded-[14px] border border-border px-3 py-2 text-[12px]">
       <span className="min-w-0">
-        ✓ <b className="text-primary-strong">{confident}</b> yakin · <b className="text-primary-strong">{review}</b> perlu semak
+        ✓ <b className="text-primary-strong">{confident}</b> {t("quickFill.bulk.confident")} · <b className="text-primary-strong">{review}</b> {t("quickFill.bulk.review")}
       </span>
       <Button size="sm" className="brand-gradient ml-auto h-8 shrink-0 rounded-[10px] px-3 text-[12px] font-semibold" disabled={!confident || busy} onClick={() => void acceptConfident()}>
-        Terima {confident} yang yakin
+        {t("quickFill.bulk.acceptConfident", { count: confident })}
       </Button>
     </div>
   );
 }
 
 function DoneCard({ turn, onReveal }: { turn: Turn; onReveal?: () => void }) {
+  const t = useT();
   const { undo, busy } = useIsiPantas();
   const router = useRouter();
   const pathname = usePathname();
@@ -666,23 +691,23 @@ function DoneCard({ turn, onReveal }: { turn: Turn; onReveal?: () => void }) {
   if (summary.count === 0)
     return (
       <div className="rounded-2xl border border-border bg-card p-3 text-[12.5px]" role="status">
-        <p className="font-semibold">Dibatalkan</p>
-        <p className="text-muted-foreground">{summary.undone} bayaran dibatalkan dan kekal dalam sejarah Rekod Bayaran.</p>
+        <p className="font-semibold">{t("quickFill.done.cancelledTitle")}</p>
+        <p className="text-muted-foreground">{t(summary.undone === 1 ? "quickFill.done.cancelledOne" : "quickFill.done.cancelledMany", { count: summary.undone })}</p>
       </div>
     );
   return (
     <div className="isi-done rounded-2xl border p-3 text-[12.5px]" role="status">
       <p className="text-[22px] leading-tight font-bold text-st-paid tabular-nums">+{formatMoney(summary.total)}</p>
       <p>
-        {summary.count} bayaran direkod
-        {summary.pending > 0 && ` · ${summary.pending} menunggu semakan (pindahan)`}
+        {t(summary.count === 1 ? "quickFill.done.recordedOne" : "quickFill.done.recordedMany", { count: summary.count })}
+        {summary.pending > 0 && t("quickFill.done.pending", { count: summary.pending })}
       </p>
       <div className="mt-2 flex flex-wrap gap-1.5">
         <Button variant="outline" size="sm" className="bg-card" disabled={busy} onClick={() => void undo(turn.id)}>
-          Buat asal
+          {t("quickFill.done.undo")}
         </Button>
         <Button size="sm" className="brand-gradient" onClick={reveal}>
-          Lihat dalam Matriks
+          {t("quickFill.done.view")}
         </Button>
       </div>
     </div>
@@ -690,6 +715,7 @@ function DoneCard({ turn, onReveal }: { turn: Turn; onReveal?: () => void }) {
 }
 
 function Composer() {
+  const t = useT();
   const { draft, setDraft, draftFiles, setDraftFiles, submit, busy } = useIsiPantas();
   const [clipError, setClipError] = useState<string | null>(null);
   const [proofOpen, setProofOpen] = useState(false);
@@ -706,14 +732,14 @@ function Composer() {
       setClipError(null);
       document.getElementById("isi-input")?.focus();
     } catch {
-      setClipError("Papan klip tidak dapat dibaca. Tekan Ctrl/⌘ V dalam kotak.");
+      setClipError(t("quickFill.composer.clipError"));
     }
   };
   return (
     <div className="isi-composer relative mx-3 mb-3 shrink-0 rounded-[18px] p-[2px] focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-card">
       <div className="rounded-2xl bg-card px-2.5 pt-2.5 pb-2">
         <label htmlFor="isi-input" className="sr-only">
-          Teks untuk Isi Pantas
+          {t("quickFill.composer.label")}
         </label>
         <Textarea
           id="isi-input"
@@ -721,7 +747,7 @@ function Composer() {
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={onKeyDown}
           rows={2}
-          placeholder="Tampal mesej WhatsApp, salinan penyata bank atau taip: “Farah 5 jamuan, Siti yuran Nov tunai”"
+          placeholder={t("quickFill.composer.placeholder")}
           className="max-h-40 min-h-[40px] resize-none rounded-none border-0 bg-transparent p-0 text-[12.5px] shadow-none md:text-[12.5px] focus-visible:ring-0 dark:bg-transparent"
         />
         {clipError && (
@@ -731,7 +757,7 @@ function Composer() {
         )}
         {(proofOpen || draftFiles.length > 0) && (
           <div className="mt-2 border-t border-border pt-2">
-            <p className="mb-1.5 text-[11px] text-muted-foreground">Bukti dilampirkan pada setiap bayaran yang anda terima daripada tampalan ini.</p>
+            <p className="mb-1.5 text-[11px] text-muted-foreground">{t("quickFill.composer.proofHint")}</p>
             <ProofField staged={draftFiles} onChange={setDraftFiles} />
           </div>
         )}
@@ -740,9 +766,9 @@ function Composer() {
             variant="outline"
             size="icon-sm"
             className="relative size-7 rounded-lg"
-            aria-label="Lampirkan bukti (gambar atau PDF)"
+            aria-label={t("quickFill.composer.attach")}
             aria-expanded={proofOpen || draftFiles.length > 0}
-            title="Lampirkan bukti (gambar atau PDF)"
+            title={t("quickFill.composer.attach")}
             onClick={() => setProofOpen((open) => !open)}
           >
             <Paperclip />
@@ -752,12 +778,12 @@ function Composer() {
               </span>
             )}
           </Button>
-          <Button variant="outline" size="icon-sm" className="size-7 rounded-lg" aria-label="Tampal dari papan klip" title="Tampal dari papan klip" onClick={() => void paste()}>
+          <Button variant="outline" size="icon-sm" className="size-7 rounded-lg" aria-label={t("quickFill.composer.paste")} title={t("quickFill.composer.paste")} onClick={() => void paste()}>
             <ClipboardPaste />
           </Button>
-          <span className="ml-1 hidden min-w-0 truncate text-[10.5px] text-muted-foreground sm:inline">Enter hantar · Shift+Enter baris baru</span>
+          <span className="ml-1 hidden min-w-0 truncate text-[10.5px] text-muted-foreground sm:inline">{t("quickFill.composer.keys")}</span>
           <Button size="sm" className="brand-gradient ml-auto h-[30px] rounded-[10px] px-3 text-[12px] font-semibold" disabled={!draft.trim() || busy} onClick={submit}>
-            Cadangkan <Sparkles aria-hidden />
+            {t("quickFill.composer.submit")} <Sparkles aria-hidden />
           </Button>
         </div>
       </div>

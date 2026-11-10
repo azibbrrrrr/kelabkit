@@ -28,7 +28,7 @@ import { formatDateTime, formatPercent } from "@/lib/format";
 import { auditActionLabels } from "@/lib/labels";
 import { sum } from "@/lib/money/amount";
 import { LanguagePill } from "@/components/language-pill";
-import { useT } from "@/lib/i18n/react";
+import { useT, type TFunction } from "@/lib/i18n/react";
 import { themes, type ThemeId } from "@/lib/themes";
 import type { Club } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -39,10 +39,11 @@ import { useId, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 export function SettingsPage() {
+  const t = useT();
   const { data } = useSnapshot();
   return (
     <PageShell>
-      <PageHeader title="Tetapan" description="Maklumat kelab, tema paparan dan rekod perubahan." />
+      <PageHeader title={t("settings.title")} description={t("settings.description")} />
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start">
         <div className="grid min-w-0 gap-5">
           {/* Re-mounts after a save or reset so the form shows what is stored. */}
@@ -72,23 +73,24 @@ function LanguageCard() {
 
 type ClubFields = { name: string; school: string; session: string; treasurerName: string };
 
-function validate(fields: ClubFields) {
+function validate(fields: ClubFields, t: TFunction) {
   const errors: Partial<Record<keyof ClubFields, string>> = {};
-  if (!fields.name.trim()) errors.name = "Nama kelab diperlukan.";
-  else if (fields.name.trim().length > 120) errors.name = "Nama terlalu panjang (maksimum 120 aksara).";
-  if (fields.school.trim().length > 120) errors.school = "Nama sekolah terlalu panjang (maksimum 120 aksara).";
-  if (!fields.session.trim()) errors.session = "Sesi diperlukan, contohnya 2026.";
-  else if (fields.session.trim().length > 40) errors.session = "Sesi terlalu panjang (maksimum 40 aksara).";
-  if (!fields.treasurerName.trim()) errors.treasurerName = "Nama bendahari diperlukan.";
-  else if (fields.treasurerName.trim().length > 120) errors.treasurerName = "Nama terlalu panjang (maksimum 120 aksara).";
+  if (!fields.name.trim()) errors.name = t("settings.club.errors.nameRequired");
+  else if (fields.name.trim().length > 120) errors.name = t("settings.club.errors.nameTooLong");
+  if (fields.school.trim().length > 120) errors.school = t("settings.club.errors.schoolTooLong");
+  if (!fields.session.trim()) errors.session = t("settings.club.errors.sessionRequired");
+  else if (fields.session.trim().length > 40) errors.session = t("settings.club.errors.sessionTooLong");
+  if (!fields.treasurerName.trim()) errors.treasurerName = t("settings.club.errors.treasurerRequired");
+  else if (fields.treasurerName.trim().length > 120) errors.treasurerName = t("settings.club.errors.treasurerTooLong");
   return errors;
 }
 
 function ClubForm({ club }: { club: Club }) {
+  const t = useT();
   const { run } = useKelab();
   const initial: ClubFields = { name: club.name, school: club.school ?? "", session: club.session, treasurerName: club.treasurerName };
   const [fields, setFields] = useState(initial);
-  const [errors, setErrors] = useState<ReturnType<typeof validate>>({});
+  const [errors, setErrors] = useState<Partial<Record<keyof ClubFields, string>>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const id = useId();
@@ -101,7 +103,7 @@ function ClubForm({ club }: { club: Club }) {
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
-    const found = validate(fields);
+    const found = validate(fields, t);
     setErrors(found);
     if (Object.keys(found).length) return;
     setBusy(true);
@@ -115,7 +117,7 @@ function ClubForm({ club }: { club: Club }) {
           treasurerName: fields.treasurerName.trim(),
         }),
       );
-      toast.success("Maklumat kelab disimpan.");
+      toast.success(t("settings.club.saved"));
     } catch (cause) {
       setFormError(messageFor(cause));
     } finally {
@@ -127,7 +129,7 @@ function ClubForm({ club }: { club: Club }) {
     <div className="grid gap-1.5">
       <Label htmlFor={`${id}-${key}`}>
         {label}
-        {optional && <span className="font-normal text-muted-foreground"> (pilihan)</span>}
+        {optional && <span className="font-normal text-muted-foreground"> {t("settings.club.optional")}</span>}
       </Label>
       <Input
         id={`${id}-${key}`}
@@ -146,19 +148,19 @@ function ClubForm({ club }: { club: Club }) {
   );
 
   return (
-    <SectionCard title="Maklumat kelab" icon={School} description="Dipaparkan pada laporan dan ditandatangani dalam mesej peringatan.">
+    <SectionCard title={t("settings.club.title")} icon={School} description={t("settings.club.description")}>
       <form onSubmit={(event) => void submit(event)} className="grid gap-4" noValidate>
-        {field("name", "Nama kelab", "Contoh: KGK SK Taman Melati")}
-        {field("school", "Sekolah", "Contoh: SK Taman Melati", true)}
+        {field("name", t("settings.club.name"), t("settings.club.namePlaceholder"))}
+        {field("school", t("settings.club.school"), t("settings.club.schoolPlaceholder"), true)}
         <div className="grid gap-4 sm:grid-cols-2">
-          {field("session", "Sesi", "Contoh: 2026")}
-          {field("treasurerName", "Nama bendahari", "Contoh: Cikgu Aina Sofea")}
+          {field("session", t("settings.club.session"), t("settings.club.sessionPlaceholder"))}
+          {field("treasurerName", t("settings.club.treasurer"), t("settings.club.treasurerPlaceholder"))}
         </div>
         {formError && <p className="text-xs font-medium text-st-unpaid">{formError}</p>}
         <div className="flex flex-wrap items-center gap-2">
           <Button type="submit" disabled={busy || !dirty}>
             {busy && <Spinner className="size-4" />}
-            Simpan
+            {t("common.save")}
           </Button>
           {dirty && !busy && (
             <Button
@@ -170,7 +172,7 @@ function ClubForm({ club }: { club: Club }) {
                 setFormError(null);
               }}
             >
-              Batal perubahan
+              {t("settings.club.discard")}
             </Button>
           )}
         </div>
@@ -182,33 +184,34 @@ function ClubForm({ club }: { club: Club }) {
 // Tema ------------------------------------------------------------------------------------
 
 function ThemeCard() {
+  const t = useT();
   const { theme, floral, setPrefs } = usePrefs();
   const { data, view } = useSnapshot();
   const floralId = useId();
-  const current = themes.find((t) => t.id === theme) ?? themes[0];
+  const current = themes.find((th) => th.id === theme) ?? themes[0];
 
   // The preview uses the same totals as the rest of the app: active collections only,
   // confirmed money only (charges plus voluntary contributions).
   const figures = useMemo(() => {
     const active = data.collections.filter((c) => c.status === "active");
     const totals = active.map((c) => view.collectionTotals(c.id));
-    const expected = sum(totals.map((t) => t.expected));
-    const chargesReceived = sum(totals.map((t) => t.received));
-    return { expected, chargesReceived, received: chargesReceived + sum(totals.map((t) => t.voluntary)) };
+    const expected = sum(totals.map((x) => x.expected));
+    const chargesReceived = sum(totals.map((x) => x.received));
+    return { expected, chargesReceived, received: chargesReceived + sum(totals.map((x) => x.voluntary)) };
   }, [data.collections, view]);
 
   const choose = (id: ThemeId) => setPrefs({ theme: id });
 
   return (
-    <SectionCard title="Tema KelabKit" icon={Palette} description="Tema hanya menukar warna paparan. Rekod bayaran tidak terjejas.">
+    <SectionCard title={t("settings.theme.title")} icon={Palette} description={t("settings.theme.description")}>
       <div className="grid gap-5">
-        <RadioGroup value={theme} onValueChange={(id) => choose(id as ThemeId)} aria-label="Tema warna" className="flex w-auto flex-wrap gap-x-3 gap-y-3 sm:gap-x-5">
-          {themes.map((t) => {
-            const selected = t.id === theme;
+        <RadioGroup value={theme} onValueChange={(id) => choose(id as ThemeId)} aria-label={t("settings.theme.colorLabel")} className="flex w-auto flex-wrap gap-x-3 gap-y-3 sm:gap-x-5">
+          {themes.map((th) => {
+            const selected = th.id === theme;
             return (
               <RadioGroupPrimitive.Item
-                key={t.id}
-                value={t.id}
+                key={th.id}
+                value={th.id}
                 className="group flex w-14 flex-col items-center gap-1.5 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
                 <span
@@ -218,11 +221,11 @@ function ThemeCard() {
                   )}
                   // Theme colours are defined once in lib/themes.ts. The circle uses the AA fill so the
                   // white check keeps 3:1; the row swatch below shows the reference accent.
-                  style={{ backgroundColor: t.fill, ["--tw-ring-color" as string]: `color-mix(in srgb, ${t.fill} 45%, transparent)` }}
+                  style={{ backgroundColor: th.fill, ["--tw-ring-color" as string]: `color-mix(in srgb, ${th.fill} 45%, transparent)` }}
                 >
                   {selected && <Check className="size-5" strokeWidth={2.6} aria-hidden />}
                 </span>
-                <span className={cn("text-xs", selected ? "font-semibold text-foreground" : "text-muted-foreground")}>{t.label}</span>
+                <span className={cn("text-xs", selected ? "font-semibold text-foreground" : "text-muted-foreground")}>{th.label}</span>
               </RadioGroupPrimitive.Item>
             );
           })}
@@ -230,53 +233,53 @@ function ThemeCard() {
 
         <div className="flex items-center justify-between gap-4 rounded-xl border border-border bg-primary-tint/50 px-3.5 py-3">
           <Label htmlFor={floralId} className="grid gap-0.5">
-            <span className="text-sm font-medium">Paparkan hiasan bunga</span>
-            <span className="text-xs font-normal text-muted-foreground">Hiasan bunga sakura di tepi skrin. Matikan untuk paparan yang lebih ringkas.</span>
+            <span className="text-sm font-medium">{t("settings.theme.floralTitle")}</span>
+            <span className="text-xs font-normal text-muted-foreground">{t("settings.theme.floralHint")}</span>
           </Label>
           <Switch id={floralId} checked={floral} onCheckedChange={(checked) => setPrefs({ floral: checked })} />
         </div>
 
-        <div aria-label="Pratonton tema" className="relative overflow-hidden rounded-2xl border border-border bg-primary-tint p-3.5 sm:p-4">
+        <div aria-label={t("settings.theme.previewLabel")} className="relative overflow-hidden rounded-2xl border border-border bg-primary-tint p-3.5 sm:p-4">
           <Blossom className="absolute -top-1 right-24 size-8 opacity-70 sm:right-28" />
           <div className="mb-3 flex items-center justify-between gap-3">
             <span className="flex items-center gap-2">
               <BrandMark size="sm" />
               <span className="font-display text-[15px] font-bold">KelabKit</span>
             </span>
-            <span className="text-xs text-muted-foreground">Dashboard</span>
+            <span className="text-xs text-muted-foreground">{t("settings.theme.previewPage")}</span>
           </div>
           <div className="rounded-xl bg-card p-4 shadow-[0_1px_2px_rgba(0,0,0,.04)]">
-            <p className="text-xs text-muted-foreground">Jumlah Telah Diterima</p>
+            <p className="text-xs text-muted-foreground">{t("settings.theme.previewReceived")}</p>
             <Money sen={figures.received} className="mt-1 block text-[22px] font-bold tracking-[-.015em]" />
-            <ProgressBar value={figures.chargesReceived} max={figures.expected} className="mt-3" label="Peratus kutipan diterima" />
+            <ProgressBar value={figures.chargesReceived} max={figures.expected} className="mt-3" label={t("settings.theme.previewProgress")} />
             <p className="mt-1.5 text-[11px] text-muted-foreground">
-              {formatPercent(figures.chargesReceived, figures.expected)} daripada jumlah dijangka bagi kutipan aktif
+              {t("settings.theme.previewPercentOf", { percent: formatPercent(figures.chargesReceived, figures.expected) })}
             </p>
             <Button asChild className="mt-3 w-full">
               <Link href="/bayaran/baru/">
-                <Plus /> Rekod Bayaran
+                <Plus /> {t("nav.payments")}
               </Link>
             </Button>
           </div>
         </div>
         <p className="-mt-2 text-xs text-muted-foreground">
-          Pratonton tema {current.label} menggunakan data sebenar anda. Pilihan tema disimpan dalam pelayar ini sahaja.
+          {t("settings.theme.previewNote", { theme: current.label })}
         </p>
 
         <div className="grid gap-2">
-          <p className="text-xs font-semibold text-muted-foreground">Semua tema</p>
-          <ChoiceCards label="Senarai tema" value={theme} onChange={(id) => choose(id as ThemeId)} className="grid gap-2">
-            {themes.map((t) => {
-              const selected = t.id === theme;
+          <p className="text-xs font-semibold text-muted-foreground">{t("settings.theme.allThemes")}</p>
+          <ChoiceCards label={t("settings.theme.listLabel")} value={theme} onChange={(id) => choose(id as ThemeId)} className="grid gap-2">
+            {themes.map((th) => {
+              const selected = th.id === theme;
               return (
-                <ChoiceCard key={t.id} value={t.id} checked={selected} className="min-h-0 items-center rounded-xl px-3 py-2.5 text-foreground">
-                  <span className="size-8 shrink-0 rounded-lg" style={{ backgroundColor: t.swatch }} aria-hidden />
+                <ChoiceCard key={th.id} value={th.id} checked={selected} className="min-h-0 items-center rounded-xl px-3 py-2.5 text-foreground">
+                  <span className="size-8 shrink-0 rounded-lg" style={{ backgroundColor: th.swatch }} aria-hidden />
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-medium">
-                      {t.label}
-                      {t.id === "rose" && <span className="font-normal text-muted-foreground"> (lalai)</span>}
+                      {th.label}
+                      {th.id === "rose" && <span className="font-normal text-muted-foreground"> {t("settings.theme.defaultTag")}</span>}
                     </span>
-                    <span className="block text-xs text-muted-foreground">{t.mood}</span>
+                    <span className="block text-xs text-muted-foreground">{th.mood}</span>
                   </span>
                   <span
                     className={cn(
@@ -300,6 +303,7 @@ function ThemeCard() {
 // Data demo -------------------------------------------------------------------------------
 
 function DemoDataCard() {
+  const t = useT();
   const { demo, run } = useKelab();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -319,13 +323,13 @@ function DemoDataCard() {
   };
 
   return (
-    <SectionCard title="Data demo" icon={Database} description="Prototaip ini belum bersambung ke pelayan.">
+    <SectionCard title={t("settings.demo.title")} icon={Database} description={t("settings.demo.description")}>
       <div className="grid gap-3">
         <DemoNote>
-          Semua ahli, kutipan dan bayaran disimpan dalam pelayar ini sahaja. Ia tidak dikongsi dengan peranti lain dan hilang jika data pelayar dipadam.
+          {t("settings.demo.note")}
         </DemoNote>
         <p className="text-xs text-muted-foreground">
-          Set semula memadam semua perubahan anda dan memulihkan data contoh asal. Pilihan tema dan hiasan bunga tidak terjejas.
+          {t("settings.demo.resetNote")}
         </p>
         <AlertDialog open={open} onOpenChange={(next) => !busy && setOpen(next)}>
           <AlertDialogTrigger asChild>
@@ -367,15 +371,16 @@ function DemoDataCard() {
 const PAGE = 15;
 
 function AuditLog() {
+  const t = useT();
   const { data } = useSnapshot();
   const [shown, setShown] = useState(PAGE);
   const entries = useMemo(() => [...data.audit].sort((a, b) => b.at.localeCompare(a.at)), [data.audit]);
   const visible = entries.slice(0, shown);
 
   return (
-    <SectionCard title="Log audit" icon={History} description="Setiap perubahan direkod bersama masa, pelaku dan sebab. Log tidak boleh diubah.">
+    <SectionCard title={t("settings.audit.title")} icon={History} description={t("settings.audit.description")}>
       {entries.length === 0 ? (
-        <p className="py-6 text-center text-sm text-muted-foreground">Belum ada perubahan direkod.</p>
+        <p className="py-6 text-center text-sm text-muted-foreground">{t("settings.audit.empty")}</p>
       ) : (
         <div className="grid gap-3">
           <ol className="grid divide-y divide-border rounded-xl border border-border">
@@ -390,18 +395,18 @@ function AuditLog() {
                 <div className="min-w-0">
                   <p className="text-xs font-semibold text-primary-strong">{auditActionLabels[entry.action] ?? entry.action}</p>
                   <p className="text-sm break-words">{entry.summary}</p>
-                  {entry.reason && <p className="mt-0.5 text-xs break-words text-muted-foreground">Sebab: {entry.reason}</p>}
+                  {entry.reason && <p className="mt-0.5 text-xs break-words text-muted-foreground">{t("settings.audit.reason", { reason: entry.reason })}</p>}
                 </div>
               </li>
             ))}
           </ol>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs text-muted-foreground">
-              Memaparkan {visible.length} daripada {entries.length} rekod
+              {t("settings.audit.showing", { shown: visible.length, total: entries.length })}
             </p>
             {shown < entries.length && (
               <Button variant="outline" size="sm" onClick={() => setShown((n) => n + PAGE)}>
-                Tunjuk lagi
+                {t("settings.audit.more")}
               </Button>
             )}
           </div>

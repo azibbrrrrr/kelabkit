@@ -10,6 +10,7 @@ import { useKelab } from "@/components/data-provider";
 import type { KelabBackend } from "@/lib/backend/types";
 import { KelabError, messageFor } from "@/lib/errors";
 import { today } from "@/lib/format";
+import { t } from "@/lib/i18n";
 import { chargeFor, isConfident, parsePaste, reassess, type ParseContext, type Suggestion } from "@/lib/isi-pantas/parse";
 import type { Snapshot } from "@/lib/types";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -194,20 +195,20 @@ export function IsiPantasProvider({ children }: { children: ReactNode }) {
       patchItems((item) => {
         const result = results.get(item.s.id);
         if (!wanted.has(item.s.id)) return item;
-        if (!result) return { ...item, status: "pending", error: "Sesuatu tidak kena. Cuba lagi." };
+        if (!result) return { ...item, status: "pending", error: t("quickFill.toast.wentWrong") };
         if ("error" in result) return { ...item, status: "pending", error: result.error };
         return { ...item, status: "accepted", paymentId: result.paymentId, error: null };
       });
-      if (proofFailed) toast.warning(`${proofFailed} bayaran direkod tetapi bukti tidak dapat dilampirkan. Lampirkan semula dari Rekod Bayaran.`, { duration: 10000 });
+      if (proofFailed) toast.warning(t("quickFill.toast.proofFailed", { count: proofFailed }), { duration: 10000 });
       const ok = [...results.values()].filter((result) => "paymentId" in result).length;
       const failed = items.length - ok;
       if (items.length > 1) {
         const turnId = turnsRef.current.find((turn) => turn.items.some((item) => wanted.has(item.s.id)))?.id;
         if (ok > 0)
-          toast.success(`${ok} bayaran direkod${failed ? `, ${failed} gagal` : ""}`, {
-            action: turnId ? { label: "Buat asal", onClick: () => void undoRef.current(turnId) } : undefined,
+          toast.success(failed ? t("quickFill.toast.recordedFailed", { ok, failed }) : t("quickFill.toast.recorded", { ok }), {
+            action: turnId ? { label: t("quickFill.toast.undo"), onClick: () => void undoRef.current(turnId) } : undefined,
           });
-        else toast.error("Tiada bayaran direkod. Lihat sebab pada setiap kad.");
+        else toast.error(t("quickFill.toast.noneRecorded"));
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reads refs
@@ -259,8 +260,8 @@ export function IsiPantasProvider({ children }: { children: ReactNode }) {
         return error ? { ...item, error } : { ...item, status: "undone", paymentId: null, key: `isi-${crypto.randomUUID()}`, error: null };
       });
       const failed = [...results.values()].filter(Boolean).length;
-      if (failed) toast.error(`${failed} bayaran tidak dapat dibatalkan. Lihat sebab pada kad.`);
-      else toast.success(`${items.length} bayaran dibatalkan. Rekod kekal dalam sejarah.`);
+      if (failed) toast.error(t("quickFill.toast.undoFailed", { count: failed }));
+      else toast.success(t("quickFill.toast.undone", { count: items.length }));
     },
     [patchItems, run],
   );

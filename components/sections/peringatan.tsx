@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDay, formatMoney, formatMonth, waNumber } from "@/lib/format";
+import { useT } from "@/lib/i18n/react";
 import { cellStatusLabels, overdueLabel } from "@/lib/labels";
 import { sum } from "@/lib/money/amount";
 import type { ChargeLedger } from "@/lib/money/ledger";
@@ -28,14 +29,19 @@ import { toast } from "sonner";
 type Filter = "unpaid" | "partial" | "overdue" | "all";
 type Placeholder = "nama" | "kutipan" | "baki" | "tarikh" | "bendahari" | "kelab";
 
-const PLACEHOLDERS: { key: Placeholder; hint: string }[] = [
-  { key: "nama", hint: "Nama ahli" },
-  { key: "kutipan", hint: "Nama kutipan (dan bulan)" },
-  { key: "baki", hint: "Baki belum dijelaskan" },
-  { key: "tarikh", hint: "Tarikh akhir bayaran" },
-  { key: "bendahari", hint: "Nama bendahari" },
-  { key: "kelab", hint: "Nama kelab" },
-];
+const PLACEHOLDERS: Placeholder[] = ["nama", "kutipan", "baki", "tarikh", "bendahari", "kelab"];
+
+// The message sent to members is always Bahasa Melayu, whatever language the interface shows, so
+// its dates use fixed Malay month names rather than the locale-aware helpers in lib/format.
+const MS_MONTHS = ["Jan", "Feb", "Mac", "Apr", "Mei", "Jun", "Jul", "Ogo", "Sep", "Okt", "Nov", "Dis"];
+const msDay = (day: Day) => {
+  const [y, m, d] = day.split("-").map(Number);
+  return `${d} ${MS_MONTHS[m - 1]} ${y}`;
+};
+const msMonth = (month: string) => {
+  const [y, m] = month.split("-").map(Number);
+  return `${MS_MONTHS[m - 1]} ${y}`;
+};
 
 const DEFAULT_TEMPLATE = `Assalamualaikum dan salam sejahtera {nama},
 
@@ -80,17 +86,17 @@ function fillTemplate(template: string, values: Record<Placeholder, string>, has
 
 function pendingNoteFor(pending: Sen) {
   return pending > 0
-    ? `Saya juga telah menerima makluman bayaran ${formatMoney(pending)} yang masih dalam semakan. Baki di atas akan dikemas kini setelah bayaran itu disahkan.`
+    ? `Saya juga telah menerima makluman bayaran ${formatMoney(pending)} yang masih dalam semakan. Baki di atas akan dikemas kini setelah bayaran itu disahkan.` // i18n-ok: message sent to members
     : null;
 }
 
 function groupMessage(club: Club, kutipan: string, dueDate: Day | null) {
-  const when = dueDate ? `sebelum ${formatDay(dueDate)}` : "secepat mungkin";
+  const when = dueDate ? `sebelum ${msDay(dueDate)}` : "secepat mungkin";
   return [
     "Assalamualaikum dan salam sejahtera semua,",
     "",
     `Ini peringatan mesra tentang ${kutipan}. Kepada ahli yang belum menjelaskan bayaran, mohon jelaskan ${when}.`,
-    "Bayaran boleh diserahkan secara tunai atau melalui pindahan bank kepada saya.",
+    "Bayaran boleh diserahkan secara tunai atau melalui pindahan bank kepada saya.", // i18n-ok: message sent to members
     "",
     "Kepada yang sudah membayar, terima kasih dan mohon abaikan mesej ini.",
     "",
@@ -126,12 +132,13 @@ async function copyText(text: string) {
   }
 }
 
-async function copyWithToast(text: string, success: string) {
+async function copyWithToast(text: string, success: string, failure: string) {
   if (await copyText(text)) toast.success(success);
-  else toast.error("Mesej tidak dapat disalin. Buka mesej, pilih teks dan salin secara manual.");
+  else toast.error(failure);
 }
 
 export function RemindersPage() {
+  const t = useT();
   const { data, view } = useSnapshot();
 
   const mandatory = useMemo(
@@ -233,10 +240,12 @@ export function RemindersPage() {
     filter === "unpaid" ? r.hasUnpaid : filter === "partial" ? r.hasPartial : filter === "overdue" ? r.overdue : true,
   );
 
-  const kutipanLabel = (row: Row | null) => {
+  // `forMessage` keeps the month names in Bahasa Melayu for the text sent to members.
+  const kutipanLabel = (row: Row | null, forMessage = true) => {
     if (!collection) return "";
-    if (period) return `${collection.name} (${formatMonth(period.month)})`;
-    if (row && row.months.length) return `${collection.name} (${row.months.map((m) => formatMonth(m)).join(", ")})`;
+    const month = forMessage ? msMonth : (m: string) => formatMonth(m);
+    if (period) return `${collection.name} (${month(period.month)})`;
+    if (row && row.months.length) return `${collection.name} (${row.months.map((m) => month(m)).join(", ")})`;
     return collection.name;
   };
 
@@ -247,7 +256,7 @@ export function RemindersPage() {
         nama: row.member.name,
         kutipan: kutipanLabel(row),
         baki: formatMoney(row.remaining),
-        tarikh: row.dueDate ? formatDay(row.dueDate) : "",
+        tarikh: row.dueDate ? msDay(row.dueDate) : "",
         bendahari: data.club.treasurerName,
         kelab: data.club.name,
       },
@@ -272,7 +281,7 @@ export function RemindersPage() {
     const token = `{${key}}`;
     const el = templateRef.current;
     if (!el) {
-      setTemplate((t) => t + token);
+      setTemplate((current) => current + token);
       return;
     }
     const start = el.selectionStart ?? template.length;
@@ -290,50 +299,50 @@ export function RemindersPage() {
   return (
     <PageShell>
       <PageHeader
-        title="Peringatan"
-        description="Sediakan mesej susulan yang sopan untuk ahli yang masih ada baki. Mesej disalin atau dibuka dalam WhatsApp; tiada apa yang dihantar secara automatik."
+        title={t("reminders.title")}
+        description={t("reminders.description")}
       />
 
       {mandatory.length === 0 ? (
         <EmptyState
           icon={WalletCards}
-          title="Tiada kutipan wajib yang aktif"
-          description="Peringatan hanya untuk kutipan sekali bayar atau bulanan yang aktif."
+          title={t("reminders.empty.title")}
+          description={t("reminders.empty.description")}
           action={
             <Button asChild>
-              <Link href="/kutipan/baru/">Cipta kutipan</Link>
+              <Link href="/kutipan/baru/">{t("reminders.empty.action")}</Link>
             </Button>
           }
         />
       ) : (
         <>
           <SectionCard
-            title="Templat mesej"
+            title={t("reminders.template.title")}
             icon={MessageSquareText}
-            description="Klik pemegang tempat untuk memasukkannya di kedudukan kursor. Baris yang mengandungi {tarikh} dibuang jika tiada tarikh akhir."
+            description={t("reminders.template.description")}
             action={
               <Button variant="danger-outline" size="sm" onClick={() => setTemplate(DEFAULT_TEMPLATE)} disabled={template === DEFAULT_TEMPLATE}>
-                <RotateCcw /> Set semula templat
+                <RotateCcw /> {t("reminders.template.reset")}
               </Button>
             }
           >
             <div className="grid gap-3">
-              <div className="flex flex-wrap gap-1.5" aria-label="Pemegang tempat">
+              <div className="flex flex-wrap gap-1.5" aria-label={t("reminders.template.placeholdersLabel")}>
                 {PLACEHOLDERS.map((p) => (
                   <Button
-                    key={p.key}
+                    key={p}
                     variant="outline"
                     size="sm"
-                    onClick={() => insertPlaceholder(p.key)}
-                    title={p.hint}
+                    onClick={() => insertPlaceholder(p)}
+                    title={t(`reminders.placeholderHints.${p}`)}
                     className="rounded-lg bg-primary-tint px-2.5 font-mono text-xs text-primary-strong hover:bg-primary-light hover:text-primary-strong"
                   >
-                    {`{${p.key}}`}
+                    {`{${p}}`}
                   </Button>
                 ))}
               </div>
               <Label htmlFor={templateId} className="sr-only">
-                Templat mesej
+                {t("reminders.template.label")}
               </Label>
               <Textarea
                 id={templateId}
@@ -344,7 +353,7 @@ export function RemindersPage() {
                 className="min-h-40 leading-relaxed"
               />
               <p className="text-xs text-muted-foreground">
-                Templat disimpan dalam pelayar ini. Mesej yang telah anda ubah bagi ahli tertentu tidak berubah apabila templat ditukar.
+                {t("reminders.template.savedNote")}
               </p>
             </div>
           </SectionCard>
@@ -352,7 +361,7 @@ export function RemindersPage() {
           <div className="grid gap-3">
             <div className="grid gap-3 sm:flex sm:flex-wrap sm:items-end">
               <div className="grid min-w-0 gap-1.5 sm:w-72">
-                <Label htmlFor="rem-collection">Kutipan</Label>
+                <Label htmlFor="rem-collection">{t("reminders.filters.collection")}</Label>
                 <Select
                   value={collection?.id}
                   onValueChange={(value) => {
@@ -361,7 +370,7 @@ export function RemindersPage() {
                   }}
                 >
                   <SelectTrigger id="rem-collection" className="w-full">
-                    <SelectValue placeholder="Pilih kutipan" />
+                    <SelectValue placeholder={t("reminders.filters.collectionPlaceholder")} />
                   </SelectTrigger>
                   <SelectContent>
                     {mandatory.map((c) => (
@@ -374,13 +383,13 @@ export function RemindersPage() {
               </div>
               {collection?.type === "monthly" && (
                 <div className="grid min-w-0 gap-1.5 sm:w-56">
-                  <Label htmlFor="rem-month">Bulan</Label>
+                  <Label htmlFor="rem-month">{t("reminders.filters.month")}</Label>
                   <Select value={period?.id ?? "all"} onValueChange={setPeriodId}>
                     <SelectTrigger id="rem-month" className="w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Semua bulan setakat ini</SelectItem>
+                      <SelectItem value="all">{t("reminders.filters.allMonths")}</SelectItem>
                       {periodOptions.map((p) => (
                         <SelectItem key={p.id} value={p.id}>
                           {formatMonth(p.month)}
@@ -392,23 +401,21 @@ export function RemindersPage() {
               )}
             </div>
             <FilterPills<Filter>
-              label="Tapis ahli"
+              label={t("reminders.filters.label")}
               value={filter}
               onChange={setFilter}
               options={[
-                { value: "unpaid", label: "Belum bayar", count: counts.unpaid },
-                { value: "partial", label: "Sebahagian", count: counts.partial },
-                { value: "overdue", label: "Lewat", count: counts.overdue },
-                { value: "all", label: "Semua yang ada baki", count: counts.all },
+                { value: "unpaid", label: t("reminders.filters.unpaid"), count: counts.unpaid },
+                { value: "partial", label: t("reminders.filters.partial"), count: counts.partial },
+                { value: "overdue", label: t("reminders.filters.overdue"), count: counts.overdue },
+                { value: "all", label: t("reminders.filters.all"), count: counts.all },
               ]}
             />
             <p className="flex items-start gap-2 text-xs text-muted-foreground">
               <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
               <span>
-                Hanya ahli aktif yang masih ada baki disenaraikan. Ahli yang telah membayar penuh, dikecualikan, tidak menyertai kutipan, atau bulan yang
-                akan datang tidak termasuk.
-                {voluntary.length > 0 &&
-                  ` ${voluntary.map((c) => c.name).join(", ")} tidak disenaraikan kerana sumbangan sukarela tidak mewujudkan hutang.`}
+                {t("reminders.scopeNote")}
+                {voluntary.length > 0 && ` ${t("reminders.voluntaryNote", { names: voluntary.map((c) => c.name).join(", ") })}`}
               </span>
             </p>
           </div>
@@ -416,18 +423,18 @@ export function RemindersPage() {
           {allRows.length === 0 ? (
             <EmptyState
               icon={CheckCheck}
-              title="Semua sudah menjelaskan bayaran"
-              description={`Tiada ahli yang masih ada baki untuk ${kutipanLabel(null)}.`}
+              title={t("reminders.allPaid.title")}
+              description={t("reminders.allPaid.description", { collection: kutipanLabel(null, false) })}
             />
           ) : (
             <>
               <SectionCard
-                title="Mesej kumpulan"
+                title={t("reminders.group.title")}
                 icon={UsersRound}
-                description="Peringatan umum untuk kumpulan WhatsApp. Tiada nama atau amaun individu, supaya tiada ahli berasa malu."
+                description={t("reminders.group.description")}
                 action={
-                  <Button size="sm" onClick={() => void copyWithToast(groupText, "Mesej kumpulan disalin.")}>
-                    <Copy /> Salin semua
+                  <Button size="sm" onClick={() => void copyWithToast(groupText, t("reminders.group.copied"), t("reminders.copyFailed"))}>
+                    <Copy /> {t("reminders.group.copyAll")}
                   </Button>
                 }
               >
@@ -439,7 +446,7 @@ export function RemindersPage() {
                   className="px-0"
                 >
                   <ChevronDown className={cn("size-3.5 transition-transform", showGroup && "rotate-180")} aria-hidden />
-                  {showGroup ? "Sembunyikan mesej" : "Lihat mesej"}
+                  {showGroup ? t("reminders.group.hide") : t("reminders.group.show")}
                 </Button>
                 {showGroup && (
                   <pre className="mt-2 rounded-xl border border-border bg-primary-tint/60 p-3 font-sans text-[13px] leading-relaxed break-words whitespace-pre-wrap">
@@ -450,13 +457,13 @@ export function RemindersPage() {
 
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <h2 className="text-[15px] font-semibold">
-                  {rows.length} ahli · baki <Money sen={totalRemaining} />
+                  {t("reminders.summary.membersBalance", { count: rows.length })} <Money sen={totalRemaining} />
                 </h2>
-                <p className="text-xs text-muted-foreground">Semak setiap mesej sebelum menghantar.</p>
+                <p className="text-xs text-muted-foreground">{t("reminders.summary.reviewHint")}</p>
               </div>
 
               {rows.length === 0 ? (
-                <EmptyState icon={CheckCheck} title="Tiada ahli dalam tapisan ini" description="Pilih tapisan lain untuk melihat ahli yang masih ada baki." />
+                <EmptyState icon={CheckCheck} title={t("reminders.noneInFilter.title")} description={t("reminders.noneInFilter.description")} />
               ) : (
                 <ul className="grid gap-3">
                   {rows.map((row) => {
@@ -472,11 +479,11 @@ export function RemindersPage() {
                             <p className="font-medium break-words">{row.member.name}</p>
                             <p className="mt-0.5 text-xs break-words text-muted-foreground">
                               {row.months.length > 0 && !period && `${row.months.map((m) => formatMonth(m, false)).join(", ")} · `}
-                              {row.dueDate ? `Tarikh akhir ${formatDay(row.dueDate)}` : "Tiada tarikh akhir"}
+                              {row.dueDate ? t("reminders.row.dueDate", { date: formatDay(row.dueDate) }) : t("reminders.row.noDueDate")}
                             </p>
                           </div>
                           <div className="shrink-0 text-right">
-                            <div className="text-[11px] text-muted-foreground">Baki</div>
+                            <div className="text-[11px] text-muted-foreground">{t("reminders.row.balance")}</div>
                             <Money sen={row.remaining} className="font-semibold" />
                           </div>
                         </div>
@@ -484,25 +491,25 @@ export function RemindersPage() {
                           {row.hasUnpaid && <LabelChip entry={cellStatusLabels.unpaid} compact />}
                           {row.hasPartial && <LabelChip entry={cellStatusLabels.partial} compact />}
                           {row.overdue && <LabelChip entry={overdueLabel} compact />}
-                          {row.pending > 0 && <StatusChip tone="pending" label={`Menunggu semakan ${formatMoney(row.pending)}`} compact />}
+                          {row.pending > 0 && <StatusChip tone="pending" label={t("reminders.row.pending", { amount: formatMoney(row.pending) })} compact />}
                         </div>
                         <div className="mt-3 flex flex-wrap items-center gap-2">
-                          <Button size="sm" variant="outline" onClick={() => void copyWithToast(message, `Mesej untuk ${row.member.name} disalin.`)}>
-                            <Copy /> Salin mesej
+                          <Button size="sm" variant="outline" onClick={() => void copyWithToast(message, t("reminders.row.copiedFor", { name: row.member.name }), t("reminders.copyFailed"))}>
+                            <Copy /> {t("reminders.row.copyMessage")}
                           </Button>
                           {number ? (
                             <Button size="sm" asChild>
                               <a href={`https://wa.me/${number}?text=${encodeURIComponent(message)}`} target="_blank" rel="noopener noreferrer">
-                                <MessageCircle /> Buka WhatsApp
+                                <MessageCircle /> {t("reminders.row.openWhatsapp")}
                               </a>
                             </Button>
                           ) : (
                             <span className="inline-flex items-center gap-2">
                               <Button size="sm" disabled aria-describedby={`${key}-nophone`}>
-                                <MessageCircle /> Buka WhatsApp
+                                <MessageCircle /> {t("reminders.row.openWhatsapp")}
                               </Button>
                               <span id={`${key}-nophone`} className="text-xs text-muted-foreground">
-                                {row.member.phone ? "Nombor telefon tidak sah" : "Tiada nombor telefon"}
+                                {row.member.phone ? t("reminders.row.phoneInvalid") : t("reminders.row.phoneMissing")}
                               </span>
                             </span>
                           )}
@@ -513,14 +520,13 @@ export function RemindersPage() {
                             onClick={() => setOpen((o) => ({ ...o, [key]: !isOpen }))}
                           >
                             <ChevronDown className={cn("transition-transform", isOpen && "rotate-180")} />
-                            {isOpen ? "Tutup mesej" : "Lihat & ubah mesej"}
+                            {isOpen ? t("reminders.row.closeMessage") : t("reminders.row.viewEdit")}
                           </Button>
                         </div>
                         {isOpen && (
                           <div className="mt-3 grid gap-2">
                             <Label htmlFor={`${key}-msg`} className="text-xs text-muted-foreground">
-                              Mesej untuk {row.member.name}
-                              {edited && " (diubah)"}
+                              {t(edited ? "reminders.row.messageForEdited" : "reminders.row.messageFor", { name: row.member.name })}
                             </Label>
                             <Textarea
                               id={`${key}-msg`}
@@ -542,7 +548,7 @@ export function RemindersPage() {
                                     })
                                   }
                                 >
-                                  <RotateCcw /> Guna templat semula
+                                  <RotateCcw /> {t("reminders.row.useTemplateAgain")}
                                 </Button>
                               </div>
                             )}

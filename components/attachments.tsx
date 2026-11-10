@@ -26,6 +26,8 @@ import { compressImage, sha256Hex } from "@/lib/attachments-client";
 import type { KelabBackend } from "@/lib/backend/types";
 import { messageFor } from "@/lib/errors";
 import { formatDateTime, formatDay, formatMoney } from "@/lib/format";
+import { t as tNow } from "@/lib/i18n";
+import { useT } from "@/lib/i18n/react";
 import type { Attachment, Payment } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { ClipboardPaste, Download, FileText, Image as ImageIcon, Maximize2, Paperclip, Trash2, TriangleAlert, Upload, X, ZoomIn, ZoomOut } from "lucide-react";
@@ -34,13 +36,6 @@ import { useCallback, useEffect, useId, useRef, useState, type ClipboardEvent, t
 // ---------------------------------------------------------------- pick files
 
 type Row = { id: string; name: string; size: number; status: "checking" | "compressing" | "saving" | "done" | "error"; message?: string };
-
-const STATUS_TEXT: Record<Exclude<Row["status"], "error">, string> = {
-  checking: "Memeriksa…",
-  compressing: "Memampatkan gambar…",
-  saving: "Menyimpan…",
-  done: "Siap",
-};
 
 /**
  * Drop zone, file picker and paste-from-clipboard in one. Each file is checked, compressed
@@ -59,6 +54,7 @@ export function ProofDropzone({
   disabled?: boolean;
   className?: string;
 }) {
+  const t = useT();
   const { demo } = useKelab();
   const [rows, setRows] = useState<Row[]>([]);
   const [dragging, setDragging] = useState(false);
@@ -120,9 +116,9 @@ export function ProofDropzone({
         if (type) files.push(new File([await item.getType(type)], `tampalan-${files.length + 1}.${type.split("/")[1] || "png"}`, { type }));
       }
       if (files.length) handle(files);
-      else setPasteError("Tiada gambar dalam papan klip.");
+      else setPasteError(t("attachments.drop.noImage"));
     } catch {
-      setPasteError("Papan klip tidak dapat dibaca. Klik kotak ini dan tekan Ctrl/⌘ V.");
+      setPasteError(t("attachments.drop.clipboardFailed"));
     }
   };
 
@@ -131,7 +127,7 @@ export function ProofDropzone({
       <div
         role="group"
         tabIndex={0}
-        aria-label="Lampirkan bukti: seret fail ke sini, pilih fail atau tampal gambar"
+        aria-label={t("attachments.drop.label")}
         aria-describedby={hintId}
         onPaste={onPaste}
         onDragOver={(event) => {
@@ -148,14 +144,14 @@ export function ProofDropzone({
       >
         <Upload aria-hidden className="size-5 text-muted-foreground" />
         <p id={hintId} className="text-xs text-muted-foreground">
-          Seret fail ke sini atau tampal gambar (Ctrl/⌘ V). Gambar atau PDF, maksimum 10 MB setiap satu.
+          {t("attachments.drop.hint")}
         </p>
         <div className="flex flex-wrap justify-center gap-2">
           <Button type="button" variant="outline" size="sm" disabled={disabled} onClick={() => input.current?.click()}>
-            <Paperclip /> Pilih fail
+            <Paperclip /> {t("attachments.drop.pick")}
           </Button>
           <Button type="button" variant="outline" size="sm" disabled={disabled} onClick={() => void pasteFromClipboard()}>
-            <ClipboardPaste /> Tampal gambar
+            <ClipboardPaste /> {t("attachments.drop.paste")}
           </Button>
         </div>
         <input
@@ -198,13 +194,13 @@ export function ProofDropzone({
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-medium">{row.name}</span>
                 <span className={cn("block break-words", row.status === "error" ? "font-medium text-st-unpaid" : "text-muted-foreground")}>
-                  {row.status === "error" ? row.message : `${formatBytes(row.size)} · ${STATUS_TEXT[row.status]}`}
+                  {row.status === "error" ? row.message : `${formatBytes(row.size)} · ${t(`attachments.status.${row.status}`)}`}
                 </span>
               </span>
               {row.status === "error" && (
                 <button
                   type="button"
-                  aria-label={`Tutup mesej untuk ${row.name}`}
+                  aria-label={t("attachments.drop.dismiss", { name: row.name })}
                   onClick={() => setRows((current) => current.filter((r) => r.id !== row.id))}
                   className="shrink-0 rounded p-0.5 text-muted-foreground hover:text-foreground"
                 >
@@ -228,6 +224,7 @@ export type StagedFile = { file: File; sha256: string };
  * `attachStaged` stores them against it. The same rules as the backend apply while staging.
  */
 export function ProofField({ staged, onChange, className }: { staged: StagedFile[]; onChange: (next: StagedFile[]) => void; className?: string }) {
+  const t = useT();
   const stagedRef = useRef(staged);
   stagedRef.current = staged;
   const add = useCallback(
@@ -245,7 +242,7 @@ export function ProofField({ staged, onChange, className }: { staged: StagedFile
   );
   return (
     <div className={cn("grid gap-1.5", className)}>
-      <p className="text-xs font-medium text-muted-foreground">Bukti bayaran (pilihan)</p>
+      <p className="text-xs font-medium text-muted-foreground">{t("attachments.field.title")}</p>
       <ProofDropzone onFile={add} />
       {staged.length > 0 && (
         <ul className="grid gap-1.5">
@@ -254,11 +251,11 @@ export function ProofField({ staged, onChange, className }: { staged: StagedFile
               {isImageMime(item.file.type) ? <ImageIcon aria-hidden className="size-4 shrink-0 text-muted-foreground" /> : <FileText aria-hidden className="size-4 shrink-0 text-muted-foreground" />}
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-medium">{item.file.name}</span>
-                <span className="text-muted-foreground">{formatBytes(item.file.size)} · akan dilampirkan semasa simpan</span>
+                <span className="text-muted-foreground">{formatBytes(item.file.size)} · {t("attachments.field.willAttach")}</span>
               </span>
               <button
                 type="button"
-                aria-label={`Buang ${item.file.name} daripada senarai`}
+                aria-label={t("attachments.field.removeFromList", { name: item.file.name })}
                 onClick={() => {
                   const next = staged.filter((row) => row !== item);
                   stagedRef.current = next;
@@ -292,29 +289,31 @@ export async function attachStaged(
     });
     return null;
   } catch (error) {
-    return `Bayaran telah disimpan, tetapi bukti tidak dapat dilampirkan: ${messageFor(error)} Lampirkan semula dari Sejarah bayaran.`;
+    return tNow("attachments.stagedFailed", { error: messageFor(error) });
   }
 }
 
 // ------------------------------------------------------- on a payment
 
 export function ProofChip({ payment, className }: { payment: Payment; className?: string }) {
+  const t = useT();
   const { data } = useSnapshot();
   const count = activeAttachments(attachmentsOf(data, payment.id)).length;
   if (!count) return null;
   return (
     <span
       className={cn("inline-flex h-5 shrink-0 items-center gap-1 rounded-full bg-primary-tint px-2 text-[11px] font-medium whitespace-nowrap text-primary-strong", className)}
-      title={`${count} lampiran bukti`}
+      title={t(count === 1 ? "attachments.chip.titleOne" : "attachments.chip.titleMany", { count })}
     >
       <Paperclip aria-hidden className="size-3" />
-      {payment.state === "pending" ? `Ada bukti · ${count}` : `${count} lampiran`}
+      {payment.state === "pending" ? t("attachments.chip.pending", { count }) : t(count === 1 ? "attachments.chip.countOne" : "attachments.chip.countMany", { count })}
     </span>
   );
 }
 
 /** "Lampirkan bukti" for an existing payment: a dialog around the drop zone. */
 export function AttachProofButton({ payment }: { payment: Payment }) {
+  const t = useT();
   const { data } = useSnapshot();
   const { run } = useKelab();
   const [open, setOpen] = useState(false);
@@ -324,8 +323,8 @@ export function AttachProofButton({ payment }: { payment: Payment }) {
 
   return (
     <>
-      <Button size="sm" variant="outline" onClick={() => setOpen(true)} disabled={full} title={full ? "Sudah 5 lampiran. Buang satu dahulu." : undefined}>
-        <Paperclip /> Lampirkan bukti
+      <Button size="sm" variant="outline" onClick={() => setOpen(true)} disabled={full} title={full ? t("attachments.attach.full", { max: MAX_ACTIVE_ATTACHMENTS }) : undefined}>
+        <Paperclip /> {t("attachments.attach.button")}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[92svh] overflow-y-auto rounded-2xl sm:max-w-md">
@@ -369,13 +368,14 @@ function useBlobUrl(attachmentId: string | null) {
 }
 
 function Thumb({ attachment, onOpen }: { attachment: Attachment; onOpen: () => void }) {
+  const t = useT();
   const canPreview = isImageMime(attachment.mimeType) && !isHeicMime(attachment.mimeType);
   const blob = useBlobUrl(canPreview ? attachment.id : null);
   return (
     <button
       type="button"
       onClick={onOpen}
-      aria-label={`Lihat ${attachment.fileName}`}
+      aria-label={t("attachments.list.view", { name: attachment.fileName })}
       className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-lg border border-border bg-muted text-muted-foreground outline-none hover:border-primary focus-visible:ring-2 focus-visible:ring-ring"
     >
       {blob?.url ? (
@@ -392,6 +392,7 @@ function Thumb({ attachment, onOpen }: { attachment: Attachment; onOpen: () => v
 
 /** Thumbnails of a payment's proof, newest last, with view and (reasoned) remove. Removed files stay listed. */
 export function PaymentAttachments({ payment }: { payment: Payment }) {
+  const t = useT();
   const { data } = useSnapshot();
   const { run } = useKelab();
   const [viewing, setViewing] = useState<string | null>(null);
@@ -403,13 +404,13 @@ export function PaymentAttachments({ payment }: { payment: Payment }) {
 
   return (
     <>
-      <ul className="mt-2.5 grid gap-1.5 border-t border-border pt-2.5" aria-label="Lampiran bukti bayaran">
+      <ul className="mt-2.5 grid gap-1.5 border-t border-border pt-2.5" aria-label={t("attachments.list.label")}>
         {items.map((item) =>
           item.removedAt ? (
             <li key={item.id} className="rounded-lg bg-muted/60 px-2.5 py-1.5 text-xs text-muted-foreground">
               <span className="block truncate line-through">{item.fileName}</span>
               <span className="block break-words">
-                Dibuang {formatDateTime(item.removedAt)}: {item.removedReason}
+                {t("attachments.list.removed", { when: formatDateTime(item.removedAt), reason: item.removedReason ?? "" })}
               </span>
             </li>
           ) : (
@@ -422,10 +423,10 @@ export function PaymentAttachments({ payment }: { payment: Payment }) {
                 </span>
               </span>
               <Button size="sm" variant="outline" onClick={() => setViewing(item.id)}>
-                Lihat
+                {t("attachments.list.viewButton")}
               </Button>
               {!locked && (
-                <Button size="icon-sm" variant="danger-outline" aria-label={`Buang ${item.fileName}`} title="Buang lampiran" onClick={() => setRemoving(item)}>
+                <Button size="icon-sm" variant="danger-outline" aria-label={t("attachments.list.remove", { name: item.fileName })} title={t("attachments.list.removeTitle")} onClick={() => setRemoving(item)}>
                   <Trash2 />
                 </Button>
               )}

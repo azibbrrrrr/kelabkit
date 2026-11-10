@@ -1,0 +1,62 @@
+import type { DeepStringify } from "../types";
+import type { settingsMs } from "./settings.ms";
+
+// English: settings. Typed from the Bahasa Melayu file, so a missing or extra key fails the type check.
+export const settingsEn: DeepStringify<typeof settingsMs> = {
+  title: "Settings",
+  description: "Club details, display theme and the change log.",
+  club: {
+    title: "Club details",
+    description: "Shown on reports and signed on reminder messages.",
+    name: "Club name",
+    namePlaceholder: "e.g. KGK SK Taman Melati",
+    school: "School",
+    schoolPlaceholder: "e.g. SK Taman Melati",
+    optional: "(optional)",
+    session: "Session",
+    sessionPlaceholder: "e.g. 2026",
+    treasurer: "Treasurer name",
+    treasurerPlaceholder: "e.g. Cikgu Aina Sofea",
+    discard: "Discard changes",
+    saved: "Club details saved.",
+    errors: {
+      nameRequired: "Club name is required.",
+      nameTooLong: "Name is too long (120 characters maximum).",
+      schoolTooLong: "School name is too long (120 characters maximum).",
+      sessionRequired: "Session is required, for example 2026.",
+      sessionTooLong: "Session is too long (40 characters maximum).",
+      treasurerRequired: "Treasurer name is required.",
+      treasurerTooLong: "Name is too long (120 characters maximum).",
+    },
+  },
+  theme: {
+    title: "KelabKit theme",
+    description: "The theme only changes display colours. Payment records are not affected.",
+    colorLabel: "Colour theme",
+    floralTitle: "Show floral decoration",
+    floralHint: "Sakura blossoms at the edge of the screen. Turn off for a plainer display.",
+    previewLabel: "Theme preview",
+    previewPage: "Dashboard",
+    previewReceived: "Total received",
+    previewProgress: "Share of collection received",
+    previewPercentOf: "{percent} of the expected total for active collections",
+    previewNote: "The {theme} theme preview uses your real data. The theme choice is saved in this browser only.",
+    allThemes: "All themes",
+    listLabel: "Theme list",
+    defaultTag: "(default)",
+  },
+  demo: {
+    title: "Demo data",
+    description: "This prototype is not connected to a server yet.",
+    note: "All members, collections and payments are stored in this browser only. They are not shared with other devices and are lost if browser data is cleared.",
+    resetNote: "Resetting deletes all your changes and restores the original sample data. Your theme and floral decoration choices are not affected.",
+  },
+  audit: {
+    title: "Audit log",
+    description: "Every change is recorded with the time, who made it and the reason. The log cannot be edited.",
+    empty: "No changes recorded yet.",
+    reason: "Reason: {reason}",
+    showing: "Showing {shown} of {total} records",
+    more: "Show more",
+  },
+};

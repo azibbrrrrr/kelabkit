@@ -26,6 +26,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { messageFor } from "@/lib/errors";
+import { useT } from "@/lib/i18n/react";
 import { formatDateTime, formatDay, formatMoney, formatMoneyShort, formatMonth, waNumber } from "@/lib/format";
 import { categoryLabels, cellStatusLabels, collectionStatusLabels, collectionTypeLabels, overdueLabel, pendingLabel } from "@/lib/labels";
 import { sum } from "@/lib/money/amount";
@@ -55,6 +56,7 @@ import { toast } from "sonner";
 // (each charge opens the same editor as the matrix), and their full payment history.
 
 export function AhliDetail({ id }: { id: string }) {
+  const t = useT();
   const { data, view } = useSnapshot();
   const member = view.membersById.get(id);
   const [editing, setEditing] = useState(false);
@@ -71,14 +73,14 @@ export function AhliDetail({ id }: { id: string }) {
   if (!member)
     return (
       <PageShell>
-        <PageHeader title="Ahli tidak dijumpai" back={{ href: "/ahli/", label: "Senarai ahli" }} />
+        <PageHeader title={t("memberDetail.notFound.title")} back={{ href: "/ahli/", label: t("memberDetail.backToList") }} />
         <EmptyState
           icon={UserRoundX}
-          title="Ahli ini tiada dalam rekod"
-          description="Pautan mungkin lama, atau data demo telah ditetapkan semula."
+          title={t("memberDetail.notFound.emptyTitle")}
+          description={t("memberDetail.notFound.emptyDescription")}
           action={
             <Button asChild>
-              <Link href="/ahli/">Kembali ke senarai ahli</Link>
+              <Link href="/ahli/">{t("memberDetail.notFound.back")}</Link>
             </Button>
           }
         />
@@ -93,27 +95,27 @@ export function AhliDetail({ id }: { id: string }) {
   return (
     <PageShell>
       <PageHeader
-        back={{ href: "/ahli/", label: "Senarai ahli" }}
+        back={{ href: "/ahli/", label: t("memberDetail.backToList") }}
         title={
           <span className="inline-flex flex-wrap items-center gap-2.5">
             {member.name} <MemberStatus active={member.active} />
           </span>
         }
-        description={[member.category ? categoryLabels[member.category] : null, member.phone, `Ahli sejak ${formatDay(member.joinedOn)}`]
+        description={[member.category ? categoryLabels[member.category] : null, member.phone, t("memberDetail.since", { date: formatDay(member.joinedOn) })]
           .filter(Boolean)
           .join(" · ")}
         actions={
           <>
             <Button variant={member.active ? "danger-outline" : "outline"} onClick={() => setToggling(true)}>
               {member.active ? <UserX /> : <UserCheck />}
-              {member.active ? "Nyahaktifkan" : "Aktifkan semula"}
+              {member.active ? t("memberDetail.deactivate") : t("memberDetail.reactivate")}
             </Button>
             <Button variant="brand" onClick={() => setEditing(true)}>
-              <Pencil /> Edit profil
+              <Pencil /> {t("memberDetail.editProfile")}
             </Button>
             <Button asChild>
               <Link href={`/bayaran/baru/?ahli=${member.id}`}>
-                <ReceiptText /> Rekod bayaran
+                <ReceiptText /> {t("memberDetail.recordPayment")}
               </Link>
             </Button>
           </>
@@ -122,66 +124,67 @@ export function AhliDetail({ id }: { id: string }) {
 
       {!member.active && (
         <p className="rounded-2xl border border-dashed border-border bg-card/70 px-4 py-3 text-sm text-muted-foreground">
-          Ahli ini <b className="text-foreground">tidak aktif</b>. Sejarah bayaran dan penyertaan kutipan dikekalkan; baki yang belum
-          dijelaskan masih dikira dalam kutipan berkaitan.
+          {t("memberDetail.inactiveNote.before")}
+          <b className="text-foreground">{t("memberDetail.inactiveNote.bold")}</b>
+          {t("memberDetail.inactiveNote.after")}
         </p>
       )}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Perlu bayar semasa" value={formatMoney(dueRequired)} icon={WalletCards} hint="Caj yang sudah tiba tempoh" />
-        <StatCard label="Diterima" value={formatMoney(totals.received)} icon={BadgeCheck} tone="paid" hint="Wang yang disahkan sahaja" />
+        <StatCard label={t("memberDetail.stats.required")} value={formatMoney(dueRequired)} icon={WalletCards} hint={t("memberDetail.stats.requiredHint")} />
+        <StatCard label={t("memberDetail.stats.received")} value={formatMoney(totals.received)} icon={BadgeCheck} tone="paid" hint={t("memberDetail.stats.receivedHint")} />
         <StatCard
-          label="Baki semasa"
+          label={t("memberDetail.stats.balance")}
           value={formatMoney(totals.dueNow)}
           icon={CircleDollarSign}
           tone={totals.dueNow > 0 ? "unpaid" : "paid"}
           hint={
             totals.upcoming > 0
-              ? `Akan datang ${formatMoney(totals.upcoming)}`
+              ? t("memberDetail.stats.upcomingHint", { amount: formatMoney(totals.upcoming) })
               : totals.counts.overdue > 0
-                ? `${totals.counts.overdue} caj lewat`
-                : "Tiada baki akan datang"
+                ? t("memberDetail.stats.overdueHint", { count: totals.counts.overdue })
+                : t("memberDetail.stats.noUpcomingHint")
           }
         />
         <StatCard
-          label="Menunggu semakan"
+          label={t("memberDetail.stats.pending")}
           value={formatMoney(totals.pending)}
           icon={Hourglass}
           tone="pending"
-          hint={totals.pending > 0 ? "Belum dikira sebagai diterima" : "Tiada bayaran tertunda"}
+          hint={totals.pending > 0 ? t("memberDetail.stats.pendingHint") : t("memberDetail.stats.noPendingHint")}
         />
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:items-start">
         <SectionCard
-          title="Profil"
+          title={t("memberDetail.profile.title")}
           action={
             <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
-              <Pencil /> Edit
+              <Pencil /> {t("memberDetail.profile.edit")}
             </Button>
           }
         >
           <DetailList
             items={[
-              { label: "Nama", value: member.name },
-              { label: "Kategori", value: member.category ? categoryLabels[member.category] : null },
+              { label: t("memberDetail.profile.name"), value: member.name },
+              { label: t("memberDetail.profile.category"), value: member.category ? categoryLabels[member.category] : null },
               {
-                label: "Telefon",
+                label: t("memberDetail.profile.phone"),
                 value: member.phone && (
                   <span className="flex flex-wrap items-center gap-x-2">
                     <span className="tabular-nums">{member.phone}</span>
                     {wa && (
                       <a href={`https://wa.me/${wa}`} target="_blank" rel="noreferrer" className="text-xs font-medium text-primary-strong hover:underline">
-                        WhatsApp
+                        {t("memberDetail.profile.whatsapp")}
                       </a>
                     )}
                   </span>
                 ),
               },
-              { label: "Catatan", value: member.notes },
-              { label: "Status", value: <MemberStatus active={member.active} /> },
-              { label: "Ahli sejak", value: formatDay(member.joinedOn) },
-              { label: "Dikemas kini", value: formatDateTime(member.updatedAt) },
+              { label: t("memberDetail.profile.notes"), value: member.notes },
+              { label: t("memberDetail.profile.status"), value: <MemberStatus active={member.active} /> },
+              { label: t("memberDetail.profile.since"), value: formatDay(member.joinedOn) },
+              { label: t("memberDetail.profile.updated"), value: formatDateTime(member.updatedAt) },
             ]}
           />
         </SectionCard>
@@ -189,11 +192,11 @@ export function AhliDetail({ id }: { id: string }) {
         <div className="grid min-w-0 gap-5">
           <Participation member={member} />
           <SectionCard
-            title="Sejarah bayaran"
+            title={t("memberDetail.history.title")}
             icon={ReceiptText}
-            description="Semua transaksi ahli ini, terbaru dahulu. Bayaran yang dibatalkan kekal dengan sebabnya."
+            description={t("memberDetail.history.description")}
           >
-            <PaymentList payments={payments} empty="Belum ada bayaran untuk ahli ini." />
+            <PaymentList payments={payments} empty={t("memberDetail.history.empty")} />
           </SectionCard>
         </div>
       </div>
@@ -207,6 +210,7 @@ export function AhliDetail({ id }: { id: string }) {
 // Participation ---------------------------------------------------------------------------
 
 function Participation({ member }: { member: Member }) {
+  const t = useT();
   const { data, view } = useSnapshot();
   const isMobile = useIsMobile();
   const [open, setOpen] = useState<MatrixCell | null>(null);
@@ -222,7 +226,7 @@ function Participation({ member }: { member: Member }) {
 
   const close = (next: boolean) => {
     if (next) return;
-    if (dirty && !window.confirm("Buang perubahan yang belum disimpan?")) return;
+    if (dirty && !window.confirm(t("memberDetail.discardChanges"))) return;
     setOpen(null);
     setDirty(false);
   };
@@ -233,13 +237,13 @@ function Participation({ member }: { member: Member }) {
 
   return (
     <SectionCard
-      title="Penyertaan kutipan"
+      title={t("memberDetail.participation.title")}
       icon={WalletCards}
-      description="Klik caj untuk rekod bayaran, ubah amaun atau lihat sejarah."
+      description={t("memberDetail.participation.description")}
     >
       {collections.length === 0 ? (
         <p className="rounded-xl border border-dashed border-border px-3 py-6 text-center text-sm text-muted-foreground">
-          Ahli ini belum disertakan dalam mana-mana kutipan. Sertakan dari halaman kutipan atau Matriks.
+          {t("memberDetail.participation.none")}
         </p>
       ) : (
         <ul className="grid gap-2.5">
@@ -276,6 +280,7 @@ function Participation({ member }: { member: Member }) {
 }
 
 function CollectionItem({ collection, member, onOpen }: { collection: Collection; member: Member; onOpen: (cell: MatrixCell) => void }) {
+  const t = useT();
   const { view } = useSnapshot();
   const columns = view.columns([collection]);
   const cells = columns.map((column) => view.cell(member, column));
@@ -303,9 +308,9 @@ function CollectionItem({ collection, member, onOpen }: { collection: Collection
           className="flex min-h-12 items-center justify-between gap-3 rounded-xl bg-primary-tint/60 px-3 py-2 text-left transition-colors hover:bg-primary-tint"
         >
           <span className="min-w-0 text-xs text-muted-foreground">
-            Sumbangan disahkan <Money sen={cell.received} className="font-semibold text-foreground" />
-            {cell.count > 0 && ` · ${cell.count} transaksi`}
-            <span className="block">Tiada amaun wajib; tidak mencipta hutang.</span>
+            {t("memberDetail.participation.confirmedGifts")} <Money sen={cell.received} className="font-semibold text-foreground" />
+            {cell.count > 0 && ` · ${t("memberDetail.participation.transactions", { count: cell.count })}`}
+            <span className="block">{t("memberDetail.participation.noRequired")}</span>
           </span>
           <span className="flex shrink-0 items-center gap-1">
             {cell.pending > 0 && <LabelChip entry={pendingLabel} compact />}
@@ -333,7 +338,7 @@ function CollectionItem({ collection, member, onOpen }: { collection: Collection
         >
           <span className="flex flex-wrap items-center justify-between gap-2">
             <ChargeStatusChips status={cell.status} overdue={ledger.overdue} pending={ledger.pending > 0} compact />
-            {ledger.charge.dueDate && <span className="text-xs text-muted-foreground">Tarikh akhir {formatDay(ledger.charge.dueDate)}</span>}
+            {ledger.charge.dueDate && <span className="text-xs text-muted-foreground">{t("memberDetail.participation.dueDate", { date: formatDay(ledger.charge.dueDate) })}</span>}
           </span>
           <Figures required={ledger.charge.exempt ? null : ledger.required} paid={ledger.confirmed} remaining={ledger.remaining} pending={ledger.pending} />
         </button>
@@ -348,7 +353,7 @@ function CollectionItem({ collection, member, onOpen }: { collection: Collection
         {header}
         <span className="flex flex-wrap gap-1">
           <span className="inline-flex h-5 items-center rounded-full bg-st-paid-bg px-2 text-[11px] font-medium text-st-paid tabular-nums">
-            {totals.counts.paid}/{chargeCells.length} bulan dibayar
+            {t("memberDetail.participation.monthsPaid", { paid: totals.counts.paid, total: chargeCells.length })}
           </span>
           {totals.counts.overdue > 0 && <LabelChip entry={[`${overdueLabel[0]} · ${totals.counts.overdue}`, overdueLabel[1]]} compact />}
           {totals.counts.pendingReview > 0 && <LabelChip entry={pendingLabel} compact />}
@@ -377,24 +382,25 @@ function Figures({
   pending: number;
   upcoming?: number;
 }) {
+  const t = useT();
   return (
     <dl className="grid grid-cols-3 gap-2 text-xs">
       <div className="min-w-0">
-        <dt className="text-muted-foreground">Perlu bayar</dt>
-        <dd className="truncate font-semibold tabular-nums">{required === null ? "Dikecualikan" : formatMoney(required)}</dd>
+        <dt className="text-muted-foreground">{t("memberDetail.figures.required")}</dt>
+        <dd className="truncate font-semibold tabular-nums">{required === null ? t("memberDetail.figures.exempt") : formatMoney(required)}</dd>
       </div>
       <div className="min-w-0">
-        <dt className="text-muted-foreground">Diterima</dt>
+        <dt className="text-muted-foreground">{t("memberDetail.figures.received")}</dt>
         <dd className="truncate font-semibold text-st-paid tabular-nums">{formatMoney(paid)}</dd>
       </div>
       <div className="min-w-0">
-        <dt className="text-muted-foreground">{upcoming !== undefined ? "Baki semasa" : "Baki"}</dt>
+        <dt className="text-muted-foreground">{upcoming !== undefined ? t("memberDetail.figures.balanceCurrent") : t("memberDetail.figures.balance")}</dt>
         <dd className={cn("truncate font-semibold tabular-nums", remaining > 0 ? "text-st-unpaid" : "text-foreground")}>{formatMoney(remaining)}</dd>
       </div>
       {(pending > 0 || (upcoming ?? 0) > 0) && (
         <p className="col-span-3 text-[11px] text-muted-foreground">
-          {pending > 0 && <>Menunggu semakan {formatMoney(pending)}. </>}
-          {(upcoming ?? 0) > 0 && <>Akan datang {formatMoney(upcoming ?? 0)}.</>}
+          {pending > 0 && <>{t("memberDetail.figures.pending", { amount: formatMoney(pending) })} </>}
+          {(upcoming ?? 0) > 0 && <>{t("memberDetail.figures.upcoming", { amount: formatMoney(upcoming ?? 0) })}</>}
         </p>
       )}
     </dl>

@@ -101,3 +101,14 @@ describe("locale-aware tables and formatting", () => {
     expect(formatMonthLong("2026-08")).toBe("August 2026");
   });
 });
+
+describe("English is actually translated", () => {
+  const flatMs = flatten(ms as unknown as Tree);
+  const flatEn = flatten(en as unknown as Tree);
+  // Values that are legitimately identical in both languages (proper nouns, units, symbols).
+  const sameKeys = Object.keys(flatMs).filter((k) => flatMs[k] === flatEn[k] && /[A-Za-z]{4,}/.test(flatMs[k].replace(/\{\w+\}/g, "")));
+
+  it("leaves few long words untranslated in en (copy-paste guard)", () => {
+    expect(sameKeys.length, sameKeys.join("\n")).toBeLessThan(40);
+  });
+});

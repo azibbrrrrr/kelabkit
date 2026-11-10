@@ -1,3 +1,6 @@
+"use client";
+
+import { useT } from "@/lib/i18n/react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 
@@ -25,8 +28,9 @@ export function BrandMark({ className, size = "md" }: { className?: string; size
 }
 
 export function Brand({ href = "/" }: { href?: string }) {
+  const t = useT();
   return (
-    <Link href={href} aria-label="KelabKit, ke Dashboard" className="flex items-center gap-2.5 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">
+    <Link href={href} aria-label={t("brand.homeLabel")} className="flex items-center gap-2.5 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">
       <BrandMark />
       <span className="font-display text-[19px] font-bold tracking-[-.01em] text-foreground">KelabKit</span>
     </Link>
