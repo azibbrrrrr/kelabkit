@@ -11,6 +11,22 @@ export const MAX_ACTIVE_ATTACHMENTS = 5;
 export const COMPRESS_ABOVE_BYTES = 1.5 * 1024 * 1024;
 export const MAX_IMAGE_EDGE = 2000;
 
+/** How long a presigned upload or download link works. */
+export const PRESIGN_SECONDS = 300;
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const isUuid = (value: unknown): value is string => typeof value === "string" && UUID_RE.test(value);
+
+/**
+ * Object key of one proof file. The club comes from the verified session, never from a client
+ * argument; kk_add_attachment (migration 0004) refuses any other shape, so the key is also
+ * an invariant at the database.
+ */
+export function attachmentKey(clubId: string, paymentId: string, attachmentId: string): string {
+  if (!isUuid(clubId) || !isUuid(paymentId) || !isUuid(attachmentId)) throw new KelabError("FORBIDDEN");
+  return `clubs/${clubId}/payments/${paymentId}/${attachmentId}`;
+}
+
 export const ACCEPT_ATTR = "image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.pdf";
 
 const BY_EXTENSION: Record<string, string> = {

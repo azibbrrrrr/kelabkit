@@ -170,6 +170,8 @@ export const ms = {
     ATTACHMENT_NOT_FOUND: "Lampiran tidak dijumpai. Muat semula halaman untuk melihat rekod terkini.",
     ATTACHMENT_ALREADY_REMOVED: "Lampiran ini sudah dibuang.",
     ATTACHMENT_FILE_MISSING: "Fail tidak lagi ada dalam pelayar ini (data pelayar mungkin telah dibersihkan).",
+    ATTACHMENT_UPLOAD_FAILED: "Muat naik fail gagal. Cuba lagi.",
+    ATTACHMENT_STORAGE_UNAVAILABLE: "Storan fail belum disediakan untuk pelayan ini.",
     FILE_STORAGE_UNAVAILABLE:
       "Penyimpanan fail tidak tersedia dalam pelayar ini. Cuba tetingkap biasa (bukan mod peribadi) dan benarkan data tapak.",
     NETWORK: "Sambungan terputus. Cuba lagi.",
@@ -179,7 +181,7 @@ export const ms = {
     SESSION_REQUIRED: "Sesi diperlukan, contohnya 2026.",
     CLUB_LIMIT: "Anda sudah mencapai had lima kelab.",
     INTERNAL: "Sesuatu tidak kena. Cuba lagi.",
-    NOT_AVAILABLE: "Muat naik fail belum tersedia untuk akaun sebenar.",
+    NOT_AVAILABLE: "Tindakan ini belum tersedia untuk akaun sebenar.",
   },
 
   auth: {

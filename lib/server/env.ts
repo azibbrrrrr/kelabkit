@@ -3,6 +3,19 @@ import { DB_CONNECTION_ENV } from "@/lib/db/config";
 /** Variables signed-in mode needs. Demo mode needs none of them. Names only: values never leave process.env. */
 export const SIGNED_IN_ENV = [DB_CONNECTION_ENV, "NEON_AUTH_BASE_URL", "NEON_AUTH_COOKIE_SECRET"] as const;
 
+/** Variables proof storage needs (S3-compatible Neon Object Storage). Optional: without them sign-in works and attachments say storage is not set up. */
+export const STORAGE_ENV = [
+  "NEON_STORAGE_ENDPOINT",
+  "NEON_STORAGE_REGION",
+  "NEON_STORAGE_BUCKET",
+  "NEON_STORAGE_ACCESS_KEY_ID",
+  "NEON_STORAGE_SECRET_ACCESS_KEY",
+] as const;
+
+export function missingStorageEnv(env: Record<string, string | undefined> = process.env): string[] {
+  return STORAGE_ENV.filter((name) => !env[name]?.trim());
+}
+
 /** Neon Auth rejects a shorter cookie secret. */
 export const COOKIE_SECRET_MIN = 32;
 

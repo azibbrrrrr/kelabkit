@@ -168,6 +168,8 @@ export const en: Messages = {
     ATTACHMENT_NOT_FOUND: "Attachment not found. Reload the page to see the latest records.",
     ATTACHMENT_ALREADY_REMOVED: "This attachment has already been removed.",
     ATTACHMENT_FILE_MISSING: "The file is no longer in this browser (browser data may have been cleared).",
+    ATTACHMENT_UPLOAD_FAILED: "The file upload failed. Try again.",
+    ATTACHMENT_STORAGE_UNAVAILABLE: "File storage is not set up on this server.",
     FILE_STORAGE_UNAVAILABLE:
       "File storage is not available in this browser. Try a normal window (not private mode) and allow site data.",
     NETWORK: "Connection lost. Try again.",
@@ -177,7 +179,7 @@ export const en: Messages = {
     SESSION_REQUIRED: "Enter the session, for example 2026.",
     CLUB_LIMIT: "You have reached the limit of five clubs.",
     INTERNAL: "Something went wrong. Try again.",
-    NOT_AVAILABLE: "File upload is not available for real accounts yet.",
+    NOT_AVAILABLE: "This action is not available for real accounts.",
   },
 
   auth: {

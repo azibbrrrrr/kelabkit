@@ -9,6 +9,8 @@ import "server-only";
 // rows the app role may still change directly (members, collections, clubs), and the audit
 // row for those, written through kk_audit so the actor is always the session user.
 
+import { randomUUID } from "node:crypto";
+
 import type {
   ClubChanges,
   CollectionChanges,
@@ -19,6 +21,7 @@ import type {
   NewParticipant,
   PaymentInput,
 } from "@/lib/backend/types";
+import { attachmentKey, checkProofFile, isUuid, MAX_ACTIVE_ATTACHMENTS, type ProofCandidate } from "@/lib/attachments";
 import { checkAmount, checkReason, cleanName } from "@/lib/backend/rules";
 import { checkCollectionIcon, describeIcon } from "@/lib/collection-icon";
 import { withClub, withUser, type Tx } from "@/lib/db/with-club";
@@ -26,6 +29,7 @@ import { KelabError } from "@/lib/errors";
 import { today } from "@/lib/format";
 import { dueDateFor, isMonth, monthsBetween } from "@/lib/money/months";
 import { normaliseName } from "@/lib/names";
+import { deleteObject, headObject, presignDownload, presignUpload } from "@/lib/server/storage";
 import { loadSnapshot } from "@/lib/server/snapshot";
 import type { AuditAction, CollectionStatus, Sen, Snapshot } from "@/lib/types";
 
@@ -333,6 +337,104 @@ export function reversePayment(ctx: Ctx, paymentId: string, reason: string): Pro
   return db(ctx, async (tx) => {
     await tx.query("select kk_reverse_payment($1, $2, $3)", [ctx.clubId, paymentId, reason]);
   });
+}
+
+// ---- payment proof ---------------------------------------------------------------------------
+// Bytes live in private object storage under attachmentKey(club, payment, attachment); the
+// attachments row (written only by kk_add_attachment / kk_remove_attachment) is what makes an
+// object part of the record. Upload is three steps: prepare (checks, presigned PUT), the
+// browser PUTs the bytes straight to the store, confirm (HEAD the object, then the row).
+
+export type ProofMeta = ProofCandidate & { sha256: string; attachmentId: string };
+export type PreparedUpload = { attachmentId: string; mimeType: string; url: string };
+
+/** A payment id the session's club does not own finds no row (RLS plus the club filter): FORBIDDEN, same as a stranger. */
+async function paymentStateFor(tx: Tx, paymentId: string) {
+  if (!isUuid(paymentId)) throw new KelabError("FORBIDDEN");
+  const { rows } = await tx.query("select state from payments where id = $1", [paymentId]);
+  if (!rows[0]) throw new KelabError("FORBIDDEN");
+  return rows[0].state as string;
+}
+
+export async function prepareAttachmentUploads(ctx: Ctx, paymentId: string, files: ProofCandidate[]): Promise<PreparedUpload[]> {
+  if (!Array.isArray(files) || files.length === 0 || files.length > MAX_ACTIVE_ATTACHMENTS) throw new KelabError("ATTACHMENT_LIMIT");
+  const mimes = files.map((file) => checkProofFile({ fileName: String(file?.fileName), mimeType: String(file?.mimeType), sizeBytes: Number(file?.sizeBytes) }));
+  await withClub(ctx.userId, ctx.clubId, async (tx) => {
+    if ((await paymentStateFor(tx, paymentId)) === "reversed") throw new KelabError("ATTACHMENT_PAYMENT_REVERSED");
+    const { rows } = await tx.query("select count(*)::int as n from attachments where payment_id = $1 and removed_at is null", [paymentId]);
+    if (rows[0].n + files.length > MAX_ACTIVE_ATTACHMENTS) throw new KelabError("ATTACHMENT_LIMIT");
+  }, { label: "attachment_prepare" });
+  return Promise.all(
+    files.map(async (file, i) => {
+      const attachmentId = randomUUID();
+      const url = await presignUpload(attachmentKey(ctx.clubId, paymentId, attachmentId), mimes[i], file.sizeBytes);
+      return { attachmentId, mimeType: mimes[i], url };
+    }),
+  );
+}
+
+/** Deletes objects that no attachments row owns. A recorded object is never touched, so a replayed confirm cannot destroy proof. */
+async function discardUnrecorded(ctx: Ctx, keysById: Map<string, string>) {
+  try {
+    const recorded = await withClub(ctx.userId, ctx.clubId, async (tx) =>
+      new Set((await tx.query("select id from attachments where id = any($1::uuid[])", [[...keysById.keys()]])).rows.map((r) => r.id as string)),
+    { label: "attachment_discard" });
+    await Promise.all([...keysById].filter(([id]) => !recorded.has(id)).map(([, key]) => deleteObject(key)));
+  } catch {
+    // Best effort: an unrecorded object is unreachable (nothing presigns a read for it).
+  }
+}
+
+export async function confirmAttachmentUploads(ctx: Ctx, paymentId: string, items: ProofMeta[]): Promise<string[]> {
+  if (!Array.isArray(items) || items.length === 0 || items.length > MAX_ACTIVE_ATTACHMENTS) throw new KelabError("ATTACHMENT_LIMIT");
+  if (!isUuid(paymentId)) throw new KelabError("FORBIDDEN");
+  const keys = new Map<string, string>();
+  const checked = items.map((item) => {
+    if (!isUuid(item?.attachmentId)) throw new KelabError("FORBIDDEN");
+    const mime = checkProofFile({ fileName: String(item.fileName), mimeType: String(item.mimeType), sizeBytes: Number(item.sizeBytes) });
+    keys.set(item.attachmentId, attachmentKey(ctx.clubId, paymentId, item.attachmentId));
+    return { ...item, mime };
+  });
+  if (keys.size !== items.length) throw new KelabError("ATTACHMENT_DUPLICATE");
+  try {
+    // What is in the store is judged, not what the browser says it sent. Before the transaction,
+    // so no database connection waits on the network.
+    for (const item of checked) {
+      const head = await headObject(keys.get(item.attachmentId)!);
+      if (!head || head.sizeBytes !== item.sizeBytes || head.contentType !== item.mime) throw new KelabError("ATTACHMENT_UPLOAD_FAILED");
+    }
+    return await db(ctx, async (tx) => {
+      const ids: string[] = [];
+      for (const item of checked) {
+        await tx.query("select kk_add_attachment($1, $2, $3, $4, $5, $6, $7, $8)", [
+          ctx.clubId, paymentId, item.attachmentId, item.fileName, item.mime, item.sizeBytes, item.sha256, keys.get(item.attachmentId),
+        ]);
+        ids.push(item.attachmentId);
+      }
+      return ids;
+    }, "attachment_add");
+  } catch (error) {
+    await discardUnrecorded(ctx, keys);
+    throw error;
+  }
+}
+
+export async function removeAttachment(ctx: Ctx, attachmentId: string, reason: string): Promise<void> {
+  const why = checkReason(reason);
+  if (!isUuid(attachmentId)) throw new KelabError("ATTACHMENT_NOT_FOUND");
+  const key = await db(ctx, async (tx) => (await tx.query("select kk_remove_attachment($1, $2, $3) as key", [ctx.clubId, attachmentId, why])).rows[0].key as string | null, "attachment_remove");
+  // After the commit: the record says "removed" first, so a failed delete leaves an unreachable
+  // object, never a live record without bytes.
+  if (key) await deleteObject(key).catch(() => undefined);
+}
+
+export async function attachmentDownloadUrl(ctx: Ctx, attachmentId: string): Promise<{ url: string }> {
+  if (!isUuid(attachmentId)) throw new KelabError("ATTACHMENT_NOT_FOUND");
+  const row = await withClub(ctx.userId, ctx.clubId, async (tx) => (await tx.query("select storage_key, mime_type, removed_at from attachments where id = $1", [attachmentId])).rows[0], { label: "attachment_url" });
+  if (!row) throw new KelabError("ATTACHMENT_NOT_FOUND");
+  if (row.removed_at) throw new KelabError("ATTACHMENT_ALREADY_REMOVED");
+  if (!row.storage_key) throw new KelabError("ATTACHMENT_NOT_FOUND");
+  return { url: await presignDownload(row.storage_key, row.mime_type) };
 }
 
 // ---- club ----------------------------------------------------------------------------------
