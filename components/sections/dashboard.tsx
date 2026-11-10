@@ -5,33 +5,20 @@ import { CollectionIcon } from "@/components/collection-icon";
 import { Blossom, Floral } from "@/components/floral";
 import { CardLink, LabelChip, PageHeader, PageShell, ProgressBar, SectionCard, StatCard } from "@/components/shared";
 import { Button } from "@/components/ui/button";
-import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { formatDayShort, formatMoney, formatMonth, formatNumber, formatPercent } from "@/lib/format";
 import { methodLabels, paymentStateLabels } from "@/lib/labels";
 import { useT } from "@/lib/i18n/react";
+import { rankAttention, type AttentionRow } from "@/lib/money/attention";
 import { totalsOf } from "@/lib/money/ledger";
 import { addMonths, monthOf } from "@/lib/money/months";
-import type { Collection, Payment } from "@/lib/types";
+import { deltaOf, ledgersInMonth, parsePeriod, periodMonthsById, previousMonth, sessionMonths, type Delta } from "@/lib/money/period";
+import type { Collection, Month, Payment } from "@/lib/types";
 import { allocationsOf, sortCollections } from "@/lib/view";
 import { cn } from "@/lib/utils";
-import {
-  BadgeCheck,
-  BellRing,
-  CalendarDays,
-  ChartColumn,
-  ChevronLeft,
-  ChevronRight,
-  Clock3,
-  Database,
-  HandCoins,
-  MessageCircle,
-  Plus,
-  ReceiptText,
-  Search,
-  UsersRound,
-  type LucideIcon,
-} from "lucide-react";
+import { ArrowDown, ArrowUp, BadgeCheck, BellRing, CalendarDays, ChartColumn, ChevronDown, ChevronLeft, ChevronRight, Clock3, Database, Minus, Plus, ReceiptText, Search, UsersRound } from "lucide-react";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
 // Low-priority overview (spec Module I), laid out like the Concept 04 reference. Every
@@ -44,11 +31,38 @@ export function Dashboard() {
   const { data, view } = useSnapshot();
   const firstName = data.club.treasurerName.split(" ").slice(0, 2).join(" ");
 
+  const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
+
   const scope = useMemo(() => data.collections.filter((collection) => collection.status === "active" || collection.status === "completed"), [data.collections]);
-  const totals = useMemo(() => {
-    const ledgers = scope.flatMap((collection) => (view.chargesByCollection.get(collection.id) ?? []).map((charge) => view.ledgers.get(charge.id)!));
-    return totalsOf(ledgers);
-  }, [scope, view]);
+  const periodMonths = useMemo(() => periodMonthsById(data.periods), [data.periods]);
+  const scopeLedgers = useMemo(
+    () => scope.flatMap((collection) => (view.chargesByCollection.get(collection.id) ?? []).map((charge) => view.ledgers.get(charge.id)!)),
+    [scope, view],
+  );
+  const months = useMemo(() => sessionMonths(scopeLedgers.map((ledger) => ledger.charge), periodMonths), [scopeLedgers, periodMonths]);
+  // The period lives only in ?tempoh=; anything that is not a month of this session means the whole session.
+  const period = parsePeriod(params.get("tempoh"), months);
+  const thisMonth = monthOf(view.today);
+  const setPeriod = (next: Month | null) => {
+    const search = new URLSearchParams(params.toString());
+    if (next) search.set("tempoh", next);
+    else search.delete("tempoh");
+    const qs = search.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  };
+
+  const lens = useMemo(() => (period ? ledgersInMonth(scopeLedgers, period, periodMonths) : scopeLedgers), [period, scopeLedgers, periodMonths]);
+  const totals = useMemo(() => totalsOf(lens), [lens]);
+  const upcomingPeriod = period !== null && period > thisMonth;
+  // Compared with the month before, as of today. No comparison for the first month, a future month, or the whole session.
+  const previous = useMemo(() => {
+    if (!period || upcomingPeriod) return null;
+    const before = previousMonth(period);
+    return months.includes(before) ? totalsOf(ledgersInMonth(scopeLedgers, before, periodMonths)) : null;
+  }, [period, upcomingPeriod, months, scopeLedgers, periodMonths]);
+  const lensIds = useMemo(() => new Set(lens.map((ledger) => ledger.charge.id)), [lens]);
   const activeMembers = data.members.filter((member) => member.active);
 
   const memberStatus = useMemo(() => {
@@ -56,14 +70,18 @@ export function Dashboard() {
     let owing = 0;
     let none = 0;
     for (const member of activeMembers) {
-      const ledgers = view.memberLedgers(member.id).filter((ledger) => scope.some((c) => c.id === ledger.charge.collectionId) && !ledger.future);
+      const ledgers = view.memberLedgers(member.id).filter((ledger) => lensIds.has(ledger.charge.id) && !ledger.future);
       const due = ledgers.reduce((t, l) => t + l.remaining, 0);
       if (!ledgers.some((l) => !l.charge.exempt)) none += 1;
       else if (due > 0) owing += 1;
       else settled += 1;
     }
     return { settled, owing, none };
-  }, [activeMembers, scope, view]);
+  }, [activeMembers, lensIds, view]);
+  const attention = useMemo(
+    () => rankAttention(activeMembers, (id) => view.memberLedgers(id).filter((ledger) => lensIds.has(ledger.charge.id)), view.today),
+    [activeMembers, lensIds, view],
+  );
 
   const pending = data.payments.filter((payment) => payment.state === "pending");
   const recent = [...data.payments].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 5);
@@ -104,6 +122,9 @@ export function Dashboard() {
             </DropdownMenuItem>
           }
         />
+        <div className="mt-3">
+          <PeriodSwitcher period={period} months={months} thisMonth={thisMonth} onChange={setPeriod} compact />
+        </div>
       </div>
       <div className="hidden flex-col gap-4 md:flex xl:flex-row xl:items-end xl:justify-between">
         <div className="min-w-0 xl:max-w-[520px]">
@@ -113,9 +134,7 @@ export function Dashboard() {
           <p className="mt-1.5 text-[13px] text-muted-foreground">{t("dashboard.hero.subtitle")}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2 xl:flex-nowrap">
-          <span className="inline-flex h-9 items-center gap-2 rounded-[10px] border border-border bg-card px-3 text-[13px] font-medium whitespace-nowrap">
-            <CalendarDays className="size-4 text-muted-foreground" /> {t("dashboard.hero.session", { session: data.club.session })}
-          </span>
+          <PeriodSwitcher period={period} months={months} thisMonth={thisMonth} onChange={setPeriod} />
           <Button variant="outline" asChild>
             <Link href="/ahli/">
               <Search /> {t("dashboard.hero.findMember")}
@@ -140,7 +159,18 @@ export function Dashboard() {
             icon={Database}
             label={t("dashboard.stats.totalLabel")}
             value={formatMoney(totals.expected)}
-            hint={totals.upcoming > 0 ? t("dashboard.stats.totalUpcoming", { amount: formatMoney(totals.upcoming) }) : t("dashboard.stats.totalExpected")}
+            hint={
+              <>
+                {period
+                  ? upcomingPeriod
+                    ? t("dashboard.stats.totalMonthUpcoming")
+                    : t("dashboard.stats.totalMonth", { month: formatMonth(period) })
+                  : totals.upcoming > 0
+                    ? t("dashboard.stats.totalUpcoming", { amount: formatMoney(totals.upcoming) })
+                    : t("dashboard.stats.totalExpected")}
+                {previous && <DeltaLine delta={deltaOf(totals.expected, previous.expected)} good="neutral" />}
+              </>
+            }
             href="/kutipan/"
           />
           <StatCard
@@ -151,6 +181,7 @@ export function Dashboard() {
             hint={
               <>
                 <b className="text-st-paid">{formatPercent(totals.received, totals.expected)}</b> {t("dashboard.stats.paidOfTotal")}
+                {previous && <DeltaLine delta={deltaOf(totals.received, previous.received)} good="up" />}
               </>
             }
             className="bg-st-paid-bg/35"
@@ -160,7 +191,14 @@ export function Dashboard() {
             tone="partial"
             label={t("dashboard.stats.unpaidLabel")}
             value={formatMoney(totals.dueNow)}
-            hint={t("dashboard.stats.unpaidHint", { percent: formatPercent(totals.dueNow, totals.expected), count: memberStatus.owing })}
+            hint={
+              <>
+                {upcomingPeriod
+                  ? t("dashboard.stats.unpaidUpcoming", { amount: formatMoney(totals.upcoming) })
+                  : t("dashboard.stats.unpaidHint", { percent: formatPercent(totals.dueNow, totals.expected), count: memberStatus.owing })}
+                {previous && <DeltaLine delta={deltaOf(totals.dueNow, previous.dueNow)} good="down" />}
+              </>
+            }
             href="/peringatan/"
             className="bg-st-partial-bg/35"
           />
@@ -177,8 +215,8 @@ export function Dashboard() {
 
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,.8fr)]">
           <CollectionsCard collections={sortCollections(data.collections).filter((c) => c.status === "active")} />
-          <ActionsCard owing={memberStatus.owing} pending={pending} />
-          <MonthlyCard payments={data.payments} />
+          <AttentionCard rows={attention} pending={pending} period={period} />
+          <MonthlyCard payments={data.payments} period={period} months={months} onPeriod={setPeriod} />
         </div>
 
         <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
@@ -270,60 +308,99 @@ function CollectionsCard({ collections }: { collections: Collection[] }) {
   );
 }
 
-function ActionsCard({ owing, pending }: { owing: number; pending: Payment[] }) {
+/** Members ranked by overdue money, with a line for payments waiting to be confirmed. */
+function AttentionCard({ rows, pending, period }: { rows: AttentionRow[]; pending: Payment[]; period: Month | null }) {
   const t = useT();
-  const items: { icon: LucideIcon; title: string; sub: string; href: string; cta: string; primary?: boolean }[] = [
-    {
-      icon: HandCoins,
-      title: t(owing === 1 ? "dashboard.actions.owingOne" : "dashboard.actions.owingMany", { count: owing }),
-      sub: t("dashboard.actions.owingSub"),
-      href: "/peringatan/",
-      cta: t("dashboard.actions.owingCta"),
-      primary: true,
-    },
-    {
-      icon: BadgeCheck,
-      title: t(pending.length === 1 ? "dashboard.actions.pendingOne" : "dashboard.actions.pendingMany", { count: pending.length }),
-      sub: pending.length ? t("dashboard.actions.pendingSub") : t("dashboard.actions.pendingNone"),
-      href: "/bayaran/?tab=semakan",
-      cta: t("dashboard.actions.pendingCta"),
-    },
-    {
-      icon: MessageCircle,
-      title: t("dashboard.actions.whatsappTitle"),
-      sub: t("dashboard.actions.whatsappSub"),
-      href: "/peringatan/",
-      cta: t("dashboard.actions.whatsappCta"),
-    },
-  ];
   return (
-    <SectionCard title={t("dashboard.actions.title")} icon={BellRing} action={<CardLink href="/peringatan/">{t("dashboard.actions.viewAll")}</CardLink>}>
-      <ul className="grid grid-cols-1 gap-2.5">
-        {items.map((item) => (
-          <li key={item.title} className="flex items-center gap-3 rounded-xl border border-border bg-card px-3 py-2.5">
-            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary-tint text-primary-strong">
-              <item.icon className="size-[18px]" />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-small leading-snug font-semibold">{item.title}</span>
-              <span className="block text-caption text-muted-foreground">{item.sub}</span>
-            </span>
-            <Button size="sm" variant={item.primary ? "default" : "brand"} asChild>
-              <Link href={item.href}>{item.cta}</Link>
-            </Button>
-          </li>
-        ))}
-      </ul>
+    <SectionCard title={t("dashboard.attention.title")} icon={BellRing} action={<CardLink href="/peringatan/">{t("dashboard.attention.viewAll")}</CardLink>}>
+      {rows.length === 0 ? (
+        <p className="py-4 text-center text-sm text-muted-foreground">{t(period ? "dashboard.attention.emptyMonth" : "dashboard.attention.empty")}</p>
+      ) : (
+        <ul className="grid grid-cols-1 gap-1">
+          {rows.slice(0, 5).map((row) => (
+            <li key={row.member.id}>
+              <Link
+                href={`/ahli/${row.member.id}/`}
+                className="group flex items-center justify-between gap-3 rounded-xl px-2 py-1.5 outline-none hover:bg-primary-tint focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <span className="min-w-0">
+                  <span className="block truncate text-small font-semibold group-hover:text-primary-strong">{row.member.name}</span>
+                  <span className="block text-caption text-muted-foreground">{t(row.daysOverdue === 1 ? "dashboard.attention.overdueDay" : "dashboard.attention.overdueDays", { days: row.daysOverdue })}</span>
+                </span>
+                <span className="shrink-0 text-small font-semibold text-st-unpaid tabular-nums">{formatMoney(row.overdue)}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="mt-3 flex items-center gap-3 rounded-xl border border-border bg-card px-3 py-2">
+        <span className="min-w-0 flex-1">
+          <span className="block text-small leading-snug font-semibold">{t(pending.length === 1 ? "dashboard.attention.pendingOne" : "dashboard.attention.pendingMany", { count: pending.length })}</span>
+          <span className="block text-caption text-muted-foreground">{pending.length ? t("dashboard.attention.pendingSub") : t("dashboard.attention.pendingNone")}</span>
+        </span>
+        <Button size="sm" variant="brand" asChild>
+          <Link href="/bayaran/?tab=semakan">{t("dashboard.attention.pendingCta")}</Link>
+        </Button>
+      </div>
     </SectionCard>
   );
 }
 
+/** Direction arrow plus words, so the change never relies on colour. `good` says which way is welcome. */
+function DeltaLine({ delta, good }: { delta: Delta; good: "up" | "down" | "neutral" }) {
+  const t = useT();
+  const Icon = delta.direction === "up" ? ArrowUp : delta.direction === "down" ? ArrowDown : Minus;
+  const tone =
+    delta.direction === "flat" || good === "neutral" ? "text-muted-foreground" : delta.direction === good ? "text-st-paid" : "text-st-unpaid";
+  const word = delta.direction === "up" ? t("dashboard.stats.deltaUp") : delta.direction === "down" ? t("dashboard.stats.deltaDown") : t("dashboard.stats.deltaFlat");
+  const size = delta.percent !== null ? `${delta.percent.toLocaleString("ms-MY")}%` : formatMoney(Math.abs(delta.diff));
+  return (
+    <span className={cn("mt-1 flex flex-wrap items-center gap-x-1 font-medium", tone)} data-delta={delta.direction}>
+      <Icon className="size-3.5 shrink-0" aria-hidden />
+      <span className="sr-only">{word}</span>
+      {delta.direction !== "flat" && <span className="tabular-nums">{size}</span>}
+      <span className="font-normal text-muted-foreground">{delta.direction === "flat" ? `${word} ${t("dashboard.stats.deltaVs")}` : t("dashboard.stats.deltaVs")}</span>
+    </span>
+  );
+}
+
+/** Whole session or one month of it. The choice is a URL param, so it survives reload and can be shared. */
+function PeriodSwitcher({ period, months, thisMonth, onChange, compact }: { period: Month | null; months: Month[]; thisMonth: Month; onChange: (month: Month | null) => void; compact?: boolean }) {
+  const t = useT();
+  const { data } = useSnapshot();
+  const label = period ? formatMonth(period) : t("dashboard.hero.session", { session: data.club.session });
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size={compact ? "sm" : "default"} className="whitespace-nowrap" aria-label={`${label} (${t("dashboard.hero.period.label")})`}>
+          <CalendarDays className={cn("text-muted-foreground", !compact && "hidden")} /> {label} <ChevronDown className="text-muted-foreground" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align={compact ? "start" : "end"} className="max-h-80 w-56 overflow-y-auto">
+        <DropdownMenuLabel>{t("dashboard.hero.period.label")}</DropdownMenuLabel>
+        <DropdownMenuRadioGroup value={period ?? "all"} onValueChange={(value) => onChange(value === "all" ? null : value)}>
+          <DropdownMenuRadioItem value="all">{t("dashboard.hero.period.full")}</DropdownMenuRadioItem>
+          {months.map((month) => (
+            <DropdownMenuRadioItem key={month} value={month}>
+              {formatMonth(month)}
+              {month > thisMonth && <span className="ml-auto mr-2 text-caption text-muted-foreground">{t("dashboard.hero.period.upcoming")}</span>}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 /** Confirmed money received per calendar month (by payment date), last four months. */
-function MonthlyCard({ payments }: { payments: Payment[] }) {
+function MonthlyCard({ payments, period, months: sessionList, onPeriod }: { payments: Payment[]; period: Month | null; months: Month[]; onPeriod: (month: Month | null) => void }) {
   const t = useT();
   const { view, data } = useSnapshot();
   const thisMonth = monthOf(view.today);
-  const [month, setMonth] = useState(thisMonth);
+  const [localMonth, setLocalMonth] = useState(thisMonth);
+  // With a period chosen the card follows it (and its arrows move the period); otherwise it browses on its own.
+  const month = period ?? localMonth;
+  const go = (offset: number) => (period ? onPeriod(addMonths(period, offset)) : setLocalMonth(addMonths(localMonth, offset)));
   const received = (m: string) => payments.filter((p) => p.state === "confirmed" && monthOf(p.paidOn) === m).reduce((t, p) => t + p.amount, 0);
   const months = [-3, -2, -1, 0].map((offset) => addMonths(month, offset));
   const values = months.map(received);
@@ -336,11 +413,11 @@ function MonthlyCard({ payments }: { payments: Payment[] }) {
   return (
     <SectionCard title={t("dashboard.monthly.title")} icon={ChartColumn} className="lg:col-span-2 xl:col-span-1">
       <div className="flex items-center justify-between gap-2 rounded-xl border border-border px-1.5 py-1">
-        <Button variant="ghost" size="icon-sm" aria-label={t("dashboard.monthly.previous")} onClick={() => setMonth(addMonths(month, -1))}>
+        <Button variant="ghost" size="icon-sm" aria-label={t("dashboard.monthly.previous")} onClick={() => go(-1)} disabled={period !== null && month <= sessionList[0]}>
           <ChevronLeft />
         </Button>
         <span className="text-small font-semibold">{formatMonth(month)}</span>
-        <Button variant="ghost" size="icon-sm" aria-label={t("dashboard.monthly.next")} onClick={() => setMonth(addMonths(month, 1))} disabled={month >= thisMonth}>
+        <Button variant="ghost" size="icon-sm" aria-label={t("dashboard.monthly.next")} onClick={() => go(1)} disabled={period ? month >= sessionList[sessionList.length - 1] : month >= thisMonth}>
           <ChevronRight />
         </Button>
       </div>
