@@ -1,11 +1,14 @@
 "use client";
 
 import { useKelab, useSnapshot } from "@/components/data-provider";
+import { ChoiceCard, ChoiceCards, SegmentedChoice } from "@/components/choice";
+import { DatePicker } from "@/components/date-picker";
 import { MoneyInput, parseMoney } from "@/components/money-input";
 import { MemberStatus } from "@/components/sections/ahli";
 import { ChargeStatusChips, LabelChip, Money, PageHeader, PageShell, SectionCard, TextAction } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
@@ -165,7 +168,7 @@ function MemberPicker({ onSelect }: { onSelect: (id: string) => void }) {
     <div className="grid gap-2">
       <div className="relative">
         <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-        <input
+        <Input
           type="search"
           role="combobox"
           aria-expanded
@@ -181,7 +184,7 @@ function MemberPicker({ onSelect }: { onSelect: (id: string) => void }) {
           }}
           onKeyDown={onKeyDown}
           placeholder="Taip nama ahli…"
-          className="h-11 w-full rounded-xl border border-border bg-card pr-3 pl-9 text-[15px] outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-1 focus:ring-ring"
+          className="h-11 rounded-xl bg-card pr-3 pl-9 text-[15px] md:text-[15px]"
         />
       </div>
       {shown.length === 0 ? (
@@ -234,6 +237,7 @@ type Item = { ledger: ChargeLedger; collection: Collection; month: string | null
 type Group = { collection: Collection; due: Item[]; future: Item[] };
 
 const methods = Object.keys(methodLabels) as PaymentMethod[];
+type Mode = "full" | "custom";
 
 function PaymentForm({ member, onChange, onSaved }: { member: Member; onChange: () => void; onSaved: (saved: Saved) => void }) {
   const { data, view } = useSnapshot();
@@ -272,7 +276,7 @@ function PaymentForm({ member, onChange, onSaved }: { member: Member; onChange: 
   }, [data, view, member.id]);
 
   const [selected, setSelected] = useState<string[]>([]);
-  const [mode, setMode] = useState<"full" | "custom">("full");
+  const [mode, setMode] = useState<Mode>("full");
   const [totalInput, setTotalInput] = useState("");
   const [parts, setParts] = useState<Record<string, string>>({});
   const [gifts, setGifts] = useState<Record<string, string>>({});
@@ -523,27 +527,19 @@ function PaymentForm({ member, onChange, onSaved }: { member: Member; onChange: 
         {ordered.length > 0 && (
           <Step n={3} title="Amaun diterima">
             <div className="grid gap-3">
-              <div role="radiogroup" aria-label="Cara bayaran" className="grid gap-2 sm:grid-cols-2">
-                <ModeOption
-                  checked={mode === "full"}
-                  onSelect={() => {
-                    setMode("full");
-                    setError(null);
-                  }}
-                  title="Bayar penuh untuk dipilih"
-                  hint={formatMoney(payableSelected)}
-                />
-                <ModeOption
-                  checked={mode === "custom"}
-                  onSelect={() => {
-                    setMode("custom");
-                    setError(null);
-                    distribute(totalInput, ordered);
-                  }}
-                  title="Masukkan jumlah diterima"
-                  hint="Diagih ikut caj tertua dahulu"
-                />
-              </div>
+              <ChoiceCards
+                label="Cara bayaran"
+                value={mode}
+                onChange={(next) => {
+                  setMode(next);
+                  setError(null);
+                  if (next === "custom") distribute(totalInput, ordered);
+                }}
+                className="grid gap-2 sm:grid-cols-2"
+              >
+                <ModeOption value="full" checked={mode === "full"} title="Bayar penuh untuk dipilih" hint={formatMoney(payableSelected)} />
+                <ModeOption value="custom" checked={mode === "custom"} title="Masukkan jumlah diterima" hint="Diagih ikut caj tertua dahulu" />
+              </ChoiceCards>
               {mode === "custom" && (
                 <div className="grid gap-1.5">
                   <Label htmlFor="pay-total" className="text-xs text-muted-foreground">
@@ -623,52 +619,34 @@ function PaymentForm({ member, onChange, onSaved }: { member: Member; onChange: 
 
         <Step n={ordered.length > 0 ? 4 : 3} title="Butiran bayaran">
           <div className="grid gap-3">
-            <div role="radiogroup" aria-label="Kaedah bayaran" className="grid grid-cols-3 gap-1.5">
-              {methods.map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  role="radio"
-                  aria-checked={method === value}
-                  onClick={() => {
-                    setMethod(value);
-                    setReceived(value === "cash");
-                  }}
-                  className={cn(
-                    "min-h-11 rounded-xl border px-1.5 text-xs leading-tight font-medium transition-colors",
-                    method === value ? "border-primary bg-primary-tint text-primary-strong" : "border-border bg-card text-muted-foreground hover:bg-primary-tint",
-                  )}
-                >
-                  {methodLabels[value]}
-                </button>
-              ))}
-            </div>
+            <SegmentedChoice
+              label="Kaedah bayaran"
+              value={method}
+              options={methods.map((value) => ({ value, label: methodLabels[value] }))}
+              onChange={(value) => {
+                setMethod(value);
+                setReceived(value === "cash");
+              }}
+              itemClassName="min-h-11 px-1.5"
+            />
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="grid min-w-0 gap-1">
                 <Label htmlFor="pay-date" className="text-xs text-muted-foreground">
                   Tarikh bayar
                 </Label>
-                <input
-                  id="pay-date"
-                  type="date"
-                  value={paidOn}
-                  max={view.today}
-                  onChange={(event) => setPaidOn(event.target.value)}
-                  aria-invalid={Boolean(dateError) || undefined}
-                  className="h-11 w-full min-w-0 rounded-xl border border-input bg-card px-2.5 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring aria-invalid:border-destructive"
-                />
+                <DatePicker id="pay-date" value={paidOn} max={view.today} onChange={setPaidOn} invalid={Boolean(dateError)} className="px-2.5" />
                 {dateError && <p className="text-xs font-medium text-st-unpaid">{dateError}</p>}
               </div>
               <div className="grid min-w-0 gap-1">
                 <Label htmlFor="pay-ref" className="text-xs text-muted-foreground">
                   Rujukan (pilihan)
                 </Label>
-                <input
+                <Input
                   id="pay-ref"
                   value={reference}
                   onChange={(event) => setReference(event.target.value)}
                   placeholder={method === "transfer" ? "cth. DuitNow 1234" : "cth. Resit 015"}
-                  className="h-11 w-full min-w-0 rounded-xl border border-input bg-card px-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-1 focus:ring-ring"
+                  className="h-11 rounded-xl bg-card px-2.5 text-sm"
                 />
               </div>
             </div>
@@ -733,26 +711,14 @@ function PaymentForm({ member, onChange, onSaved }: { member: Member; onChange: 
   );
 }
 
-function ModeOption({ checked, onSelect, title, hint }: { checked: boolean; onSelect: () => void; title: string; hint: string }) {
+function ModeOption({ value, checked, title, hint }: { value: Mode; checked: boolean; title: string; hint: string }) {
   return (
-    <button
-      type="button"
-      role="radio"
-      aria-checked={checked}
-      onClick={onSelect}
-      className={cn(
-        "flex min-h-14 items-start gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-colors",
-        checked ? "border-primary bg-primary-tint" : "border-border bg-card hover:bg-primary-tint/60",
-      )}
-    >
-      <span className={cn("mt-0.5 grid size-4 shrink-0 place-items-center rounded-full border", checked ? "border-primary" : "border-input")} aria-hidden>
-        {checked && <span className="size-2 rounded-full bg-primary" />}
-      </span>
+    <ChoiceCard value={value} checked={checked} indicator className="gap-2.5 rounded-xl px-3 py-2.5">
       <span className="min-w-0">
-        <span className={cn("block text-sm font-medium", checked && "text-primary-strong")}>{title}</span>
+        <span className="block text-sm font-medium">{title}</span>
         <span className="block text-xs text-muted-foreground tabular-nums">{hint}</span>
       </span>
-    </button>
+    </ChoiceCard>
   );
 }
 
@@ -797,19 +763,19 @@ function ChargeGroup({
       {group.due.length > 0 && <ul className="grid gap-1.5">{group.due.map(row)}</ul>}
       {group.future.length > 0 && (
         <div className="grid gap-1.5">
-          <button
-            type="button"
+          <Button
+            variant="ghost"
             aria-expanded={showFuture || futureSelected}
             aria-controls={futureId}
             onClick={() => setShowFuture(!(showFuture || futureSelected))}
             disabled={futureSelected}
-            className="flex min-h-10 items-center justify-between gap-2 rounded-lg px-2 text-left text-xs font-medium text-st-future hover:bg-st-future-bg disabled:opacity-100"
+            className="h-auto min-h-10 w-full justify-between gap-2 rounded-lg px-2 text-left text-xs font-medium whitespace-normal text-st-future hover:bg-st-future-bg hover:text-st-future aria-expanded:bg-transparent aria-expanded:text-st-future disabled:opacity-100"
           >
             <span>
               Akan datang — bayar awal ({group.future.length} bulan)
             </span>
             <ChevronDown className={cn("size-4 transition-transform", (showFuture || futureSelected) && "rotate-180")} aria-hidden />
-          </button>
+          </Button>
           {(showFuture || futureSelected) && (
             <ul id={futureId} className="grid gap-1.5">
               {group.future.map(row)}

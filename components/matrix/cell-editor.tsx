@@ -1,11 +1,14 @@
 "use client";
 
 import { useKelab, useSnapshot } from "@/components/data-provider";
+import { SegmentedChoice } from "@/components/choice";
+import { DatePicker } from "@/components/date-picker";
 import { MoneyInput, parseMoney } from "@/components/money-input";
 import { PaymentList } from "@/components/payments";
 import { ChargeStatusChips, Money, TextAction } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -16,7 +19,6 @@ import { senToInput } from "@/lib/money/amount";
 import type { ChargeLedger } from "@/lib/money/ledger";
 import type { PaymentMethod, Sen } from "@/lib/types";
 import { cellStatus, type MatrixCell } from "@/lib/view";
-import { cn } from "@/lib/utils";
 import { Undo2, UserMinus } from "lucide-react";
 import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { toast } from "sonner";
@@ -111,10 +113,10 @@ function Figures({ items }: { items: [string, ReactNode][] }) {
   );
 }
 
-const methods: [PaymentMethod, string][] = [
-  ["cash", "Tunai"],
-  ["transfer", "Pindahan"],
-  ["other", "Lain-lain"],
+const methods: { value: PaymentMethod; label: string }[] = [
+  { value: "cash", label: "Tunai" },
+  { value: "transfer", label: "Pindahan" },
+  { value: "other", label: "Lain-lain" },
 ];
 
 /** Method, date, received flag and reference: the parts every payment form shares. */
@@ -140,50 +142,32 @@ function PaymentDetails({
   const id = useId();
   return (
     <>
-      <div role="radiogroup" aria-label="Kaedah bayaran" className="grid grid-cols-3 gap-1.5">
-        {methods.map(([value, label]) => (
-          <button
-            key={value}
-            type="button"
-            role="radio"
-            aria-checked={method === value}
-            onClick={() => {
-              setMethod(value);
-              setReceived(value === "cash");
-            }}
-            className={cn(
-              "min-h-10 rounded-xl border px-2 text-xs font-medium transition-colors",
-              method === value ? "border-primary bg-primary-tint text-primary-strong" : "border-border bg-card text-muted-foreground hover:bg-primary-tint",
-            )}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <SegmentedChoice
+        label="Kaedah bayaran"
+        value={method}
+        options={methods}
+        onChange={(value) => {
+          setMethod(value);
+          setReceived(value === "cash");
+        }}
+      />
       <div className="grid grid-cols-2 gap-2">
         <div className="grid gap-1">
           <Label htmlFor={`${id}-date`} className="text-xs text-muted-foreground">
             Tarikh bayar
           </Label>
-          <input
-            id={`${id}-date`}
-            type="date"
-            value={paidOn}
-            max={today()}
-            onChange={(event) => setPaidOn(event.target.value)}
-            className="h-10 rounded-xl border border-input bg-card px-2.5 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
-          />
+          <DatePicker id={`${id}-date`} value={paidOn} max={today()} onChange={(day) => day && setPaidOn(day)} className="h-10 px-2.5" />
         </div>
         <div className="grid gap-1">
           <Label htmlFor={`${id}-ref`} className="text-xs text-muted-foreground">
             Rujukan (pilihan)
           </Label>
-          <input
+          <Input
             id={`${id}-ref`}
             value={reference}
             onChange={(event) => setReference(event.target.value)}
             placeholder="cth. DuitNow 1234"
-            className="h-10 rounded-xl border border-input bg-card px-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-1 focus:ring-ring"
+            className="h-10 rounded-xl bg-card px-2.5 text-sm"
           />
         </div>
       </div>
@@ -321,9 +305,9 @@ function PayForm({
     return (
       <div className="rounded-xl bg-st-paid-bg px-3 py-2.5 text-sm text-st-paid">
         Tiada baki untuk dibayar.{" "}
-        <button type="button" onClick={onHistory} className="font-semibold underline underline-offset-2">
+        <Button variant="link" onClick={onHistory} className="h-auto p-0 align-baseline font-semibold text-inherit underline">
           Lihat sejarah
-        </button>{" "}
+        </Button>{" "}
         untuk membetulkan bayaran.
       </div>
     );
@@ -561,9 +545,9 @@ function AmountForm({
         <p id={errorId} role="alert" className="text-xs font-medium text-st-unpaid">
           {error.message}{" "}
           {error.message.includes("Batalkan") && (
-            <button type="button" onClick={onHistory} className="underline">
+            <Button variant="link" onClick={onHistory} className="h-auto p-0 align-baseline text-xs text-inherit underline">
               Buka sejarah
-            </button>
+            </Button>
           )}
         </p>
       )}

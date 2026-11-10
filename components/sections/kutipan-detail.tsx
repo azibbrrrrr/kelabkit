@@ -1,6 +1,7 @@
 "use client";
 
 import { useKelab, useSnapshot } from "@/components/data-provider";
+import { DatePicker } from "@/components/date-picker";
 import { CellEditor } from "@/components/matrix/cell-editor";
 import { MoneyInput, parseMoney } from "@/components/money-input";
 import { amountLabel, collectionTypeIcons, scheduleLabel } from "@/components/sections/kutipan";
@@ -569,13 +570,7 @@ function DueDateEditor({ collection }: { collection: Collection }) {
 
   return (
     <span className="grid gap-2">
-      <input
-        type="date"
-        value={value}
-        onChange={(event) => setValue(event.target.value)}
-        aria-label="Tarikh akhir"
-        className="h-11 w-full min-w-0 rounded-xl border border-input bg-card px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
-      />
+      <DatePicker value={value} onChange={setValue} aria-label="Tarikh akhir" emptyLabel="Tiada tarikh akhir" />
       <span className="flex flex-wrap gap-1.5">
         <Button size="sm" onClick={() => void save(value || null)} disabled={busy}>
           {busy && <Spinner className="size-3.5" />} Simpan

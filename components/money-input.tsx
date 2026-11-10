@@ -1,5 +1,6 @@
 "use client";
 
+import { Input } from "@/components/ui/input";
 import { errorMessages } from "@/lib/errors";
 import { parseRinggit } from "@/lib/money/amount";
 import type { Sen } from "@/lib/types";
@@ -13,17 +14,14 @@ export const MoneyInput = forwardRef<
 >(function MoneyInput({ className, invalid, ...props }, ref) {
   return (
     <div className={cn("relative", className)}>
-      <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm font-medium text-muted-foreground">RM</span>
-      <input
+      <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm font-medium text-muted-foreground" aria-hidden>RM</span>
+      <Input
         ref={ref}
         type="text"
         inputMode="decimal"
         autoComplete="off"
         aria-invalid={invalid || undefined}
-        className={cn(
-          "h-11 w-full rounded-xl border border-input bg-card pr-3 pl-11 text-[15px] font-medium tabular-nums outline-none placeholder:font-normal placeholder:text-muted-foreground focus:border-ring focus:ring-1 focus:ring-ring",
-          invalid && "border-destructive focus:border-destructive focus:ring-destructive/20",
-        )}
+        className="h-11 rounded-xl bg-card pr-3 pl-11 text-[15px] font-medium tabular-nums placeholder:font-normal md:text-[15px]"
         {...props}
       />
     </div>

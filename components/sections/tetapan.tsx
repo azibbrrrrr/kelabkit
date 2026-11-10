@@ -3,6 +3,7 @@
 import { BrandMark } from "@/components/brand";
 import { useKelab, useSnapshot } from "@/components/data-provider";
 import { Blossom } from "@/components/floral";
+import { ChoiceCard, ChoiceCards } from "@/components/choice";
 import { usePrefs } from "@/components/prefs-provider";
 import { DemoNote, Money, PageHeader, PageShell, ProgressBar, SectionCard } from "@/components/shared";
 import {
@@ -19,6 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RadioGroup } from "@/components/ui/radio-group";
 import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { messageFor } from "@/lib/errors";
@@ -30,6 +32,7 @@ import type { Club } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Check, Database, History, Palette, Plus, RotateCcw, School } from "lucide-react";
 import Link from "next/link";
+import { RadioGroup as RadioGroupPrimitive } from "radix-ui";
 import { useId, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -186,16 +189,13 @@ function ThemeCard() {
   return (
     <SectionCard title="Tema KelabKit" icon={Palette} description="Tema hanya menukar warna paparan. Rekod bayaran tidak terjejas.">
       <div className="grid gap-5">
-        <div role="radiogroup" aria-label="Tema warna" className="flex flex-wrap gap-x-3 gap-y-3 sm:gap-x-5">
+        <RadioGroup value={theme} onValueChange={(id) => choose(id as ThemeId)} aria-label="Tema warna" className="flex w-auto flex-wrap gap-x-3 gap-y-3 sm:gap-x-5">
           {themes.map((t) => {
             const selected = t.id === theme;
             return (
-              <button
+              <RadioGroupPrimitive.Item
                 key={t.id}
-                type="button"
-                role="radio"
-                aria-checked={selected}
-                onClick={() => choose(t.id)}
+                value={t.id}
                 className="group flex w-14 flex-col items-center gap-1.5 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
                 <span
@@ -210,10 +210,10 @@ function ThemeCard() {
                   {selected && <Check className="size-5" strokeWidth={2.6} aria-hidden />}
                 </span>
                 <span className={cn("text-xs", selected ? "font-semibold text-foreground" : "text-muted-foreground")}>{t.label}</span>
-              </button>
+              </RadioGroupPrimitive.Item>
             );
           })}
-        </div>
+        </RadioGroup>
 
         <div className="flex items-center justify-between gap-4 rounded-xl border border-border bg-primary-tint/50 px-3.5 py-3">
           <Label htmlFor={floralId} className="grid gap-0.5">
@@ -252,21 +252,11 @@ function ThemeCard() {
 
         <div className="grid gap-2">
           <p className="text-xs font-semibold text-muted-foreground">Semua tema</p>
-          <div role="radiogroup" aria-label="Senarai tema" className="grid gap-2">
+          <ChoiceCards label="Senarai tema" value={theme} onChange={(id) => choose(id as ThemeId)} className="grid gap-2">
             {themes.map((t) => {
               const selected = t.id === theme;
               return (
-                <button
-                  key={t.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={selected}
-                  onClick={() => choose(t.id)}
-                  className={cn(
-                    "flex items-center gap-3 rounded-xl border bg-card px-3 py-2.5 text-left transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                    selected ? "border-primary bg-primary-tint" : "border-border hover:bg-primary-tint/60",
-                  )}
-                >
+                <ChoiceCard key={t.id} value={t.id} checked={selected} className="min-h-0 items-center rounded-xl px-3 py-2.5 text-foreground">
                   <span className="size-8 shrink-0 rounded-lg" style={{ backgroundColor: t.swatch }} aria-hidden />
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-medium">
@@ -284,10 +274,10 @@ function ThemeCard() {
                   >
                     {selected && <Check className="size-3.5" strokeWidth={3} />}
                   </span>
-                </button>
+                </ChoiceCard>
               );
             })}
-          </div>
+          </ChoiceCards>
         </div>
       </div>
     </SectionCard>

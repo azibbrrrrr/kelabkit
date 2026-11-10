@@ -44,9 +44,11 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Spinner } from "@/components/ui/spinner";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { messageFor } from "@/lib/errors";
 import { formatMoney, formatMoneyShort, formatMonth, initials } from "@/lib/format";
@@ -296,24 +298,21 @@ export function MatrixPage() {
               <ArrowDownUp /> {sort === "name" ? "Nama A–Z" : "Baki tertinggi"}
               <span className="sr-only">, tukar susunan</span>
             </Button>
-            <div className="flex rounded-[10px] border border-border bg-card p-0.5 md:hidden" role="group" aria-label="Paparan">
-              <button
-                type="button"
-                aria-pressed={!showGrid}
-                onClick={() => setLayout("cards")}
-                className={cn("flex h-8 items-center gap-1 rounded-[7px] px-2.5 text-xs", !showGrid && "bg-primary-light font-semibold text-primary-strong")}
-              >
+            <ToggleGroup
+              type="single"
+              value={showGrid ? "grid" : "cards"}
+              onValueChange={(next) => next && setLayout(next as "grid" | "cards")}
+              aria-label="Paparan"
+              spacing={0}
+              className="gap-0 rounded-[10px] border border-border bg-card p-0.5 md:hidden"
+            >
+              <ToggleGroupItem value="cards" className="h-8 gap-1 rounded-[7px]! px-2.5 text-xs font-normal hover:bg-primary-tint data-[state=on]:bg-primary-light data-[state=on]:font-semibold data-[state=on]:text-primary-strong">
                 <Rows3 className="size-3.5" /> Kad
-              </button>
-              <button
-                type="button"
-                aria-pressed={showGrid}
-                onClick={() => setLayout("grid")}
-                className={cn("flex h-8 items-center gap-1 rounded-[7px] px-2.5 text-xs", showGrid && "bg-primary-light font-semibold text-primary-strong")}
-              >
+              </ToggleGroupItem>
+              <ToggleGroupItem value="grid" className="h-8 gap-1 rounded-[7px]! px-2.5 text-xs font-normal hover:bg-primary-tint data-[state=on]:bg-primary-light data-[state=on]:font-semibold data-[state=on]:text-primary-strong">
                 <LayoutGrid className="size-3.5" /> Jadual
-              </button>
-            </div>
+              </ToggleGroupItem>
+            </ToggleGroup>
           </>
         }
       />
@@ -1199,7 +1198,7 @@ function ColumnHeader({
           renaming it grows to every pixel left of the ⋮ button, so the input fills the header. */}
       <div className={cn("min-w-0", renaming && "flex-1")} data-fit={pinned ? undefined : 28}>
         {renaming ? (
-          <input
+          <Input
             ref={renameInput}
             // Double-click path; the menu path focuses it once the menu has let go of focus.
             autoFocus={!toRename.current}
@@ -1219,7 +1218,7 @@ function ColumnHeader({
             }}
             aria-label="Nama kutipan"
             // w-full min-w-0: exactly the header's width beside the ⋮ button, never wider, even in a 120px column.
-            className="h-7 w-full min-w-0 rounded-md border border-primary bg-card px-1.5 text-[13px] font-semibold outline-none"
+            className="h-7 rounded-md border-primary bg-card px-1.5 py-0 text-[13px] font-semibold md:text-[13px]"
           />
         ) : (
           // Plain text, not a button: renaming is a menu action (keyboard and touch). Double-click
@@ -1237,9 +1236,9 @@ function ColumnHeader({
       </div>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button ref={menuButton} type="button" aria-label={`Tindakan untuk ${collection.name}`} className="-mr-1 grid size-6 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-primary-light">
+          <Button ref={menuButton} variant="ghost" size="icon-xs" aria-label={`Tindakan untuk ${collection.name}`} className="-mr-1 rounded-md text-muted-foreground hover:bg-primary-light aria-expanded:bg-primary-light">
             <EllipsisVertical className="size-4" />
-          </button>
+          </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
           align="end"

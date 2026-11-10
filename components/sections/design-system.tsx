@@ -1,17 +1,23 @@
 "use client";
 
+import { ChoiceCard, ChoiceCards, SegmentedChoice } from "@/components/choice";
+import { DatePicker } from "@/components/date-picker";
+import { MonthPicker } from "@/components/month-picker";
 import { usePrefs } from "@/components/prefs-provider";
 import { MoneyInput } from "@/components/money-input";
 import { EmptyState, ErrorState, PageHeader, PageShell, SectionCard, StatusChip, TableSkeleton } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { cellStatusLabels, overdueLabel, pendingLabel, type CellStatus } from "@/lib/labels";
-import { themes } from "@/lib/themes";
+import { today } from "@/lib/format";
+import { themes, type ThemeId } from "@/lib/themes";
 import { cn } from "@/lib/utils";
 import { Check, Inbox, Palette, Plus, Search, Type } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 // The KelabKit design system on one page, mirroring the Concept 04 reference panel. Every
@@ -44,6 +50,9 @@ const type: [string, string, string, string][] = [
 export function DesignSystemPage() {
   const { theme, floral, setPrefs } = usePrefs();
   const statuses: CellStatus[] = ["paid", "partial", "unpaid", "exempt", "na", "future"];
+  const [day, setDay] = useState(today());
+  const [month, setMonth] = useState(today().slice(0, 7));
+  const [method, setMethod] = useState<"cash" | "transfer" | "other">("cash");
 
   return (
     <PageShell>
@@ -99,11 +108,11 @@ export function DesignSystemPage() {
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="grid gap-1 text-xs text-muted-foreground">
               Input (biasa)
-              <input placeholder="Nama ahli" className="h-11 rounded-xl border border-input bg-card px-3 text-sm text-foreground outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
+              <Input placeholder="Nama ahli" className="h-11 rounded-xl bg-card px-3 text-sm text-foreground" />
             </label>
             <label className="grid gap-1 text-xs text-muted-foreground">
               Input (fokus)
-              <input placeholder="Nama ahli" className="h-11 rounded-xl border border-ring bg-card px-3 text-sm text-foreground ring-1 ring-ring outline-none" />
+              <Input placeholder="Nama ahli" className="h-11 rounded-xl border-ring bg-card px-3 text-sm text-foreground ring-1 ring-ring" />
             </label>
             <label className="grid gap-1 text-xs text-muted-foreground">
               Amaun (RM)
@@ -125,8 +134,20 @@ export function DesignSystemPage() {
             <label className="relative grid gap-1 text-xs text-muted-foreground sm:col-span-2">
               Carian
               <Search className="pointer-events-none absolute bottom-3.5 left-3 size-4" />
-              <input type="search" placeholder="Cari ahli…" className="h-11 rounded-xl border border-input bg-card pr-3 pl-9 text-sm text-foreground outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
+              <Input type="search" placeholder="Cari ahli…" className="h-11 rounded-xl bg-card pr-3 pl-9 text-sm text-foreground" />
             </label>
+            <div className="grid gap-1 text-xs text-muted-foreground">
+              <span>Tarikh</span>
+              <DatePicker value={day} onChange={setDay} max={today()} aria-label="Contoh tarikh" />
+            </div>
+            <div className="grid gap-1 text-xs text-muted-foreground">
+              <span>Bulan</span>
+              <MonthPicker value={month} onChange={setMonth} />
+            </div>
+            <div className="grid gap-1 text-xs text-muted-foreground sm:col-span-2">
+              <span>Pilihan bersegmen</span>
+              <SegmentedChoice label="Contoh kaedah bayaran" value={method} onChange={setMethod} options={[{ value: "cash", label: "Tunai" }, { value: "transfer", label: "Pindahan" }, { value: "other", label: "Lain-lain" }]} />
+            </div>
             <p className="text-xs font-medium text-st-unpaid sm:col-span-2">Contoh ralat: Amaun hanya boleh ada dua tempat perpuluhan.</p>
           </div>
         </SectionCard>
@@ -181,18 +202,9 @@ export function DesignSystemPage() {
         </SectionCard>
 
         <SectionCard title="Variasi tema" description="Warna aksen boleh ditukar; reka bentuk dan kebolehcapaian kekal">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          <ChoiceCards label="Variasi tema" value={theme} onChange={(id) => setPrefs({ theme: id as ThemeId })} className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {themes.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                onClick={() => setPrefs({ theme: option.id })}
-                aria-pressed={theme === option.id}
-                className={cn(
-                  "flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left",
-                  theme === option.id ? "border-primary bg-primary-tint" : "border-border",
-                )}
-              >
+              <ChoiceCard key={option.id} value={option.id} checked={theme === option.id} className="min-h-0 items-center gap-2.5 rounded-xl px-3 py-2.5 text-foreground">
                 <span className="grid size-7 shrink-0 place-items-center rounded-lg text-white" style={{ background: option.fill }}>
                   {theme === option.id && <Check className="size-4" />}
                 </span>
@@ -200,9 +212,9 @@ export function DesignSystemPage() {
                   <span className="block text-[13px] font-semibold">{option.label}</span>
                   <span className="block truncate text-[11px] text-muted-foreground">{option.mood}</span>
                 </span>
-              </button>
+              </ChoiceCard>
             ))}
-          </div>
+          </ChoiceCards>
         </SectionCard>
 
         <SectionCard title="Keadaan kosong, memuat & ralat" className="lg:col-span-2">
