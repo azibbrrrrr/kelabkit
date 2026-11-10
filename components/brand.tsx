@@ -28,7 +28,7 @@ export function Brand({ href = "/" }: { href?: string }) {
   return (
     <Link href={href} aria-label="KelabKit, ke Dashboard" className="flex items-center gap-2.5 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">
       <BrandMark />
-      <span className="font-display text-[19px] font-bold tracking-[-.02em] text-foreground">KelabKit</span>
+      <span className="font-display text-[19px] font-bold tracking-[-.01em] text-foreground">KelabKit</span>
     </Link>
   );
 }

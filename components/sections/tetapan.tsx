@@ -234,7 +234,7 @@ function ThemeCard() {
           </div>
           <div className="rounded-xl bg-card p-4 shadow-[0_1px_2px_rgba(0,0,0,.04)]">
             <p className="text-xs text-muted-foreground">Jumlah Telah Diterima</p>
-            <Money sen={figures.received} className="mt-1 block text-[22px] font-bold tracking-[-.02em]" />
+            <Money sen={figures.received} className="mt-1 block text-[22px] font-bold tracking-[-.015em]" />
             <ProgressBar value={figures.chargesReceived} max={figures.expected} className="mt-3" label="Peratus kutipan diterima" />
             <p className="mt-1.5 text-[11px] text-muted-foreground">
               {formatPercent(figures.chargesReceived, figures.expected)} daripada jumlah dijangka bagi kutipan aktif

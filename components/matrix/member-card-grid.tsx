@@ -200,11 +200,13 @@ export function MemberCardGrid({ rows, columns }: { rows: Member[]; columns: Mat
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-[13px] font-medium">{collection.name}</span>
                         <span className="flex items-center gap-1.5 text-xs text-muted-foreground tabular-nums">
-                          {cell.kind === "voluntary"
-                            ? `Sumbangan ${formatMoney(cell.received)}`
-                            : cell.kind === "charge" && cell.status === "exempt"
-                              ? "Tiada caj"
-                              : `${formatMoney(facts.paid)} / ${formatMoney(facts.required)}`}
+                          <span className="whitespace-nowrap">
+                            {cell.kind === "voluntary"
+                              ? `Sumbangan ${formatMoney(cell.received)}`
+                              : cell.kind === "charge" && cell.status === "exempt"
+                                ? "Tiada caj"
+                                : `${formatMoney(facts.paid)} / ${formatMoney(facts.required)}`}
+                          </span>
                           {facts.suggested > 0 && <GhostBadge amountSen={facts.suggested} />}
                         </span>
                       </span>

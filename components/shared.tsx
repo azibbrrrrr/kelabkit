@@ -181,7 +181,7 @@ export function StatCard({
       </span>
       <div className="min-w-0">
         <div className="text-[13px] font-medium text-muted-foreground">{label}</div>
-        <div className="mt-1 text-[21px] leading-tight font-bold tracking-[-.02em] whitespace-nowrap tabular-nums md:text-[23px]">{value}</div>
+        <div className="mt-1 text-[21px] leading-tight font-bold tracking-[-.015em] whitespace-nowrap tabular-nums md:text-[23px]">{value}</div>
         {hint && <div className="mt-1.5 text-xs text-muted-foreground">{hint}</div>}
       </div>
     </Card>
