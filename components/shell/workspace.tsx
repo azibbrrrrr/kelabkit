@@ -38,6 +38,7 @@ export type ShellUser = { name: string; email: string; image: string | null };
 export function Workspace({ user, children }: { user?: ShellUser; children: ReactNode }) {
   return (
     <KelabDataProvider mode={user ? "neon" : "demo"}>
+      <SkipLink />
       <IsiPantasProvider>
         <SidebarProvider style={{ "--sidebar-width-icon": "3.5rem" } as CSSProperties}>
           <RestoreCollapsedSidebar />
@@ -45,7 +46,7 @@ export function Workspace({ user, children }: { user?: ShellUser; children: Reac
           <SidebarInset className="page-glow relative min-w-0 overflow-x-clip md:peer-data-[variant=inset]:overflow-clip md:peer-data-[variant=inset]:rounded-2xl md:peer-data-[variant=inset]:border md:peer-data-[variant=inset]:border-border/70 md:peer-data-[variant=inset]:shadow-[0_1px_2px_color-mix(in_srgb,var(--foreground)_4%,transparent),0_8px_24px_-16px_color-mix(in_srgb,var(--primary)_22%,transparent)] print:m-0! print:rounded-none! print:border-0! print:shadow-none!">
             <Floral asset="corner-top-right" className="top-0 right-0 z-0 hidden w-[260px] opacity-80 lg:block" />
             <TopBar user={user} />
-            <main className="relative z-10 flex flex-1 flex-col pb-24 md:pb-0 print:pb-0">
+            <main id="main-content" tabIndex={-1} className="relative z-10 flex flex-1 flex-col pb-24 outline-none md:pb-0 print:pb-0">
               <DataGate>{children}</DataGate>
             </main>
             <MobileNav />
@@ -55,6 +56,19 @@ export function Workspace({ user, children }: { user?: ShellUser; children: Reac
         </SidebarProvider>
       </IsiPantasProvider>
     </KelabDataProvider>
+  );
+}
+
+/** First focusable element: keyboard users jump past the sidebar and top bar to the page. */
+function SkipLink() {
+  const t = useT();
+  return (
+    <a
+      href="#main-content"
+      className="sr-only focus-visible:not-sr-only focus-visible:fixed focus-visible:top-3 focus-visible:left-3 focus-visible:z-[100] focus-visible:rounded-xl focus-visible:bg-card focus-visible:px-4 focus-visible:py-2.5 focus-visible:text-sm focus-visible:font-semibold focus-visible:text-primary-strong focus-visible:shadow-lg focus-visible:ring-2 focus-visible:ring-ring print:hidden"
+    >
+      {t("shell.skipToContent")}
+    </a>
   );
 }
 
@@ -90,7 +104,7 @@ function TopBar({ user }: { user?: ShellUser }) {
   const toggleLabel = isMobile ? t("shell.openMenu") : state === "collapsed" ? t("shell.expandSidebar") : t("shell.collapseSidebar");
   return (
     <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b border-border/70 bg-background/80 px-3 backdrop-blur-xl md:rounded-t-2xl md:px-6 print:hidden">
-      <SidebarTrigger className="-ml-1 size-9 rounded-xl [&_svg]:size-[18px]" aria-label={toggleLabel} title={isMobile ? undefined : `${toggleLabel} (Ctrl/⌘ B)`} />
+      <SidebarTrigger className="-ml-1 size-9 rounded-xl pointer-coarse:size-11 [&_svg]:size-[18px]" aria-label={toggleLabel} title={isMobile ? undefined : `${toggleLabel} (Ctrl/⌘ B)`} />
       <Separator orientation="vertical" className="hidden data-vertical:h-5 data-vertical:self-center md:block" />
       <GlobalSearch className="hidden sm:block" />
       <div className="sm:hidden">
@@ -150,7 +164,7 @@ function PendingBell() {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative rounded-xl" aria-label={t("shell.pendingBadge", { count: pending.length })}>
+        <Button variant="ghost" size="icon" className="relative rounded-xl pointer-coarse:size-11" aria-label={t("shell.pendingBadge", { count: pending.length })}>
           <Bell className="size-5" />
           {pending.length > 0 && (
             <span className="absolute top-1.5 right-1.5 grid size-4 place-items-center rounded-full bg-primary-fill text-[10px] font-semibold text-primary-foreground">
@@ -194,18 +208,23 @@ function MobileNav() {
   const t = useT();
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
-  const item = (href: string, label: string, Icon: typeof House) => (
-    <Link
-      href={href}
-      className={cn(
-        "flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-medium text-muted-foreground",
-        isActive(pathname, href) && "text-primary-strong",
-      )}
-    >
-      <Icon className="size-5" />
-      {label}
-    </Link>
-  );
+  const item = (href: string, label: string, Icon: typeof House) => {
+    const active = isActive(pathname, href);
+    return (
+      <Link
+        href={href}
+        aria-current={active ? "page" : undefined}
+        className={cn(
+          "relative flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg text-[11px] font-medium text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+          // Not colour alone: a bold label and a bar above the icon mark the current page.
+          active && "font-bold text-primary-strong after:absolute after:top-0 after:h-0.5 after:w-8 after:rounded-full after:bg-primary-fill",
+        )}
+      >
+        <Icon className="size-5" />
+        {label}
+      </Link>
+    );
+  };
   return (
     <nav
       aria-label={t("shell.mainNav")}
@@ -226,7 +245,7 @@ function MobileNav() {
       <button
         type="button"
         onClick={() => setOpenMobile(true)}
-        className="flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-medium text-muted-foreground"
+        className="flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg text-[11px] font-medium text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
       >
         <Menu className="size-5" />
         {t("shell.menu")}

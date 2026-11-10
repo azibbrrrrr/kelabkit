@@ -52,7 +52,7 @@ export function MonthTile({ cell, onOpen, compact }: { cell: MatrixCell; onOpen:
       title={`${month}: ${words}`}
       className={cn("grid place-items-center rounded-lg text-[10px] leading-tight font-semibold transition-[scale] duration-150 ease-out motion-safe:active:scale-[0.96]", compact ? "h-8" : "h-12", tone)}
     >
-      {month}
+      {month}{" "}
       {!compact && <span className="font-normal">{shown ?? (status === "paid" ? "✓" : "—")}</span>}
     </button>
   );

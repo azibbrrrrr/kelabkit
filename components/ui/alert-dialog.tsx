@@ -5,7 +5,7 @@ import { cn } from "cn"
 import { AlertDialog as AlertDialogPrimitive } from "radix-ui"
 
 import { Button } from "@/components/ui/button"
-import { ModalHandle, modalSurface, type ModalSize } from "@/components/ui/modal-surface"
+import { ModalHandle, modalSurface, useRestoreFocus, type ModalSize } from "@/components/ui/modal-surface"
 
 function AlertDialog({
   ...props
@@ -49,10 +49,13 @@ function AlertDialogContent({
   className,
   size = "sm",
   children,
+  onOpenAutoFocus,
+  onCloseAutoFocus,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Content> & {
   size?: ModalSize
 }) {
+  const focus = useRestoreFocus({ onOpenAutoFocus, onCloseAutoFocus })
   return (
     <AlertDialogPortal>
       <AlertDialogOverlay />
@@ -61,6 +64,7 @@ function AlertDialogContent({
         data-modal-surface=""
         className={modalSurface(size, className)}
         {...props}
+        {...focus}
       >
         <ModalHandle />
         {children}

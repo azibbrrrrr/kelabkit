@@ -76,3 +76,39 @@ export function ModalHandle({ className }: { className?: string }) {
     </div>
   )
 }
+
+/**
+ * Focus return for a Dialog, AlertDialog or Sheet that is opened by state rather than by a
+ * <Trigger>. Radix hands focus back to the trigger only, so a controlled dialog dropped it on
+ * <body>. This restores focus to the element that had it when the surface opened, unless the
+ * caller's own onCloseAutoFocus already took over (preventDefault) or that element is gone.
+ *
+ * The opener is read during render, not in onOpenAutoFocus: by then an `autoFocus` field inside
+ * the dialog has already taken focus. The parent re-renders this component in the same event that
+ * flips `open`, before React commits the dialog's contents, so the opener still holds focus.
+ */
+export function useRestoreFocus({
+  onOpenAutoFocus,
+  onCloseAutoFocus,
+}: {
+  onOpenAutoFocus?: (event: Event) => void
+  onCloseAutoFocus?: (event: Event) => void
+}) {
+  const opener = React.useRef<HTMLElement | null>(null)
+  if (typeof document !== "undefined") {
+    const active = document.activeElement
+    if (!(active instanceof HTMLElement) || active === document.body) opener.current = null
+    else if (!active.closest("[data-modal-surface]")) opener.current = active
+  }
+  return {
+    onOpenAutoFocus,
+    onCloseAutoFocus: (event: Event) => {
+      onCloseAutoFocus?.(event)
+      if (event.defaultPrevented) return
+      const target = opener.current
+      if (!target?.isConnected) return
+      event.preventDefault()
+      target.focus()
+    },
+  }
+}

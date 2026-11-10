@@ -9,7 +9,7 @@ import { ModalBody, ModalFooter, ModalHeader } from "@/components/modal";
 import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { t as translate } from "@/lib/i18n";
 import { useT } from "@/lib/i18n/react";
 import { formatDay, formatMoney, formatMonth, formatMonthLong, formatNumber } from "@/lib/format";
@@ -191,7 +191,7 @@ export function BayaranPage() {
         <StatCard label={t("paymentsPage.stats.countLabel")} value={formatNumber(monthCount)} icon={ReceiptText} hint={t("paymentsPage.stats.countHint")} />
       </div>
 
-      <Tabs value={tab} onValueChange={(value) => setTab(value as Tab)}>
+      <Tabs value={tab} onValueChange={(value) => setTab(value as Tab)} className="contents">
         {/* Three tabs fit at 320px: the long label shortens below sm, and the triggers tighten. */}
         <TabsList className="h-10! w-full rounded-xl bg-primary-tint p-1 sm:w-fit">
           <TabsTrigger value="semua" className="gap-1 rounded-lg px-2 text-[13px] sm:gap-1.5 sm:px-3 sm:text-sm">
@@ -205,141 +205,143 @@ export function BayaranPage() {
             {t("paymentsPage.tabs.reversed")} <span className="text-muted-foreground tabular-nums">{reversed.length}</span>
           </TabsTrigger>
         </TabsList>
-      </Tabs>
-
-      {tab === "semakan" ? (
-        pending.length === 0 ? (
-          <EmptyState
-            icon={BadgeCheck}
-            title={t("paymentsPage.review.emptyTitle")}
-            description={t("paymentsPage.review.emptyDescription")}
-          />
+        {/* The one panel every trigger controls; it re-labels itself as the tab changes. */}
+        <TabsContent value={tab} className="flex-none grid gap-5 text-[length:inherit] md:gap-6">
+        {tab === "semakan" ? (
+          pending.length === 0 ? (
+            <EmptyState
+              icon={BadgeCheck}
+              title={t("paymentsPage.review.emptyTitle")}
+              description={t("paymentsPage.review.emptyDescription")}
+            />
+          ) : (
+            <div className="grid gap-3">
+              <p className="rounded-2xl bg-st-pending-bg px-4 py-3 text-sm text-st-pending">
+                {t("paymentsPage.review.bannerBefore", { count: pending.length })}
+                <b>{formatMoney(pendingTotal)}</b>
+                {t("paymentsPage.review.bannerAfter")}
+              </p>
+              <PaymentList payments={pending} showMember />
+            </div>
+          )
         ) : (
-          <div className="grid gap-3">
-            <p className="rounded-2xl bg-st-pending-bg px-4 py-3 text-sm text-st-pending">
-              {t("paymentsPage.review.bannerBefore", { count: pending.length })}
-              <b>{formatMoney(pendingTotal)}</b>
-              {t("paymentsPage.review.bannerAfter")}
-            </p>
-            <PaymentList payments={pending} showMember />
-          </div>
-        )
-      ) : (
-        <>
-          <div className="grid gap-2.5">
-            <SearchInput id="payment-search" value={query} onChange={setQuery} placeholder={t("paymentsPage.filters.searchPlaceholder")} className="sm:max-w-sm" />
-            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-end">
-              <div className="grid gap-1">
-                <Label className="text-xs text-muted-foreground">{t("paymentsPage.filters.method")}</Label>
-                <Select value={method} onValueChange={(value) => setMethod(value as PaymentMethod | "all")}>
-                  <SelectTrigger aria-label={t("paymentsPage.filters.methodAria")} className="w-full sm:w-40">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">{t("paymentsPage.filters.allMethods")}</SelectItem>
-                    {(Object.keys(methodLabels) as PaymentMethod[]).map((key) => (
-                      <SelectItem key={key} value={key}>
-                        {methodLabels[key]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              {tab === "semua" && (
+          <>
+            <div className="grid gap-2.5">
+              <SearchInput id="payment-search" value={query} onChange={setQuery} placeholder={t("paymentsPage.filters.searchPlaceholder")} className="sm:max-w-sm" />
+              <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-end">
                 <div className="grid gap-1">
-                  <Label className="text-xs text-muted-foreground">{t("paymentsPage.filters.status")}</Label>
-                  <Select value={state} onValueChange={(value) => setState(value as PaymentState | "all")}>
-                    <SelectTrigger aria-label={t("paymentsPage.filters.statusAria")} className="w-full sm:w-44">
+                  <Label className="text-xs text-muted-foreground">{t("paymentsPage.filters.method")}</Label>
+                  <Select value={method} onValueChange={(value) => setMethod(value as PaymentMethod | "all")}>
+                    <SelectTrigger aria-label={t("paymentsPage.filters.methodAria")} className="w-full sm:w-40">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">{t("paymentsPage.filters.allStatuses")}</SelectItem>
-                      {(Object.keys(paymentStateLabels) as PaymentState[]).map((key) => (
+                      <SelectItem value="all">{t("paymentsPage.filters.allMethods")}</SelectItem>
+                      {(Object.keys(methodLabels) as PaymentMethod[]).map((key) => (
                         <SelectItem key={key} value={key}>
-                          {paymentStateLabels[key][0]}
+                          {methodLabels[key]}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-              )}
-              <div className="grid min-w-0 gap-1">
-                <Label htmlFor="pay-from" className="text-xs text-muted-foreground">
-                  {t("paymentsPage.filters.from")}
-                </Label>
-                <DatePicker id="pay-from" value={from} max={to || view.today} onChange={setFrom} clearable emptyLabel={t("paymentsPage.filters.anyDate")} clearLabel={t("paymentsPage.filters.clearDate")} className="h-10 px-2.5 sm:w-40" />
-              </div>
-              <div className="grid min-w-0 gap-1">
-                <Label htmlFor="pay-to" className="text-xs text-muted-foreground">
-                  {t("paymentsPage.filters.to")}
-                </Label>
-                <DatePicker id="pay-to" value={to} min={from || undefined} max={view.today} onChange={setTo} clearable emptyLabel={t("paymentsPage.filters.anyDate")} clearLabel={t("paymentsPage.filters.clearDate")} className="h-10 px-2.5 sm:w-40" />
-              </div>
-              {filtersOn && (
-                <Button variant="outline" onClick={clearFilters} className="col-span-2 h-10 justify-self-start rounded-xl sm:col-span-1">
-                  <FilterX /> {t("paymentsPage.filters.clear")}
-                </Button>
-              )}
-            </div>
-          </div>
-
-          {data.payments.length === 0 ? (
-            <EmptyState
-              icon={ReceiptText}
-              title={t("paymentsPage.empty.noneTitle")}
-              description={t("paymentsPage.empty.noneDescription")}
-              action={
-                <Button asChild>
-                  <Link href="/bayaran/baru/">{t("paymentsPage.empty.noneAction")}</Link>
-                </Button>
-              }
-            />
-          ) : tab === "dibatalkan" && reversed.length === 0 ? (
-            <EmptyState icon={Undo2} title={t("paymentsPage.empty.reversedTitle")} description={t("paymentsPage.empty.reversedDescription")} />
-          ) : (
-            <>
-              <DataTable
-                rows={rows.slice(0, limit)}
-                columns={columns}
-                rowKey={(payment) => payment.id}
-                onSelect={(payment) => setSelected(payment.id)}
-                empty={
-                  <EmptyState
-                    icon={FilterX}
-                    title={t("paymentsPage.empty.noMatchTitle")}
-                    description={t("paymentsPage.empty.noMatchDescription")}
-                    action={
-                      <Button variant="outline" onClick={clearFilters}>
-                        {t("paymentsPage.filters.clear")}
-                      </Button>
-                    }
-                  />
-                }
-                mobileCard={(payment) => (
-                  <MobileRow
-                    title={view.membersById.get(payment.memberId)?.name ?? t("paymentsPage.memberFallback")}
-                    amount={<span className={cn(payment.state === "reversed" && "text-muted-foreground line-through")}>{formatMoney(payment.amount)}</span>}
-                    meta={`${formatDay(payment.paidOn)} · ${methodLabels[payment.method]} · ${targetOf(payment)}`}
-                    status={<LabelChip entry={paymentStateLabels[payment.state]} compact />}
-                  />
+                {tab === "semua" && (
+                  <div className="grid gap-1">
+                    <Label className="text-xs text-muted-foreground">{t("paymentsPage.filters.status")}</Label>
+                    <Select value={state} onValueChange={(value) => setState(value as PaymentState | "all")}>
+                      <SelectTrigger aria-label={t("paymentsPage.filters.statusAria")} className="w-full sm:w-44">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">{t("paymentsPage.filters.allStatuses")}</SelectItem>
+                        {(Object.keys(paymentStateLabels) as PaymentState[]).map((key) => (
+                          <SelectItem key={key} value={key}>
+                            {paymentStateLabels[key][0]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 )}
-              />
-              {rows.length > 0 && (
-                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-                  <span className="tabular-nums">
-                    {t("paymentsPage.footer.showing", { shown: Math.min(limit, rows.length), total: rows.length })}
-                  </span>
-                  {rows.length > limit && (
-                    <Button variant="outline" size="sm" onClick={() => setLimit(limit + PAGE)}>
-                      {t("paymentsPage.footer.more")}
-                    </Button>
-                  )}
+                <div className="grid min-w-0 gap-1">
+                  <Label htmlFor="pay-from" className="text-xs text-muted-foreground">
+                    {t("paymentsPage.filters.from")}
+                  </Label>
+                  <DatePicker id="pay-from" value={from} max={to || view.today} onChange={setFrom} clearable emptyLabel={t("paymentsPage.filters.anyDate")} clearLabel={t("paymentsPage.filters.clearDate")} className="h-10 px-2.5 sm:w-40" />
                 </div>
-              )}
-            </>
-          )}
-        </>
-      )}
+                <div className="grid min-w-0 gap-1">
+                  <Label htmlFor="pay-to" className="text-xs text-muted-foreground">
+                    {t("paymentsPage.filters.to")}
+                  </Label>
+                  <DatePicker id="pay-to" value={to} min={from || undefined} max={view.today} onChange={setTo} clearable emptyLabel={t("paymentsPage.filters.anyDate")} clearLabel={t("paymentsPage.filters.clearDate")} className="h-10 px-2.5 sm:w-40" />
+                </div>
+                {filtersOn && (
+                  <Button variant="outline" onClick={clearFilters} className="col-span-2 h-10 justify-self-start rounded-xl sm:col-span-1">
+                    <FilterX /> {t("paymentsPage.filters.clear")}
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {data.payments.length === 0 ? (
+              <EmptyState
+                icon={ReceiptText}
+                title={t("paymentsPage.empty.noneTitle")}
+                description={t("paymentsPage.empty.noneDescription")}
+                action={
+                  <Button asChild>
+                    <Link href="/bayaran/baru/">{t("paymentsPage.empty.noneAction")}</Link>
+                  </Button>
+                }
+              />
+            ) : tab === "dibatalkan" && reversed.length === 0 ? (
+              <EmptyState icon={Undo2} title={t("paymentsPage.empty.reversedTitle")} description={t("paymentsPage.empty.reversedDescription")} />
+            ) : (
+              <>
+                <DataTable
+                  rows={rows.slice(0, limit)}
+                  columns={columns}
+                  rowKey={(payment) => payment.id}
+                  onSelect={(payment) => setSelected(payment.id)}
+                  empty={
+                    <EmptyState
+                      icon={FilterX}
+                      title={t("paymentsPage.empty.noMatchTitle")}
+                      description={t("paymentsPage.empty.noMatchDescription")}
+                      action={
+                        <Button variant="outline" onClick={clearFilters}>
+                          {t("paymentsPage.filters.clear")}
+                        </Button>
+                      }
+                    />
+                  }
+                  mobileCard={(payment) => (
+                    <MobileRow
+                      title={view.membersById.get(payment.memberId)?.name ?? t("paymentsPage.memberFallback")}
+                      amount={<span className={cn(payment.state === "reversed" && "text-muted-foreground line-through")}>{formatMoney(payment.amount)}</span>}
+                      meta={`${formatDay(payment.paidOn)} · ${methodLabels[payment.method]} · ${targetOf(payment)}`}
+                      status={<LabelChip entry={paymentStateLabels[payment.state]} compact />}
+                    />
+                  )}
+                />
+                {rows.length > 0 && (
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                    <span className="tabular-nums">
+                      {t("paymentsPage.footer.showing", { shown: Math.min(limit, rows.length), total: rows.length })}
+                    </span>
+                    {rows.length > limit && (
+                      <Button variant="outline" size="sm" onClick={() => setLimit(limit + PAGE)}>
+                        {t("paymentsPage.footer.more")}
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+          </>
+        )}
+        </TabsContent>
+      </Tabs>
 
       <Dialog open={selectedPayment !== null} onOpenChange={(open) => !open && setSelected(null)}>
         <DialogContent size="md">
