@@ -194,14 +194,14 @@ export function BayaranPage() {
       <Tabs value={tab} onValueChange={(value) => setTab(value as Tab)} className="contents">
         {/* Three tabs fit at 320px: the long label shortens below sm, and the triggers tighten. */}
         <TabsList className="h-10! w-full rounded-xl bg-primary-tint p-1 sm:w-fit">
-          <TabsTrigger value="semua" className="gap-1 rounded-lg px-2 text-[13px] sm:gap-1.5 sm:px-3 sm:text-sm">
+          <TabsTrigger value="semua" className="gap-1 rounded-lg px-2 text-small sm:gap-1.5 sm:px-3 sm:text-sm">
             {t("paymentsPage.tabs.all")} <span className="text-muted-foreground tabular-nums">{data.payments.length}</span>
           </TabsTrigger>
-          <TabsTrigger value="semakan" className="gap-1 rounded-lg px-2 text-[13px] sm:gap-1.5 sm:px-3 sm:text-sm">
+          <TabsTrigger value="semakan" className="gap-1 rounded-lg px-2 text-small sm:gap-1.5 sm:px-3 sm:text-sm">
             <span className="hidden sm:inline">{t("paymentsPage.tabs.reviewLong")}</span>
             <span className="sm:hidden">{t("paymentsPage.tabs.reviewShort")}</span> <span className="text-muted-foreground tabular-nums">{pending.length}</span>
           </TabsTrigger>
-          <TabsTrigger value="dibatalkan" className="gap-1 rounded-lg px-2 text-[13px] sm:gap-1.5 sm:px-3 sm:text-sm">
+          <TabsTrigger value="dibatalkan" className="gap-1 rounded-lg px-2 text-small sm:gap-1.5 sm:px-3 sm:text-sm">
             {t("paymentsPage.tabs.reversed")} <span className="text-muted-foreground tabular-nums">{reversed.length}</span>
           </TabsTrigger>
         </TabsList>

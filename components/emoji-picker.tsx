@@ -242,7 +242,7 @@ function PickerBody({ value, onPick, onClose, sheet }: { value: string | null; o
         >
           {sections.map((section) => (
             <section key={section.id} data-section={section.id} aria-labelledby={`${ids}-${section.id}`} className="pt-1.5">
-              <h3 id={`${ids}-${section.id}`} className="px-1 pb-1 text-[11px] font-semibold text-muted-foreground">
+              <h3 id={`${ids}-${section.id}`} className="px-1 pb-1 text-caption font-semibold text-muted-foreground">
                 {section.title}
               </h3>
               {section.entries.length === 0 ? (
@@ -355,7 +355,7 @@ function PickerBody({ value, onPick, onClose, sheet }: { value: string | null; o
                 className={cn(cellClass, "flex min-h-14 flex-col gap-1 px-1 py-2 text-primary-strong")}
               >
                 <Glyph aria-hidden className="size-5" />
-                <span className="w-full truncate text-center text-[10.5px] text-muted-foreground">{t(`emoji.lucide.${name}`)}</span>
+                <span className="w-full truncate text-center text-caption text-muted-foreground">{t(`emoji.lucide.${name}`)}</span>
               </button>
             );
           })}

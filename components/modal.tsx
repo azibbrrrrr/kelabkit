@@ -59,8 +59,8 @@ export function ModalHeader({
         </span>
       )}
       <div className="min-w-0 flex-1">
-        <Title className="font-heading text-[17px] leading-6 font-semibold text-foreground">{title}</Title>
-        {description && <Description className="mt-0.5 line-clamp-2 text-[13px] leading-[18px] text-muted-foreground">{description}</Description>}
+        <Title className="font-heading text-h2 text-foreground">{title}</Title>
+        {description && <Description className="mt-0.5 line-clamp-2 text-small leading-[18px] text-muted-foreground">{description}</Description>}
       </div>
       {!alert && (
         <DialogClose asChild>
@@ -108,7 +108,7 @@ export function ModalSection({
 }) {
   return (
     <section data-slot="modal-section" className={cn("grid gap-4", divided && "border-t border-border pt-6", className)}>
-      {label && <h3 className="text-[11px] leading-4 font-semibold tracking-wider text-muted-foreground uppercase">{label}</h3>}
+      {label && <h3 className="text-caption leading-4 font-semibold tracking-wider text-muted-foreground uppercase">{label}</h3>}
       {children}
     </section>
   );
@@ -135,12 +135,12 @@ export function ModalField({
   return (
     <div data-slot="modal-field" className={cn("grid gap-1.5", className)}>
       {htmlFor ? (
-        <Label htmlFor={htmlFor} id={labelId} className="text-[13px] leading-4">
+        <Label htmlFor={htmlFor} id={labelId} className="text-small leading-4">
           {label}
         </Label>
       ) : (
         // A group of controls (segmented, list): the group carries its own aria-label.
-        <div id={labelId} className="text-[13px] leading-4 font-medium">
+        <div id={labelId} className="text-small leading-4 font-medium">
           {label}
         </div>
       )}

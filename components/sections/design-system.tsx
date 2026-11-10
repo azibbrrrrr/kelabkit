@@ -44,11 +44,12 @@ export function DesignSystemPage() {
   const t = useT();
   const { theme, floral, setPrefs } = usePrefs();
   const type: [string, string, string, string][] = [
-    ["H1", t("designSystem.type.h1"), "28 / Bold", "text-[28px] font-bold"],
-    ["H2", t("designSystem.type.h2"), "20 / Semibold", "text-[20px] font-semibold"],
-    ["H3", t("designSystem.type.h3"), "15 / Semibold", "text-[15px] font-semibold"],
-    ["Body", t("designSystem.type.body"), "14 / Regular", "text-sm"],
-    ["Small", t("designSystem.type.small"), "12 / Regular", "text-xs text-muted-foreground"],
+    ["H1", t("designSystem.type.h1"), "24 / Bold (28 from md: Display)", "text-h1"],
+    ["H2", t("designSystem.type.h2"), "18 / Semibold", "text-h2"],
+    ["H3", t("designSystem.type.h3"), "15 / Semibold", "text-h3"],
+    ["Body", t("designSystem.type.body"), "14 / Regular", "text-body"],
+    ["Small", t("designSystem.type.small"), "13 / Regular", "text-small text-muted-foreground"],
+    ["Caption", t("designSystem.type.small"), "12 / Regular (floor)", "text-caption text-muted-foreground"],
   ];
   const statuses: CellStatus[] = ["paid", "partial", "unpaid", "exempt", "na", "future"];
   const [day, setDay] = useState(today());
@@ -65,7 +66,7 @@ export function DesignSystemPage() {
               <div key={variable} className="min-w-0">
                 <div className="h-12 rounded-xl border border-border" style={{ background: `var(${variable})` }} />
                 <p className="mt-1.5 truncate text-xs font-medium">{label}</p>
-                <p className="truncate font-mono text-[10.5px] text-muted-foreground">{variable}</p>
+                <p className="truncate font-mono text-caption text-muted-foreground">{variable}</p>
               </div>
             ))}
           </div>
@@ -75,14 +76,14 @@ export function DesignSystemPage() {
           <div className="flex gap-5">
             <div className="hidden shrink-0 border-r border-border pr-5 sm:block">
               <p className="text-[54px] leading-none font-bold">Aa</p>
-              <p className="mt-2 text-lg font-semibold">Inter</p>
+              <p className="mt-2 text-h2">Inter</p>
             </div>
             <dl className="grid flex-1 gap-2.5">
               {type.map(([tag, sample, spec, cls]) => (
                 <div key={tag} className="grid grid-cols-[40px_minmax(0,1fr)_auto] items-baseline gap-2">
                   <dt className="text-xs font-semibold text-muted-foreground">{tag}</dt>
                   <dd className={cn("truncate", cls)}>{sample}</dd>
-                  <dd className="text-[11px] text-muted-foreground">{spec}</dd>
+                  <dd className="text-caption text-muted-foreground">{spec}</dd>
                 </div>
               ))}
             </dl>
@@ -209,8 +210,8 @@ export function DesignSystemPage() {
                   {theme === option.id && <Check className="size-4" />}
                 </span>
                 <span className="min-w-0">
-                  <span className="block text-[13px] font-semibold">{themeLabel(option.id)}</span>
-                  <span className="block truncate text-[11px] text-muted-foreground">{themeMood(option.id)}</span>
+                  <span className="block text-small font-semibold">{themeLabel(option.id)}</span>
+                  <span className="block truncate text-caption text-muted-foreground">{themeMood(option.id)}</span>
                 </span>
               </ChoiceCard>
             ))}

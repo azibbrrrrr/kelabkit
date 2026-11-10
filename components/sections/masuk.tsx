@@ -52,19 +52,19 @@ export function SignInPage({ configured = true }: { configured?: boolean }) {
       <div className="relative z-10 w-full max-w-[420px] rounded-3xl border border-border bg-card p-6 shadow-[0_12px_40px_-24px_var(--primary)] sm:p-8">
         <div className="flex flex-col items-center text-center">
           <BrandMark size="lg" />
-          <h1 className="font-display mt-4 text-[26px] leading-tight font-bold tracking-[-.02em]">KelabKit</h1>
-          <p className="mt-2 text-[14px] text-muted-foreground">{t("auth.tagline")}</p>
+          <h1 className="font-display mt-4 text-display tracking-[-.02em]">KelabKit</h1>
+          <p className="mt-2 text-body text-muted-foreground">{t("auth.tagline")}</p>
         </div>
 
         <div className="mt-7 grid gap-3">
           {configured ? (
-            <Button type="button" variant="outline" size="lg" onClick={() => void google()} disabled={busy} className="h-11 w-full gap-2.5 rounded-xl text-[15px] font-semibold">
+            <Button type="button" variant="outline" size="lg" onClick={() => void google()} disabled={busy} className="h-11 w-full gap-2.5 rounded-xl text-h3 font-semibold">
               {busy ? <Spinner className="size-4" /> : <GoogleMark />}
               {t("auth.google")}
             </Button>
           ) : (
             <div role="status" className="rounded-xl border border-border bg-muted/50 p-4 text-center">
-              <p className="text-[15px] font-semibold">{t("auth.notConfiguredTitle")}</p>
+              <p className="text-h3 font-semibold">{t("auth.notConfiguredTitle")}</p>
               <p className="mt-1 text-xs text-muted-foreground">{t("auth.notConfiguredBody")}</p>
             </div>
           )}
@@ -78,7 +78,7 @@ export function SignInPage({ configured = true }: { configured?: boolean }) {
             {t("auth.or")}
             <span className="h-px flex-1 bg-border" />
           </div>
-          <Button type="button" variant="ghost" onClick={demo} disabled={busy} className="h-11 w-full rounded-xl text-[15px] font-semibold text-primary-strong hover:bg-primary-tint">
+          <Button type="button" variant="ghost" onClick={demo} disabled={busy} className="h-11 w-full rounded-xl text-h3 font-semibold text-primary-strong hover:bg-primary-tint">
             {t("auth.tryDemo")}
           </Button>
           <p className="text-center text-xs text-muted-foreground">{t("auth.demoNote")}</p>

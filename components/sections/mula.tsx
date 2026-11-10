@@ -48,10 +48,10 @@ export function OnboardingPage() {
         <div className="relative flex flex-col gap-4 sm:flex-row sm:items-start">
           <BrandMark size="lg" />
           <div className="min-w-0 sm:max-w-[70%]">
-            <h1 className="font-display text-[24px] leading-[1.2] font-bold tracking-[-.02em] md:text-[28px]">
+            <h1 className="font-display text-h1 tracking-[-.02em] md:text-display">
               {t("start.hero.title")} <Blossom />
             </h1>
-            <p className="mt-1.5 text-[13px] text-muted-foreground">
+            <p className="mt-1.5 text-small text-muted-foreground">
               {t("start.hero.subtitle")}
             </p>
           </div>
@@ -101,7 +101,7 @@ export function OnboardingPage() {
         <SectionCard title={t("start.progress.title")} icon={ListChecks} description={t("start.progress.description")} className="lg:sticky lg:top-20">
           <div className="grid gap-3">
             <div className="flex items-baseline justify-between gap-2">
-              <span className="text-[22px] font-bold tabular-nums">
+              <span className="text-figure tabular-nums">
                 {doneCount}/{checks.length}
               </span>
               <span className="text-xs text-muted-foreground">{doneCount === checks.length ? t("start.progress.ready") : t("start.progress.incomplete")}</span>
@@ -173,7 +173,7 @@ function StepCard({
           {done ? <Check className="size-4" strokeWidth={3} aria-label={t("start.steps.done")} /> : n}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-[11px] font-medium text-muted-foreground">{t("start.steps.label", { n })}</span>
+          <span className="block text-caption font-medium text-muted-foreground">{t("start.steps.label", { n })}</span>
           <span className="block font-semibold">{title}</span>
         </span>
         <Icon className="size-[18px] shrink-0 text-primary" aria-hidden />
@@ -217,7 +217,7 @@ function ClubStep({ club, onDone }: { club: Club; onDone: () => void }) {
 
   return (
     <form onSubmit={(event) => void submit(event)} className="grid gap-3" noValidate>
-      <p className="text-[13px] text-muted-foreground">{t("start.club.intro")}</p>
+      <p className="text-small text-muted-foreground">{t("start.club.intro")}</p>
       <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_140px]">
         <div className="grid gap-1.5">
           <Label htmlFor={`${id}-name`}>{t("start.club.nameLabel")}</Label>
@@ -284,7 +284,7 @@ function MembersStep({ count, onDone }: { count: number; onDone: () => void }) {
 
   return (
     <div className="grid gap-3">
-      <p className="text-[13px] text-muted-foreground">
+      <p className="text-small text-muted-foreground">
         {t("start.members.intro", { count: formatNumber(count) })}
       </p>
       {open ? (
@@ -332,7 +332,7 @@ function LinkStep({ text, href, label, onNext }: { text: string; href: string; l
   const t = useT();
   return (
     <div className="grid gap-3">
-      <p className="text-[13px] text-muted-foreground">{text}</p>
+      <p className="text-small text-muted-foreground">{text}</p>
       <div className="flex flex-wrap gap-2">
         <Button asChild>
           <Link href={href}>

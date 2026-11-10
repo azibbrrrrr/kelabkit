@@ -210,7 +210,7 @@ function MemberPicker({ onSelect }: { onSelect: (id: string) => void }) {
               <span
                 aria-hidden
                 className={cn(
-                  "grid size-8 shrink-0 place-items-center rounded-xl text-[11px] font-semibold",
+                  "grid size-8 shrink-0 place-items-center rounded-xl text-caption font-semibold",
                   member.active ? "bg-primary-light text-primary-strong" : "bg-st-na-bg text-st-na",
                 )}
               >
@@ -708,15 +708,15 @@ function PaymentForm({ member, onChange, onSaved }: { member: Member; onChange: 
       <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-30 border-t border-border bg-card/95 px-4 py-2.5 backdrop-blur-xl md:hidden">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[11px] text-muted-foreground">{received ? t("paymentNew.mobileTotal") : t("paymentNew.mobileTotalPending")}</p>
-            <p className="truncate text-[17px] font-bold tabular-nums">{formatMoney(grandTotal)}</p>
+            <p className="text-caption text-muted-foreground">{received ? t("paymentNew.mobileTotal") : t("paymentNew.mobileTotalPending")}</p>
+            <p className="text-h2 font-bold tabular-nums">{formatMoney(grandTotal)}</p>
           </div>
           <Button size="lg" className="shrink-0" onClick={() => void submit()} disabled={busy || empty}>
             {busy && <Spinner className="size-4" />}
             {busy ? t("paymentNew.saving") : t("paymentNew.save")}
           </Button>
         </div>
-        {!empty && problems.length > 0 && <p className="mt-1 truncate text-[11px] text-st-partial">{problems[0]}</p>}
+        {!empty && problems.length > 0 && <p className="mt-1 truncate text-caption text-st-partial">{problems[0]}</p>}
       </div>
     </div>
   );
@@ -913,7 +913,7 @@ function Review({
           </ul>
           <div className="flex items-center justify-between border-t border-border pt-2.5">
             <span className="text-sm font-medium">{t("paymentNew.review.total")}</span>
-            <span className="text-lg font-bold tabular-nums">{formatMoney(total)}</span>
+            <span className="text-h2 font-bold tabular-nums">{formatMoney(total)}</span>
           </div>
           {!received && (
             <p className="flex items-start gap-1.5 rounded-lg bg-st-pending-bg px-2.5 py-2 text-xs text-st-pending">
@@ -922,7 +922,7 @@ function Review({
             </p>
           )}
           <dl className="grid gap-1.5 rounded-xl bg-primary-tint/70 p-2.5 text-xs">
-            <p className="text-[11px] font-semibold text-muted-foreground">{t("paymentNew.review.beforeAfter", { name: member.name })}</p>
+            <p className="text-caption font-semibold text-muted-foreground">{t("paymentNew.review.beforeAfter", { name: member.name })}</p>
             <BeforeAfter label={t("paymentNew.review.currentBalance")} before={before.dueNow} after={after.dueNow} />
             {(before.upcoming > 0 || after.upcoming !== before.upcoming) && <BeforeAfter label={t("paymentNew.review.upcoming")} before={before.upcoming} after={after.upcoming} />}
             {(before.pending > 0 || after.pending !== before.pending) && <BeforeAfter label={t("paymentNew.review.pending")} before={before.pending} after={after.pending} />}
@@ -963,7 +963,7 @@ function SuccessPanel({ saved, member, onAgain, onOther }: { saved: Saved; membe
             <CircleCheckBig className="size-7" aria-hidden />
           </span>
           <div>
-            <h2 ref={heading} tabIndex={-1} className="font-display text-xl font-bold tracking-[-.01em] outline-none">
+            <h2 ref={heading} tabIndex={-1} className="font-display text-h2 tracking-[-.01em] outline-none">
               {t("paymentNew.success.recorded", { amount: formatMoney(saved.total) })}
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">

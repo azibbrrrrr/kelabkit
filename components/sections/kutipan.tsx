@@ -204,9 +204,9 @@ export function KutipanList() {
               if (!rows.length) return null;
               return (
                 <section key={group} aria-labelledby={`kutipan-${group}`} className="grid gap-3">
-                  <h2 id={`kutipan-${group}`} className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+                  <h2 id={`kutipan-${group}`} className="flex items-center gap-2 text-h2 text-muted-foreground">
                     {groupTitle(group)}
-                    <span className="rounded-full bg-primary-light px-2 py-0.5 text-[11px] text-primary-strong tabular-nums">{rows.length}</span>
+                    <span className="rounded-full bg-primary-light px-2 py-0.5 text-caption text-primary-strong tabular-nums">{rows.length}</span>
                   </h2>
                   <ul className="grid grid-cols-1 gap-3 lg:grid-cols-2 2xl:grid-cols-3">
                     {rows.map((collection) => (
@@ -257,7 +257,7 @@ function CollectionCard({ collection, view, payments, onRestore }: { collection:
         <CollectionIconButton collection={collection} size="lg" className="relative z-10 size-11 rounded-xl bg-primary-light text-primary-strong" />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1">
-            <h3 className="min-w-0 text-[15px] leading-snug font-semibold break-words group-hover:text-primary-strong">
+            <h3 className="min-w-0 text-h3 leading-snug font-semibold break-words group-hover:text-primary-strong">
               <Link href={`/kutipan/${collection.id}/`} className="outline-none after:absolute after:inset-0 after:rounded-2xl">
                 {collection.name}
               </Link>
@@ -273,7 +273,7 @@ function CollectionCard({ collection, view, payments, onRestore }: { collection:
       {voluntary ? (
         <div className="rounded-xl bg-primary-tint px-3 py-2.5">
           <p className="text-xs text-muted-foreground">{t("collections.card.totalCollected")}</p>
-          <p className="text-lg font-bold tracking-[-.01em] tabular-nums">
+          <p className="text-h2 font-bold tracking-[-.01em] tabular-nums">
             <Money sen={contributions!.received} />
           </p>
           <p className="text-xs text-muted-foreground">
@@ -309,7 +309,7 @@ function CollectionCard({ collection, view, payments, onRestore }: { collection:
             {counts.exempt > 0 && <StatusChip label={t("collections.card.chipExempt", { count: counts.exempt })} tone="exempt" compact />}
           </div>
         )}
-        {collection.type === "monthly" && <p className="-mt-1 text-[11px] text-muted-foreground">{t("collections.card.monthlyNote")}</p>}
+        {collection.type === "monthly" && <p className="-mt-1 text-caption text-muted-foreground">{t("collections.card.monthlyNote")}</p>}
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-border pt-2.5 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1">
             <Users className="size-3.5" aria-hidden /> {t("collections.card.participants", { count: totals.participants })}

@@ -449,14 +449,14 @@ export function RemindersPage() {
                   {showGroup ? t("reminders.group.hide") : t("reminders.group.show")}
                 </Button>
                 {showGroup && (
-                  <pre className="mt-2 rounded-xl border border-border bg-primary-tint/60 p-3 font-sans text-[13px] leading-relaxed break-words whitespace-pre-wrap">
+                  <pre className="mt-2 rounded-xl border border-border bg-primary-tint/60 p-3 font-sans text-small leading-relaxed break-words whitespace-pre-wrap">
                     {groupText}
                   </pre>
                 )}
               </SectionCard>
 
               <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <h2 className="text-[15px] font-semibold">
+                <h2 className="text-h2">
                   {t("reminders.summary.membersBalance", { count: rows.length })} <Money sen={totalRemaining} />
                 </h2>
                 <p className="text-xs text-muted-foreground">{t("reminders.summary.reviewHint")}</p>
@@ -483,7 +483,7 @@ export function RemindersPage() {
                             </p>
                           </div>
                           <div className="shrink-0 text-right">
-                            <div className="text-[11px] text-muted-foreground">{t("reminders.row.balance")}</div>
+                            <div className="text-caption text-muted-foreground">{t("reminders.row.balance")}</div>
                             <Money sen={row.remaining} className="font-semibold" />
                           </div>
                         </div>

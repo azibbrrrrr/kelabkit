@@ -155,7 +155,7 @@ export function Dashboard() {
             <RecentPayments payments={recent} />
           </SectionCard>
           <SectionCard title={t("dashboard.memberStatus.title")} icon={UsersRound} action={<CardLink href="/matriks/">{t("dashboard.memberStatus.viewAll")}</CardLink>}>
-            <table className="w-full text-[13px]">
+            <table className="w-full text-small">
               <thead>
                 <tr className="text-left text-xs text-muted-foreground">
                   <th className="rounded-l-lg bg-primary-tint px-3 py-2 font-semibold">{t("dashboard.memberStatus.status")}</th>
@@ -187,7 +187,7 @@ export function Dashboard() {
                 </tr>
               </tbody>
             </table>
-            <p className="mt-2 text-[11px] text-muted-foreground">{t("dashboard.memberStatus.note")}</p>
+            <p className="mt-2 text-caption text-muted-foreground">{t("dashboard.memberStatus.note")}</p>
           </SectionCard>
         </div>
       </div>
@@ -215,8 +215,8 @@ function CollectionsCard({ collections }: { collections: Collection[] }) {
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="flex items-baseline justify-between gap-2">
-                      <span className="truncate text-[13px] font-semibold group-hover:text-primary-strong">{collection.name}</span>
-                      <span className="shrink-0 text-[13px] font-semibold tabular-nums">{formatMoney(voluntary ? totals.voluntary : totals.received)}</span>
+                      <span className="truncate text-small font-semibold group-hover:text-primary-strong">{collection.name}</span>
+                      <span className="shrink-0 text-small font-semibold tabular-nums">{formatMoney(voluntary ? totals.voluntary : totals.received)}</span>
                     </span>
                     <span className="mt-1.5 flex items-center gap-3">
                       {voluntary ? (
@@ -224,7 +224,7 @@ function CollectionsCard({ collections }: { collections: Collection[] }) {
                       ) : (
                         <ProgressBar value={totals.received} max={totals.expected} label={t("dashboard.collections.progressLabel", { name: collection.name })} className="flex-1" />
                       )}
-                      <span className="w-14 shrink-0 text-right text-[11px] text-muted-foreground tabular-nums">
+                      <span className="w-14 shrink-0 text-right text-caption text-muted-foreground tabular-nums">
                         {voluntary ? t("dashboard.collections.voluntary") : `${view.collectionProgress(collection.id).settled}/${view.collectionProgress(collection.id).total}`}
                       </span>
                     </span>
@@ -274,8 +274,8 @@ function ActionsCard({ owing, pending }: { owing: number; pending: Payment[] }) 
               <item.icon className="size-[18px]" />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-[13px] leading-snug font-semibold">{item.title}</span>
-              <span className="block text-[11.5px] text-muted-foreground">{item.sub}</span>
+              <span className="block text-small leading-snug font-semibold">{item.title}</span>
+              <span className="block text-caption text-muted-foreground">{item.sub}</span>
             </span>
             <Button size="sm" variant={item.primary ? "default" : "brand"} asChild>
               <Link href={item.href}>{item.cta}</Link>
@@ -308,13 +308,13 @@ function MonthlyCard({ payments }: { payments: Payment[] }) {
         <Button variant="ghost" size="icon-sm" aria-label={t("dashboard.monthly.previous")} onClick={() => setMonth(addMonths(month, -1))}>
           <ChevronLeft />
         </Button>
-        <span className="text-[13px] font-semibold">{formatMonth(month)}</span>
+        <span className="text-small font-semibold">{formatMonth(month)}</span>
         <Button variant="ghost" size="icon-sm" aria-label={t("dashboard.monthly.next")} onClick={() => setMonth(addMonths(month, 1))} disabled={month >= thisMonth}>
           <ChevronRight />
         </Button>
       </div>
-      <p className="mt-4 text-center text-[24px] font-bold tracking-[-.02em] tabular-nums">{formatMoney(value)}</p>
-      <p className="text-center text-[11.5px] text-muted-foreground">
+      <p className="mt-4 text-center text-figure tracking-[-.02em] tabular-nums">{formatMoney(value)}</p>
+      <p className="text-center text-caption text-muted-foreground">
         {t("dashboard.monthly.received")} · {dueThisMonth > 0 ? t("dashboard.monthly.dueThisMonth", { amount: formatMoney(dueThisMonth) }) : t("dashboard.monthly.noDueThisMonth")}
       </p>
       <div className="mt-4 flex h-28 items-end justify-around gap-3 px-2" role="img" aria-label={t("dashboard.monthly.chartLabel", { summary: months.map((m, i) => `${formatMonth(m, false)} ${formatMoney(values[i])}`).join(", ") })}>
@@ -325,7 +325,7 @@ function MonthlyCard({ payments }: { payments: Payment[] }) {
               style={{ height: `${Math.max(6, Math.round((values[i] / max) * 92))}px` }}
               title={formatMoney(values[i])}
             />
-            <span className={cn("text-[11px] text-muted-foreground", i === 3 && "font-semibold text-foreground")}>{formatMonth(m, false)}</span>
+            <span className={cn("text-caption text-muted-foreground", i === 3 && "font-semibold text-foreground")}>{formatMonth(m, false)}</span>
           </div>
         ))}
       </div>
@@ -350,7 +350,7 @@ function RecentPayments({ payments }: { payments: Payment[] }) {
   return (
     <>
       <div className="@container/ledger hidden overflow-x-auto px-4 md:block md:px-5">
-        <table className="w-full text-[13px]">
+        <table className="w-full text-small">
           <thead>
             <tr className="text-left text-xs text-muted-foreground">
               <th className="rounded-l-lg bg-primary-tint px-3 py-2 font-semibold">{t("dashboard.recent.date")}</th>
@@ -383,13 +383,13 @@ function RecentPayments({ payments }: { payments: Payment[] }) {
         {payments.map((payment) => (
           <li key={payment.id} className="flex items-center justify-between gap-3 rounded-xl border border-border px-3 py-2.5">
             <span className="min-w-0">
-              <span className="block truncate text-[13px] font-medium">{view.membersById.get(payment.memberId)?.name}</span>
+              <span className="block truncate text-small font-medium">{view.membersById.get(payment.memberId)?.name}</span>
               <span className="block truncate text-xs text-muted-foreground">
                 {formatDayShort(payment.paidOn)} · {target(payment)}
               </span>
             </span>
             <span className="flex shrink-0 flex-col items-end gap-1">
-              <span className="text-[13px] font-semibold tabular-nums">{formatMoney(payment.amount)}</span>
+              <span className="text-small font-semibold tabular-nums">{formatMoney(payment.amount)}</span>
               <LabelChip entry={paymentStateLabels[payment.state]} compact />
             </span>
           </li>

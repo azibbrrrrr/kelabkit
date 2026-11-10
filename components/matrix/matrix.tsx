@@ -617,7 +617,7 @@ const Grid = memo(function Grid({
           // columns, so with few columns the table still spans the card and Baki semasa stays at the
           // right edge.
           style={{ width: tableW, tableLayout: "fixed" }}
-          className="border-separate border-spacing-0 text-[13px]"
+          className="border-separate border-spacing-0 text-small"
         >
           <colgroup>
             <col style={{ width: memberW }} />
@@ -684,7 +684,7 @@ const Grid = memo(function Grid({
                       ) : (
                         <div data-fit title={column?.label} className={cn("w-max max-w-full truncate py-2 text-xs", current && "text-primary-strong")}>
                           {column?.short}
-                          {current && <span className="ml-1 text-[10px] font-medium">{t("matrix.current")}</span>}
+                          {current && <span className="ml-1 text-caption font-medium">{t("matrix.current")}</span>}
                         </div>
                       )}
                       {column && key && handle(key, widthKind(column), column.label, width)}
@@ -728,14 +728,14 @@ const Grid = memo(function Grid({
                   >
                     <div data-fit className="flex w-max max-w-full min-w-0 items-center gap-2.5">
                       <Avatar className="size-7 after:hidden" aria-hidden>
-                        <AvatarFallback className="bg-primary-light text-[11px] font-semibold text-primary-strong">{initials(member.name)}</AvatarFallback>
+                        <AvatarFallback className="bg-primary-light text-caption font-semibold text-primary-strong">{initials(member.name)}</AvatarFallback>
                       </Avatar>
                       <div className="min-w-0">
                         <Link href={`/ahli/${member.id}/`} title={member.name} className="block truncate hover:text-primary-strong hover:underline" tabIndex={-1}>
                           {member.name}
                         </Link>
                         {/* foreground/70, not muted: muted grey drops under 4.5:1 on the highlighted row. */}
-                        {!member.active && <span className="block truncate text-[11px] font-normal text-foreground/70">{t("matrix.inactive")}</span>}
+                        {!member.active && <span className="block truncate text-caption font-normal text-foreground/70">{t("matrix.inactive")}</span>}
                       </div>
                     </div>
                   </th>
@@ -850,7 +850,7 @@ const Grid = memo(function Grid({
           </tfoot>
         </table>
       </div>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-border px-4 py-2.5 text-[11px] text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-border px-4 py-2.5 text-caption text-muted-foreground">
         <span>
           <kbd className="rounded border border-border px-1">↵</kbd> {t("matrix.hintEdit")} · <kbd className="rounded border border-border px-1">0–9</kbd> {t("matrix.hintType")} ·{" "}
           <kbd className="rounded border border-border px-1">Esc</kbd> {t("matrix.hintCancel")} · <kbd className="rounded border border-border px-1">← ↑ → ↓</kbd> /{" "}
@@ -994,7 +994,7 @@ function CellBody({ cell }: { cell: MatrixCell }) {
       <div data-fit className="grid w-max max-w-full gap-0.5">
         <span
           title={cell.received > 0 ? formatMoneyShort(cell.received) : undefined}
-          className={cn("truncate text-[12.5px] font-semibold tabular-nums", cell.received === 0 && "font-normal text-muted-foreground")}
+          className={cn("truncate text-small font-semibold tabular-nums", cell.received === 0 && "font-normal text-muted-foreground")}
         >
           {cell.received > 0 ? formatMoneyShort(cell.received) : "—"}
         </span>{" "}
@@ -1003,7 +1003,7 @@ function CellBody({ cell }: { cell: MatrixCell }) {
             <StatusChip label={pendingLabel[0]} tone="pending" compact className="min-w-0 shrink" />
           </span>
         ) : (
-          <span title={sub} className="truncate text-[11px] text-muted-foreground">
+          <span title={sub} className="truncate text-caption text-muted-foreground">
             {sub}
           </span>
         )}
@@ -1021,7 +1021,7 @@ function CellBody({ cell }: { cell: MatrixCell }) {
   const chip = chipOf(cell);
   return (
     <div data-fit className="grid w-max max-w-full gap-0.5">
-      <span title={amounts} className="truncate text-[12.5px] tabular-nums">
+      <span title={amounts} className="truncate text-small tabular-nums">
         <b className={cn("font-semibold", ledger.confirmed === 0 && "font-normal text-muted-foreground")}>{formatMoneyShort(ledger.confirmed)}</b>
         <span className="text-muted-foreground"> / {formatMoneyShort(ledger.required)}</span>
       </span>{" "}
@@ -1219,18 +1219,18 @@ function ColumnHeader({
               }}
               aria-label={t("matrix.nameLabel")}
               // w-full min-w-0: exactly the header's width beside the ⋮ button, never wider, even in a 120px column.
-              className="h-7 rounded-md border-primary bg-card px-1.5 py-0 text-[13px] font-semibold md:text-[13px]"
+              className="h-7 rounded-md border-primary bg-card px-1.5 py-0 text-small font-semibold md:text-small"
             />
           ) : (
             // Plain text, not a button: renaming is a menu action (keyboard and touch). Double-click
             // stays as a mouse shortcut; title shows the full name when truncated.
             // The icon sits inline in the truncating line, so a narrow column still ellipsises the name.
-            <span onDoubleClick={() => setRenaming(true)} title={collection.name} className="block max-w-full truncate text-left text-[13px] font-semibold">
+            <span onDoubleClick={() => setRenaming(true)} title={collection.name} className="block max-w-full truncate text-left text-small font-semibold">
               <CollectionIcon collection={collection} size="xs" className="mr-1.5 inline-block align-[-2px] text-primary-strong" />
               {collection.name}
             </span>
           )}
-          <span className="block truncate text-[11px] font-normal text-muted-foreground">
+          <span className="block truncate text-caption font-normal text-muted-foreground">
             {amount}
             {collection.status === "draft" && ` · ${collectionStatusLabels.draft[0]}`}
             {collection.status === "completed" && ` · ${collectionStatusLabels.completed[0]}`}
@@ -1389,7 +1389,7 @@ const MemberCards = memo(function MemberCards({ rows, columns }: { rows: Member[
                     >
                       <CollectionIcon collection={collection} size="sm" />
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[13px] font-medium">{collection.name}</span>
+                        <span className="block truncate text-small font-medium">{collection.name}</span>
                         <span className="block text-xs text-muted-foreground tabular-nums">
                           {cell.kind === "voluntary"
                             ? t("matrix.contribution", { amount: formatMoney(cell.received) })

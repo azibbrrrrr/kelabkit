@@ -165,7 +165,7 @@ export function ProofDropzone({
             event.target.value = "";
           }}
         />
-        {demo && <p className="text-[11px] text-muted-foreground">{t("attachments.demoNotice")}</p>}
+        {demo && <p className="text-caption text-muted-foreground">{t("attachments.demoNotice")}</p>}
       </div>
       {pasteError && (
         <p role="alert" className="text-xs font-medium text-st-unpaid">
@@ -302,7 +302,7 @@ export function ProofChip({ payment, className }: { payment: Payment; className?
   if (!count) return null;
   return (
     <span
-      className={cn("inline-flex h-5 shrink-0 items-center gap-1 rounded-full bg-primary-tint px-2 text-[11px] font-medium whitespace-nowrap text-primary-strong", className)}
+      className={cn("inline-flex h-5 shrink-0 items-center gap-1 rounded-full bg-primary-tint px-2 text-caption font-medium whitespace-nowrap text-primary-strong", className)}
       title={t(count === 1 ? "attachments.chip.titleOne" : "attachments.chip.titleMany", { count })}
     >
       <Paperclip aria-hidden className="size-3" />

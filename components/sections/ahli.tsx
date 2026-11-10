@@ -121,7 +121,7 @@ export function AhliPage() {
       cell: ({ dueNow, overdue }) => (
         <span className="inline-flex flex-col items-end">
           <span className={cn("font-semibold", dueNow > 0 ? "text-st-unpaid" : "text-st-paid")}>{formatMoney(dueNow)}</span>
-          {overdue > 0 && <span className="text-[11px] font-normal text-st-unpaid">{t("members.overdueCharges", { count: overdue })}</span>}
+          {overdue > 0 && <span className="text-caption font-normal text-st-unpaid">{t("members.overdueCharges", { count: overdue })}</span>}
         </span>
       ),
     },
@@ -248,7 +248,7 @@ function Initials({ name, muted }: { name: string; muted?: boolean }) {
     <span
       aria-hidden
       className={cn(
-        "grid size-8 shrink-0 place-items-center rounded-xl text-[11px] font-semibold",
+        "grid size-8 shrink-0 place-items-center rounded-xl text-caption font-semibold",
         muted ? "bg-st-na-bg text-st-na" : "bg-primary-light text-primary-strong",
       )}
     >
