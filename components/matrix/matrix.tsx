@@ -244,7 +244,7 @@ export function MatrixPage() {
           <>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button ref={columnsButton} variant="outline" size="sm">
+                <Button ref={columnsButton} variant="outline" size="sm" className="pointer-coarse:h-11">
                   <Columns3 /> {t("matrix.columns")}
                   {Object.values(hidden).some(Boolean) && <span className="text-primary-strong">•</span>}
                 </Button>
@@ -288,7 +288,7 @@ export function MatrixPage() {
               </DropdownMenuContent>
             </DropdownMenu>
             {/* Accessible name leads with the visible text (label in name). */}
-            <Button variant="outline" size="sm" onClick={() => setSort(sort === "name" ? "owing" : "name")}>
+            <Button variant="outline" size="sm" className="pointer-coarse:h-11" onClick={() => setSort(sort === "name" ? "owing" : "name")}>
               <ArrowDownUp /> {sort === "name" ? t("matrix.sortName") : t("matrix.sortBalance")}
               <span className="sr-only">{t("matrix.sortChange")}</span>
             </Button>
@@ -300,10 +300,10 @@ export function MatrixPage() {
               spacing={0}
               className="gap-0 rounded-[10px] border border-border bg-card p-0.5"
             >
-              <ToggleGroupItem value="cards" className="h-8 gap-1 rounded-[7px]! px-2.5 text-xs font-normal hover:bg-primary-tint data-[state=on]:bg-primary-light data-[state=on]:font-semibold data-[state=on]:text-primary-strong">
+              <ToggleGroupItem value="cards" className="h-8 gap-1 rounded-[7px]! px-2.5 pointer-coarse:h-11 pointer-coarse:min-w-11 text-xs font-normal hover:bg-primary-tint data-[state=on]:bg-primary-light data-[state=on]:font-semibold data-[state=on]:text-primary-strong">
                 <Rows3 className="size-3.5" /> {t("matrix.viewCards")}
               </ToggleGroupItem>
-              <ToggleGroupItem value="grid" className="h-8 gap-1 rounded-[7px]! px-2.5 text-xs font-normal hover:bg-primary-tint data-[state=on]:bg-primary-light data-[state=on]:font-semibold data-[state=on]:text-primary-strong">
+              <ToggleGroupItem value="grid" className="h-8 gap-1 rounded-[7px]! px-2.5 pointer-coarse:h-11 pointer-coarse:min-w-11 text-xs font-normal hover:bg-primary-tint data-[state=on]:bg-primary-light data-[state=on]:font-semibold data-[state=on]:text-primary-strong">
                 <LayoutGrid className="size-3.5" /> {t("matrix.viewGrid")}
               </ToggleGroupItem>
             </ToggleGroup>
@@ -931,12 +931,32 @@ function ArchiveDialog({ collection, onClose, onArchived }: { collection: Collec
   );
 }
 
+/** The status chip of a charge cell: the one word (or two) the cell shows under its amounts. */
+function chipOf(cell: Extract<MatrixCell, { kind: "charge" }>) {
+  const { ledger, status } = cell;
+  return status === "future"
+    ? cellStatusLabels.future
+    : ledger.overdue
+      ? ([status === "partial" ? `${overdueLabel[0]} · ${cellStatusLabels.partial[0]}` : overdueLabel[0], "overdue"] as const)
+      : ledger.pending > 0 && status !== "paid"
+        ? pendingLabel
+        : cellStatusLabels[status];
+}
+
+/**
+ * The cell's accessible name leads with exactly what it shows (label in name, WCAG 2.5.3), so a
+ * speech-input user can say what they see. Anything the chip does not already say is appended.
+ */
 function describeCell(t: TFunction, cell: MatrixCell) {
   if (cell.kind === "na") return cellStatusLabels.na[0];
-  if (cell.kind === "voluntary") return t("matrix.contributionLower", { amount: formatMoney(cell.received) });
-  const parts = [t("matrix.paidOfRequired", { paid: formatMoney(cell.ledger.confirmed), required: formatMoney(cell.ledger.required) }), cellStatusLabels[cell.status][0]];
-  if (cell.ledger.overdue) parts.push(overdueLabel[0]);
-  if (cell.ledger.pending > 0) parts.push(pendingLabel[0]);
+  if (cell.kind === "voluntary") {
+    const sub = cell.count > 0 ? t(cell.count === 1 ? "matrix.contributionsOne" : "matrix.contributionsMany", { count: cell.count }) : t("matrix.voluntary");
+    return `${cell.received > 0 ? formatMoneyShort(cell.received) : "—"} ${cell.pending > 0 ? pendingLabel[0] : sub}`;
+  }
+  if (cell.status === "exempt") return cellStatusLabels.exempt[0];
+  const chip = chipOf(cell)[0];
+  const parts = [`${formatMoneyShort(cell.ledger.confirmed)} / ${formatMoneyShort(cell.ledger.required)} ${chip}`];
+  if (cell.ledger.pending > 0 && cell.status !== "paid" && chip !== pendingLabel[0]) parts.push(pendingLabel[0]);
   return parts.join(", ");
 }
 
@@ -962,7 +982,7 @@ function CellView({ cell }: { cell: MatrixCell }) {
           className={cn("truncate text-[12.5px] font-semibold tabular-nums", cell.received === 0 && "font-normal text-muted-foreground")}
         >
           {cell.received > 0 ? formatMoneyShort(cell.received) : "—"}
-        </span>
+        </span>{" "}
         {cell.pending > 0 ? (
           <span title={pendingLabel[0]} className="flex min-w-0">
             <StatusChip label={pendingLabel[0]} tone="pending" compact className="min-w-0 shrink" />
@@ -983,20 +1003,13 @@ function CellView({ cell }: { cell: MatrixCell }) {
       </span>
     );
   const amounts = `${formatMoneyShort(ledger.confirmed)} / ${formatMoneyShort(ledger.required)}`;
-  const chip =
-    status === "future"
-      ? cellStatusLabels.future
-      : ledger.overdue
-        ? ([status === "partial" ? `${overdueLabel[0]} · ${cellStatusLabels.partial[0]}` : overdueLabel[0], "overdue"] as const)
-        : ledger.pending > 0 && status !== "paid"
-          ? pendingLabel
-          : cellStatusLabels[status];
+  const chip = chipOf(cell);
   return (
     <div data-fit className="grid w-max max-w-full gap-0.5">
       <span title={amounts} className="truncate text-[12.5px] tabular-nums">
         <b className={cn("font-semibold", ledger.confirmed === 0 && "font-normal text-muted-foreground")}>{formatMoneyShort(ledger.confirmed)}</b>
         <span className="text-muted-foreground"> / {formatMoneyShort(ledger.required)}</span>
-      </span>
+      </span>{" "}
       <span title={chip[0]} className="flex min-w-0">
         <StatusChip label={chip[0]} tone={chip[1]} compact className="min-w-0 shrink" />
       </span>

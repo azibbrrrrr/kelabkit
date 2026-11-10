@@ -4,7 +4,7 @@ import * as React from "react"
 import { cn } from "cn"
 import { Dialog as DialogPrimitive } from "radix-ui"
 
-import { ModalHandle, modalSurface, type ModalSize } from "@/components/ui/modal-surface"
+import { ModalHandle, modalSurface, useRestoreFocus, type ModalSize } from "@/components/ui/modal-surface"
 
 function Dialog({
   ...props
@@ -50,10 +50,13 @@ function DialogContent({
   className,
   children,
   size = "md",
+  onOpenAutoFocus,
+  onCloseAutoFocus,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   size?: ModalSize
 }) {
+  const focus = useRestoreFocus({ onOpenAutoFocus, onCloseAutoFocus })
   return (
     <DialogPortal>
       <DialogOverlay />
@@ -62,6 +65,7 @@ function DialogContent({
         data-modal-surface=""
         className={modalSurface(size, className)}
         {...props}
+        {...focus}
       >
         <ModalHandle />
         {children}
