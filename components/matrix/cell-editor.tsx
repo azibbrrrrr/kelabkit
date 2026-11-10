@@ -177,7 +177,6 @@ function PaymentDetails({
             value={reference}
             onChange={(event) => setReference(event.target.value)}
             placeholder="cth. DuitNow 1234"
-            className="h-10 rounded-xl bg-card px-2.5 text-sm"
           />
         </div>
       </div>

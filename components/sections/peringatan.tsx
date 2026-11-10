@@ -341,7 +341,7 @@ export function RemindersPage() {
                 value={template}
                 onChange={(event) => setTemplate(event.target.value)}
                 rows={9}
-                className="min-h-40 rounded-xl text-[13px] leading-relaxed"
+                className="min-h-40 leading-relaxed"
               />
               <p className="text-xs text-muted-foreground">
                 Templat disimpan dalam pelayar ini. Mesej yang telah anda ubah bagi ahli tertentu tidak berubah apabila templat ditukar.
@@ -527,7 +527,7 @@ export function RemindersPage() {
                               value={message}
                               onChange={(event) => setEdits((e) => ({ ...e, [key]: event.target.value }))}
                               rows={9}
-                              className="rounded-xl text-[13px] leading-relaxed"
+                              className="leading-relaxed"
                             />
                             {edited && (
                               <div>

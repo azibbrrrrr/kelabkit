@@ -472,7 +472,7 @@ function MonthPicker({
         Paparan bulan
       </Label>
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger id="kutipan-month" className="h-11 w-full font-medium sm:w-72">
+        <SelectTrigger id="kutipan-month" className="w-full font-medium sm:w-72">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

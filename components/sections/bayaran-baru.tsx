@@ -39,7 +39,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useDeferredValue, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { toast } from "sonner";
 
 // The treasurer's daily workflow: pick a member, tick what they are paying for, enter
@@ -131,17 +131,19 @@ function Step({ n, title, description, action, children }: { n: number; title: s
 function MemberPicker({ onSelect }: { onSelect: (id: string) => void }) {
   const { data, view } = useSnapshot();
   const [query, setQuery] = useState("");
+  // The heavy filter/render follows the keystroke at lower priority, so typing never waits on it.
+  const deferredQuery = useDeferredValue(query);
   const [active, setActive] = useState(0);
   const listId = useId();
   const LIMIT = 60;
 
   const options = useMemo(() => {
-    const q = normaliseName(query);
+    const q = normaliseName(deferredQuery);
     return data.members
-      .filter((member) => !q || normaliseName(member.name).includes(q) || member.name.toLowerCase().includes(query.trim().toLowerCase()))
+      .filter((member) => !q || normaliseName(member.name).includes(q) || member.name.toLowerCase().includes(deferredQuery.trim().toLowerCase()))
       .sort((a, b) => Number(b.active) - Number(a.active) || a.name.localeCompare(b.name, "ms"))
       .map((member) => ({ member, totals: view.memberTotals(member.id) }));
-  }, [data.members, query, view]);
+  }, [data.members, deferredQuery, view]);
   const shown = options.slice(0, LIMIT);
   const index = Math.min(active, Math.max(0, shown.length - 1));
 
@@ -185,7 +187,7 @@ function MemberPicker({ onSelect }: { onSelect: (id: string) => void }) {
           }}
           onKeyDown={onKeyDown}
           placeholder="Taip nama ahli…"
-          className="h-11 rounded-xl bg-card pr-3 pl-9 text-[15px] md:text-[15px]"
+          className="pl-9"
         />
       </div>
       {shown.length === 0 ? (
@@ -654,7 +656,6 @@ function PaymentForm({ member, onChange, onSaved }: { member: Member; onChange: 
                   value={reference}
                   onChange={(event) => setReference(event.target.value)}
                   placeholder={method === "transfer" ? "cth. DuitNow 1234" : "cth. Resit 015"}
-                  className="h-11 rounded-xl bg-card px-2.5 text-sm"
                 />
               </div>
             </div>

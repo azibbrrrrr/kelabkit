@@ -214,11 +214,11 @@ function ClubStep({ club, onDone }: { club: Club; onDone: () => void }) {
       <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_140px]">
         <div className="grid gap-1.5">
           <Label htmlFor={`${id}-name`}>Nama kelab</Label>
-          <Input id={`${id}-name`} value={name} onChange={(e) => setName(e.target.value)} placeholder="Contoh: KGK SK Taman Melati" className="h-10 rounded-xl" />
+          <Input id={`${id}-name`} value={name} onChange={(e) => setName(e.target.value)} placeholder="Contoh: KGK SK Taman Melati" />
         </div>
         <div className="grid gap-1.5">
           <Label htmlFor={`${id}-session`}>Sesi</Label>
-          <Input id={`${id}-session`} value={session} onChange={(e) => setSession(e.target.value)} placeholder="2026" className="h-10 rounded-xl" />
+          <Input id={`${id}-session`} value={session} onChange={(e) => setSession(e.target.value)} placeholder="2026" />
         </div>
       </div>
       {error && <p className="text-xs font-medium text-st-unpaid">{error}</p>}

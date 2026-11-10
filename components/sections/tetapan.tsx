@@ -122,7 +122,6 @@ function ClubForm({ club }: { club: Club }) {
         placeholder={placeholder}
         aria-invalid={Boolean(errors[key])}
         aria-describedby={errors[key] ? `${id}-${key}-error` : undefined}
-        className="h-10 rounded-xl bg-card"
       />
       {errors[key] && (
         <p id={`${id}-${key}-error`} className="text-xs font-medium text-st-unpaid">

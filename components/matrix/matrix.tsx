@@ -82,7 +82,7 @@ import {
   UserPlus,
 } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from "react";
+import { memo, useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from "react";
 import { flushSync } from "react-dom";
 import { toast } from "sonner";
 
@@ -117,6 +117,8 @@ export function MatrixPage() {
   const { data, view } = useSnapshot();
   const isMobile = useIsMobile();
   const [query, setQuery] = useState("");
+  // The heavy filter/render follows the keystroke at lower priority, so typing never waits on it.
+  const deferredQuery = useDeferredValue(query);
   const [rowFilter, setRowFilter] = useState<RowFilter>("all");
   const [monthScope, setMonthScope] = useState<MonthScope>("all");
   const [hidden, setHidden] = useState<Record<string, boolean>>({});
@@ -154,7 +156,8 @@ export function MatrixPage() {
   );
   // Archived collections never show as columns; the Lajur menu lists them so they can be restored.
   const archived = useMemo(() => sortCollections(data.collections).filter((collection) => collection.status === "archived"), [data.collections]);
-  const visibleCollections = collections.filter((collection) => !hidden[collection.id]);
+  const visibleCollections = useMemo(() => collections.filter((collection) => !hidden[collection.id]), [collections, hidden]);
+  const hideColumn = useCallback((id: string) => setHidden((h) => ({ ...h, [id]: true })), []);
   const thisMonth = monthOf(view.today);
   const columns = useMemo(
     () => view.columns(visibleCollections).filter((column) => monthScope === "all" || !column.period || column.period.month <= thisMonth),
@@ -182,7 +185,7 @@ export function MatrixPage() {
   );
 
   const members = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = deferredQuery.trim().toLowerCase();
     const rows = data.members
       .filter((member) => showInactive || member.active)
       .filter((member) => !q || member.name.toLowerCase().includes(q))
@@ -196,7 +199,9 @@ export function MatrixPage() {
       });
     rows.sort((a, b) => (sort === "owing" ? b.summary.dueNow - a.summary.dueNow : 0) || a.member.name.localeCompare(b.member.name, "ms"));
     return rows;
-  }, [data.members, query, rowFilter, rowSummary, showInactive, sort]);
+  }, [data.members, deferredQuery, rowFilter, rowSummary, showInactive, sort]);
+  // Stable identity so the memoised grid and cards skip the urgent (keystroke) render.
+  const memberRows = useMemo(() => members.map((row) => row.member), [members]);
 
   const showGrid = (layout ?? (isMobile ? "cards" : "grid")) === "grid";
 
@@ -327,12 +332,12 @@ export function MatrixPage() {
           description={rowFilter === "owing" || rowFilter === "overdue" ? "Semua ahli dalam paparan ini sudah menjelaskan bayaran." : "Cuba carian atau penapis lain."}
         />
       ) : showGrid ? (
-        <Grid rows={members.map((row) => row.member)} columns={columns} collections={visibleCollections} onHide={(id) => setHidden((h) => ({ ...h, [id]: true }))} />
+        <Grid rows={memberRows} columns={columns} collections={visibleCollections} onHide={hideColumn} />
       ) : (
         isMobile ? (
-          <MemberCards rows={members.map((row) => row.member)} columns={columns} />
+          <MemberCards rows={memberRows} columns={columns} />
         ) : (
-          <MemberCardGrid rows={members.map((row) => row.member)} columns={columns} />
+          <MemberCardGrid rows={memberRows} columns={columns} />
         )
       )}
 
@@ -345,7 +350,7 @@ export function MatrixPage() {
 
 // Desktop grid -----------------------------------------------------------------------------
 
-function Grid({
+const Grid = memo(function Grid({
   rows,
   columns,
   collections,
@@ -859,7 +864,7 @@ function Grid({
       />
     </div>
   );
-}
+});
 
 /**
  * Confirms archiving a collection from its column menu, then offers to undo. Undo restores the
@@ -1270,7 +1275,7 @@ function ColumnHeader({
 // Phone layout -----------------------------------------------------------------------------
 
 /** One card per member; each collection is a tappable line, months a row of tiles. */
-function MemberCards({ rows, columns }: { rows: Member[]; columns: MatrixColumn[] }) {
+const MemberCards = memo(function MemberCards({ rows, columns }: { rows: Member[]; columns: MatrixColumn[] }) {
   const { view } = useSnapshot();
   const [open, setOpen] = useState<MatrixCell | null>(null);
   const [dirty, setDirty] = useState(false);
@@ -1405,4 +1410,4 @@ function MemberCards({ rows, columns }: { rows: Member[]; columns: MatrixColumn[
       <DiscardDialog open={guard} onKeep={() => setGuard(false)} onDiscard={dismiss} restoreFocus={lastFocus.restore} />
     </>
   );
-}
+});

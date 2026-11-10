@@ -107,11 +107,11 @@ export function DesignSystemPage() {
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="grid gap-1 text-xs text-muted-foreground">
               Input (biasa)
-              <Input placeholder="Nama ahli" className="h-11 rounded-xl bg-card px-3 text-sm text-foreground" />
+              <Input placeholder="Nama ahli" />
             </label>
             <label className="grid gap-1 text-xs text-muted-foreground">
               Input (fokus)
-              <Input placeholder="Nama ahli" className="h-11 rounded-xl border-ring bg-card px-3 text-sm text-foreground ring-1 ring-ring" />
+              <Input placeholder="Nama ahli" className="border-ring shadow-[0_0_0_3px_color-mix(in_srgb,var(--ring)_20%,transparent)]" />
             </label>
             <label className="grid gap-1 text-xs text-muted-foreground">
               Amaun (RM)
@@ -120,7 +120,7 @@ export function DesignSystemPage() {
             <div className="grid gap-1 text-xs text-muted-foreground">
               Pilihan
               <Select>
-                <SelectTrigger className="h-11 w-full">
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Pilih kategori" />
                 </SelectTrigger>
                 <SelectContent>
@@ -133,7 +133,7 @@ export function DesignSystemPage() {
             <label className="relative grid gap-1 text-xs text-muted-foreground sm:col-span-2">
               Carian
               <Search className="pointer-events-none absolute bottom-3.5 left-3 size-4" />
-              <Input type="search" placeholder="Cari ahli…" className="h-11 rounded-xl bg-card pr-3 pl-9 text-sm text-foreground" />
+              <Input type="search" placeholder="Cari ahli…" className="pl-9" />
             </label>
             <div className="grid gap-1 text-xs text-muted-foreground">
               <span>Tarikh</span>
