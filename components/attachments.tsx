@@ -462,6 +462,7 @@ type Zoom = "fit" | 1 | 2;
 
 /** Image preview with fit/zoom, PDF preview on a blob URL, download always. Blob URLs are revoked on close. */
 export function ProofViewer({ attachment, onClose }: { attachment: Attachment | null; onClose: () => void }) {
+  const t = useT();
   const blob = useBlobUrl(attachment?.id ?? null);
   const [zoom, setZoom] = useState<Zoom>("fit");
   const [failed, setFailed] = useState<string | null>(null);
@@ -541,7 +542,7 @@ export function ProofViewer({ attachment, onClose }: { attachment: Attachment | 
                 </a>
               </Button>
             )}
-            <Button onClick={onClose}>Tutup</Button>
+            <Button onClick={onClose}>{t("ui.close")}</Button>
         </ModalFooter>
         {heic && !unsupported && <span className="sr-only">Format HEIC dipaparkan jika pelayar menyokongnya.</span>}
       </DialogContent>

@@ -368,7 +368,7 @@ export function BayaranPage() {
             }
           >
             <DialogClose asChild>
-              <Button>Tutup</Button>
+              <Button>{t("ui.close")}</Button>
             </DialogClose>
           </ModalFooter>
         </DialogContent>
