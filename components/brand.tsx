@@ -13,13 +13,12 @@ export function BrandMark({ className, size = "md" }: { className?: string; size
       )}
       aria-hidden
     >
-      <svg viewBox="0 0 24 24" className="size-[64%]" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinejoin="round">
-        <circle cx="12" cy="12.4" r="2.1" />
-        <path d="M12 10.2C10.3 7 10.9 4.4 12 3.6c1.1.8 1.7 3.4 0 6.6Z" />
-        <path d="M14.1 11.6c3.3-1.6 5.8-.9 6.3.4-.6 1.2-3.1 2-6.3-.4Z" />
-        <path d="M13.4 14.3c1.9 3.2 1.5 5.7.3 6.3-1.2-.4-2.2-2.8-.3-6.3Z" />
-        <path d="M10.6 14.3c-1.9 3.2-1.5 5.7-.3 6.3 1.2-.4 2.2-2.8.3-6.3Z" />
-        <path d="M9.9 11.6C6.6 10 4.1 10.7 3.6 12c.6 1.2 3.1 2 6.3-.4Z" />
+      {/* Same notched sakura as the app icon (app/icon.png): five petals rotated 72° apart. */}
+      <svg viewBox="0 0 24 24" className="size-[70%]" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinejoin="round" strokeLinecap="round">
+        {[0, 72, 144, 216, 288].map((angle) => (
+          <path key={angle} transform={`rotate(${angle} 12 12)`} d="M12 10.6C9.4 9 8.9 5.6 10.1 3.1l1.9 1.4 1.9-1.4c1.2 2.5.7 5.9-1.9 7.5Z" />
+        ))}
+        <circle cx="12" cy="12" r="1.35" fill="currentColor" stroke="none" />
       </svg>
     </span>
   );

@@ -204,12 +204,12 @@ export function DesignSystemPage() {
         </SectionCard>
 
         <SectionCard title="Keadaan kosong, memuat & ralat" className="lg:col-span-2">
-          <div className="grid gap-3 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <EmptyState icon={Inbox} title="Belum ada bayaran" description="Rekod bayaran pertama untuk melihatnya di sini." className="py-6" />
             <div className="rounded-2xl border border-border p-4">
               <TableSkeleton rows={4} />
             </div>
-            <div className="grid content-start gap-3">
+            <div className="grid min-w-0 grid-cols-1 content-start gap-3">
               <ErrorState title="Bayaran tidak disimpan" description="Sambungan terputus. Cuba lagi." action={<Button size="sm" variant="brand">Cuba lagi</Button>} />
               <Button variant="outline" onClick={() => toast.success("Contoh notifikasi berjaya (paparan sahaja).")}>
                 Tunjuk contoh notifikasi

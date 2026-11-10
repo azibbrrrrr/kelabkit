@@ -774,7 +774,7 @@ function MemberCards({ rows, columns }: { rows: Member[]; columns: MatrixColumn[
 
   return (
     <>
-      <ul className="grid gap-3">
+      <ul className="grid grid-cols-1 gap-3">
         {rows.slice(0, limit).map((member) => {
           let due = 0;
           for (const column of columns) {
@@ -782,7 +782,7 @@ function MemberCards({ rows, columns }: { rows: Member[]; columns: MatrixColumn[
             if (cell.kind === "charge" && !cell.ledger.future) due += cell.ledger.remaining;
           }
           return (
-            <li key={member.id} className="rounded-2xl border border-border bg-card p-3.5">
+            <li key={member.id} className="min-w-0 rounded-2xl border border-border bg-card p-3.5">
               <div className="mb-2.5 flex items-start justify-between gap-2">
                 <Link href={`/ahli/${member.id}/`} className="min-w-0 font-semibold break-words">
                   {member.name}
@@ -791,7 +791,7 @@ function MemberCards({ rows, columns }: { rows: Member[]; columns: MatrixColumn[
                   {due > 0 ? `Baki ${formatMoney(due)}` : "Selesai"}
                 </span>
               </div>
-              <div className="grid gap-1.5">
+              <div className="grid grid-cols-1 gap-1.5">
                 {groups.map((group) => {
                   const collection = group[0].collection;
                   if (collection.type === "monthly") {
@@ -828,7 +828,7 @@ function MemberCards({ rows, columns }: { rows: Member[]; columns: MatrixColumn[
                         </span>
                       </span>
                       {cell.kind === "charge" && (
-                        <ChargeStatusChips status={cell.status} overdue={cell.ledger.overdue} pending={cell.ledger.pending > 0} compact className="shrink-0 justify-end" />
+                        <ChargeStatusChips status={cell.status} overdue={cell.ledger.overdue} pending={cell.ledger.pending > 0} compact className="max-w-[55%] justify-end" />
                       )}
                     </button>
                   );

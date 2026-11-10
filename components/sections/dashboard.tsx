@@ -213,7 +213,7 @@ function CollectionsCard({ collections }: { collections: Collection[] }) {
       {collections.length === 0 ? (
         <p className="py-6 text-center text-sm text-muted-foreground">Belum ada kutipan aktif.</p>
       ) : (
-        <ul className="grid gap-3">
+        <ul className="grid grid-cols-1 gap-3">
           {collections.slice(0, 5).map((collection) => {
             const totals = view.collectionTotals(collection.id);
             const Icon = collectionIcon(collection);
@@ -277,7 +277,7 @@ function ActionsCard({ owing, pending }: { owing: number; pending: Payment[] }) 
   ];
   return (
     <SectionCard title="Tindakan Peringatan" icon={BellRing} action={<CardLink href="/peringatan/">Lihat Semua</CardLink>}>
-      <ul className="grid gap-2.5">
+      <ul className="grid grid-cols-1 gap-2.5">
         {items.map((item) => (
           <li key={item.title} className="flex items-center gap-3 rounded-xl border border-border bg-card px-3 py-2.5">
             <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary-tint text-primary-strong">
