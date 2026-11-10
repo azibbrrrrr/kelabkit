@@ -3,6 +3,7 @@
 import { AddCollectionDialog } from "@/components/add-collection-dialog";
 import { AddMemberDialog } from "@/components/add-member-dialog";
 import { useKelab, useSnapshot } from "@/components/data-provider";
+import { describeGhost, GhostValue, useGhost } from "@/components/isi-pantas/ghost";
 import { CellEditor, focusEditorStart } from "@/components/matrix/cell-editor";
 import {
   BALANCE_W,
@@ -364,6 +365,7 @@ function Grid({
   onHide: (collectionId: string) => void;
 }) {
   const { view } = useSnapshot();
+  const ghostFor = useGhost();
   const [active, setActive] = useState<Active>({ r: 0, c: 0 });
   const [editing, setEditing] = useState<{ initial?: string } | null>(null);
   const [dirty, setDirty] = useState(false);
@@ -603,7 +605,7 @@ function Grid({
     <div ref={frame} className="relative min-w-0 rounded-2xl border border-border bg-card shadow-[0_1px_2px_rgba(0,0,0,.03)]">
       {/* Accent guide on the edge being dragged; its height is the scroller's, so it stops above the hints bar. */}
       <div ref={guide} aria-hidden className={cn("pointer-events-none absolute top-0 left-0 z-40 w-0.5 bg-primary", !resizing && "hidden")} />
-      <div ref={scroller} className="group/grid max-h-[calc(100svh-18rem)] min-h-64 overflow-auto overscroll-contain rounded-2xl">
+      <div ref={scroller} data-matrix-scroller className="group/grid max-h-[calc(100svh-18rem)] min-h-64 overflow-auto overscroll-contain rounded-2xl">
         {/* All rows and columns are rendered, so the counts equal the DOM: header rows + members + footer. */}
         <table
           role="grid"
@@ -741,6 +743,8 @@ function Grid({
                   {columns.map((column, ci) => {
                     const cell = view.cell(member, column);
                     const isActive = ri === r && ci === c;
+                    // An Isi Pantas suggestion waiting for (or just written to) this cell.
+                    const ghost = cell.kind === "na" ? null : ghostFor(member.id, column.collection.id, column.period?.id ?? null);
                     // The td is the same element whether or not it is active, so focus survives
                     // re-renders; the editor's anchor and portal live inside it.
                     const own = (event: { currentTarget: Node; target: EventTarget }) => event.currentTarget.contains(event.target as Node);
@@ -751,7 +755,7 @@ function Grid({
                         data-fit-col={widthKey(column)}
                         role="gridcell"
                         tabIndex={isActive ? 0 : -1}
-                        aria-label={`${member.name}, ${column.label}: ${describeCell(cell)}`}
+                        aria-label={`${member.name}, ${column.label}: ${describeCell(cell)}${ghost ? `. ${describeGhost(ghost)}` : ""}`}
                         onClick={(event) => own(event) && setActive({ r: ri, c: ci })}
                         onDoubleClick={(event) => {
                           if (!own(event)) return;
@@ -774,6 +778,7 @@ function Grid({
                         )}
                       >
                         <CellView cell={cell} />
+                        {ghost && <GhostValue ghost={ghost} />}
                         {isActive && (
                           <Popover open={editing !== null} onOpenChange={(open) => !open && close()}>
                             <PopoverAnchor asChild>

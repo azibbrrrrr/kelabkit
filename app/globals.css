@@ -402,3 +402,200 @@ html[data-sidebar-boot="collapsed"] [data-slot="sidebar"][data-state="expanded"]
     transition: none !important;
   }
 }
+
+/* Isi Pantas (components/isi-pantas). The violet and pink are decorative AI accents; text
+   only sits on --primary-fill / --brand-gradient, or on the violet stop at 5.7:1, so white
+   labels keep 4.5:1 in every accent theme. Every animation stops under reduced motion. */
+:root {
+  --ai-violet: #7c3aed;
+  --ai-glow: #c4b5fd;
+  --ai-pink: #f9a8d4;
+}
+
+@layer components {
+  .isi-spark-btn {
+    border: 1.5px solid transparent;
+    color: var(--primary-foreground);
+    background:
+      linear-gradient(var(--primary-fill), var(--primary-fill)) padding-box,
+      linear-gradient(120deg, var(--primary-fill), var(--ai-violet), var(--primary-fill)) border-box;
+    box-shadow: 0 6px 16px -8px var(--primary);
+    transition: background 150ms ease-out;
+  }
+  .isi-spark-btn:hover {
+    background:
+      linear-gradient(var(--primary-strong), var(--primary-strong)) padding-box,
+      linear-gradient(120deg, var(--primary-strong), var(--ai-violet), var(--primary-strong)) border-box;
+  }
+  .isi-pill {
+    color: #fff;
+    background: linear-gradient(135deg, var(--primary-fill), var(--ai-violet));
+    box-shadow: 0 12px 24px -10px color-mix(in srgb, var(--primary-strong) 60%, transparent);
+  }
+  .isi-glass {
+    background: linear-gradient(180deg, color-mix(in srgb, var(--card) 93%, transparent), color-mix(in srgb, var(--primary-tint) 95%, transparent));
+    backdrop-filter: blur(18px) saturate(1.2);
+    border: 1px solid color-mix(in srgb, var(--primary) 22%, var(--border));
+    box-shadow:
+      0 30px 60px -24px color-mix(in srgb, var(--primary-strong) 33%, transparent),
+      0 12px 24px -12px rgb(0 0 0 / 0.13);
+  }
+  .isi-aurora::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 150px;
+    pointer-events: none;
+    background:
+      radial-gradient(260px 120px at 85% -10%, color-mix(in srgb, var(--ai-pink) 33%, transparent), transparent 70%),
+      radial-gradient(240px 110px at 0% 0%, color-mix(in srgb, var(--ai-glow) 27%, transparent), transparent 70%);
+  }
+  .isi-orb {
+    color: #fff;
+    background: conic-gradient(from 200deg, var(--primary-fill), var(--ai-violet), var(--primary-strong), var(--primary-fill));
+    box-shadow: 0 8px 18px -8px color-mix(in srgb, var(--primary-strong) 60%, transparent);
+  }
+  .isi-orb-spin {
+    animation: isi-spin 2.4s linear infinite;
+  }
+  .isi-bubble {
+    color: #fff;
+    background: var(--brand-gradient);
+    box-shadow: 0 8px 16px -10px color-mix(in srgb, var(--primary-strong) 55%, transparent);
+  }
+  .isi-shimmer {
+    background: linear-gradient(90deg, var(--primary-light) 0, #f3e8ff 40%, var(--primary-light) 80%);
+    background-size: 200% 100%;
+    animation: isi-shimmer 1.3s linear infinite;
+  }
+  .isi-card {
+    transition: translate 150ms ease-out, box-shadow 150ms ease-out;
+  }
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    .isi-card:hover {
+      translate: 0 -1px;
+      box-shadow: 0 10px 20px -16px color-mix(in srgb, var(--primary-strong) 40%, transparent);
+    }
+  }
+  .isi-card-warn {
+    border-color: #fcd34d;
+    background: linear-gradient(#fffbeb, var(--card));
+  }
+  .isi-card-done {
+    border-color: #86efac;
+    background: linear-gradient(#f0fdf4, var(--card));
+  }
+  .isi-flash {
+    animation: isi-flash 1.2s ease-out;
+  }
+  .isi-ring {
+    background: conic-gradient(var(--st-paid) var(--p), #e5e7eb 0);
+  }
+  .isi-ring-low {
+    background: conic-gradient(var(--st-partial) var(--p), #e5e7eb 0);
+  }
+  .isi-bulk {
+    background: linear-gradient(135deg, var(--primary-tint), #f5f3ff);
+  }
+  .isi-done {
+    border-color: #86efac;
+    background: linear-gradient(135deg, #f0fdf4, var(--card));
+  }
+  .isi-composer {
+    background: linear-gradient(120deg, var(--primary-fill), var(--ai-violet), var(--ai-pink), var(--primary-fill));
+    background-size: 200% 200%;
+    animation: isi-flow 6s ease infinite;
+  }
+  /* Ghost value inside a matrix cell: dashed while suggested, solid green once recorded. */
+  .isi-ghost {
+    color: var(--primary-strong);
+    border: 1.5px dashed var(--primary-fill);
+    /* Opaque: the cell's own figures must not show through the suggestion. */
+    background: linear-gradient(135deg, var(--primary-tint), #f3e8ff);
+    cursor: pointer;
+  }
+  .isi-ghost-pulse {
+    animation: isi-ghost 1.6s ease-in-out infinite;
+  }
+  .isi-ghost-done {
+    color: var(--st-paid);
+    border-style: solid;
+    border-color: var(--st-paid);
+    background: var(--st-paid-bg);
+  }
+  .isi-petal {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border-radius: 10px 0;
+    background: var(--ai-pink);
+    opacity: 0.8;
+    animation: isi-fall 2.6s ease-in forwards;
+  }
+}
+
+/* While the docked sheet is open, cells scrolled into view stop left of it. */
+@media (min-width: 48rem) {
+  html[data-isi-open] [data-matrix-scroller] {
+    scroll-padding-left: 260px;
+    scroll-padding-right: 420px;
+  }
+}
+
+@keyframes isi-spin {
+  to {
+    filter: hue-rotate(40deg);
+    transform: rotate(360deg);
+  }
+}
+@keyframes isi-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+@keyframes isi-flow {
+  50% {
+    background-position: 100% 50%;
+  }
+}
+@keyframes isi-ghost {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary-fill) 20%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--primary-fill) 8%, transparent);
+  }
+}
+@keyframes isi-flash {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary-fill) 45%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 10px transparent;
+  }
+}
+@keyframes isi-fall {
+  from {
+    transform: translateY(-10px) rotate(0);
+  }
+  to {
+    transform: translateY(260px) rotate(280deg);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .isi-orb-spin,
+  .isi-shimmer,
+  .isi-composer,
+  .isi-ghost-pulse,
+  .isi-flash,
+  .isi-petal {
+    animation: none !important;
+  }
+  .isi-card,
+  .isi-spark-btn {
+    transition: none !important;
+  }
+}
