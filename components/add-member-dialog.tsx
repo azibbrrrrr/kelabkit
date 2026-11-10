@@ -96,7 +96,7 @@ export function AddMemberDialog({
           </DialogHeader>
           <div className="grid gap-1.5">
             <Label htmlFor="member-name">Nama penuh</Label>
-            <Input id="member-name" autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder="cth. Cikgu Nurul Ain" className="h-11 rounded-xl" />
+            <Input id="member-name" autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder="cth. Cikgu Nurul Ain" />
             {similar && (
               <p className="flex items-start gap-1.5 text-xs text-st-partial">
                 <TriangleAlert className="mt-px size-3.5 shrink-0" /> Mungkin sama dengan &quot;{similar.name}&quot;.
@@ -115,7 +115,7 @@ export function AddMemberDialog({
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="member-phone">No. telefon (pilihan)</Label>
-            <Input id="member-phone" inputMode="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="012-345 6789" className="h-11 rounded-xl" />
+            <Input id="member-phone" inputMode="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="012-345 6789" />
             <p className="text-xs text-muted-foreground">Untuk butang WhatsApp dalam Peringatan.</p>
           </div>
           {active.length > 0 && (

@@ -35,7 +35,7 @@ import {
   CircleAlert,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useRef, useState } from "react";
+import { useDeferredValue, useMemo, useRef, useState } from "react";
 
 // Kutipan KGK: every collection as a card, grouped by status. Figures come from
 // view.collectionTotals (charges and confirmed allocations); pending money is shown
@@ -71,6 +71,8 @@ const groupTitles: Record<CollectionStatus, string> = {
 export function KutipanList() {
   const { data, view } = useSnapshot();
   const [query, setQuery] = useState("");
+  // The heavy filter/render follows the keystroke at lower priority, so typing never waits on it.
+  const deferredQuery = useDeferredValue(query);
   const [status, setStatus] = useState<StatusFilter>("all");
   const [restoring, setRestoring] = useState<Collection | null>(null);
   const tabs = useRef<HTMLDivElement>(null);
@@ -83,7 +85,7 @@ export function KutipanList() {
   }, [collections]);
 
   const visible = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = deferredQuery.trim().toLowerCase();
     return collections
       .filter((collection) => status === "all" || collection.status === status)
       .filter(
@@ -93,7 +95,7 @@ export function KutipanList() {
           (collection.description ?? "").toLowerCase().includes(q) ||
           collectionTypeLabels[collection.type].toLowerCase().includes(q),
       );
-  }, [collections, query, status]);
+  }, [collections, deferredQuery, status]);
 
   // Summary across active collections only: drafts collect nothing yet and finished ones are history.
   const summary = useMemo(() => {

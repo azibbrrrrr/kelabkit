@@ -592,7 +592,6 @@ function DetailsStep({
                 value={details.dueDay}
                 onChange={(event) => set("dueDay", event.target.value.replace(/[^\d]/g, "").slice(0, 2))}
                 placeholder="10"
-                className="h-11 rounded-xl bg-card px-3 text-sm"
                 aria-invalid={Boolean(errors.dueDay)}
                 aria-describedby="wz-dueday-hint"
               />
@@ -894,7 +893,6 @@ function MemberRow({
               placeholder="Sebab pengecualian, cth. cuti tanpa gaji"
               aria-label={`Sebab pengecualian untuk ${member.name}`}
               aria-invalid={Boolean(error)}
-              className="h-11 rounded-xl"
             />
           )}
           {error && <p className="text-xs font-medium text-st-unpaid">{error}</p>}

@@ -62,7 +62,7 @@ export function GlobalSearch({ className }: { className?: string }) {
 
   return (
     <div ref={wrapper} className={cn("relative w-full max-w-md", className)}>
-      <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
+      <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
       <Input
         type="search"
         role="combobox"
@@ -91,7 +91,7 @@ export function GlobalSearch({ className }: { className?: string }) {
             setOpen(false);
           }
         }}
-        className="h-10 rounded-xl bg-card pr-3 pl-10 text-[13px] md:text-[13px]"
+        className="pl-9"
       />
       {open && query.trim() && (
         <div id={listId} role="listbox" className="absolute top-12 right-0 left-0 z-50 overflow-hidden rounded-2xl border bg-popover p-1.5 shadow-xl">

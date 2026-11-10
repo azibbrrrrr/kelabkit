@@ -459,7 +459,7 @@ function EditMemberForm({ member, onClose }: { member: Member; onClose: () => vo
       </DialogHeader>
       <div className="grid gap-1.5">
         <Label htmlFor="edit-name">Nama penuh</Label>
-        <Input id="edit-name" value={name} onChange={(event) => setName(event.target.value)} className="h-11 rounded-xl" aria-invalid={Boolean(clash) || undefined} />
+        <Input id="edit-name" value={name} onChange={(event) => setName(event.target.value)} aria-invalid={Boolean(clash) || undefined} />
         {clash && (
           <p className="flex items-start gap-1.5 text-xs text-st-partial">
             <TriangleAlert className="mt-px size-3.5 shrink-0" aria-hidden />
@@ -479,7 +479,7 @@ function EditMemberForm({ member, onClose }: { member: Member; onClose: () => vo
       </div>
       <div className="grid gap-1.5">
         <Label htmlFor="edit-phone">No. telefon (pilihan)</Label>
-        <Input id="edit-phone" inputMode="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="012-345 6789" className="h-11 rounded-xl" />
+        <Input id="edit-phone" inputMode="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="012-345 6789" />
       </div>
       <div className="grid gap-1.5">
         <Label htmlFor="edit-notes">Catatan (pilihan)</Label>

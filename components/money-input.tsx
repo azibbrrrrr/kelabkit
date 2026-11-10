@@ -21,7 +21,7 @@ export const MoneyInput = forwardRef<
         inputMode="decimal"
         autoComplete="off"
         aria-invalid={invalid || undefined}
-        className="h-11 rounded-xl bg-card pr-3 pl-11 text-[15px] font-medium tabular-nums placeholder:font-normal md:text-[15px]"
+        className="pr-3 pl-11 font-medium tabular-nums placeholder:font-normal"
         {...props}
       />
     </div>

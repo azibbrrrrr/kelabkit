@@ -20,7 +20,7 @@ import type { MatrixCell, MatrixColumn, View } from "@/lib/view";
 import { cn } from "@/lib/utils";
 import { ChevronDown, ChevronRight, ChevronUp, ExternalLink, Phone } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { memo, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 
 // Desktop and tablet card view of the matrix. One card per member; clicking the card opens a
 // side panel with every line editable in place, clicking a single line or month opens just
@@ -87,7 +87,7 @@ function ProgressRing({ value }: { value: number }) {
   );
 }
 
-export function MemberCardGrid({ rows, columns }: { rows: Member[]; columns: MatrixColumn[] }) {
+export const MemberCardGrid = memo(function MemberCardGrid({ rows, columns }: { rows: Member[]; columns: MatrixColumn[] }) {
   const { view } = useSnapshot();
   const ghostFor = useGhost();
   const groups = useMemo(() => groupColumns(columns), [columns]);
@@ -270,7 +270,7 @@ export function MemberCardGrid({ rows, columns }: { rows: Member[]; columns: Mat
       />
     </>
   );
-}
+});
 
 // Side panel -------------------------------------------------------------------------------
 

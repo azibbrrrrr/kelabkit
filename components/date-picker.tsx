@@ -12,7 +12,7 @@ import { ms } from "react-day-picker/locale";
 
 /** Shared look for picker triggers so they read as form fields (border ≥3:1, focus ring). */
 export const fieldTriggerClass =
-  "h-11 w-full min-w-0 justify-start gap-2 rounded-xl border-input bg-card px-3 text-sm font-normal text-foreground shadow-none hover:bg-card hover:border-ring aria-expanded:bg-card aria-expanded:border-ring aria-invalid:border-destructive motion-safe:not-disabled:active:not-aria-[haspopup]:scale-100 dark:bg-card";
+  "h-10 w-full min-w-0 justify-start gap-2 rounded-[10px] border-input bg-card px-3 text-sm font-normal text-foreground shadow-none pointer-coarse:h-11 pointer-coarse:text-base hover:border-input-hover hover:bg-card focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/20 focus-visible:ring-offset-0 aria-expanded:border-ring aria-expanded:bg-card aria-invalid:border-destructive motion-safe:not-disabled:active:not-aria-[haspopup]:scale-100 dark:bg-card";
 
 /**
  * A calendar-day field. The value stays a Malaysian `YYYY-MM-DD` string; the calendar only

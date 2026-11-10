@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { formatMoney } from "@/lib/format";
 import { cellStatusLabels, overdueLabel, pendingLabel, type CellStatus, type Tone } from "@/lib/labels";
 import { cn } from "@/lib/utils";
-import { Check, Circle, Clock, Hourglass, Minus, Search, TriangleAlert, type LucideIcon } from "lucide-react";
+import { Check, Circle, Clock, Hourglass, Minus, Search, TriangleAlert, X, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, type ComponentProps, type ComponentType, type KeyboardEvent, type ReactNode, type SVGProps } from "react";
 
@@ -501,18 +501,33 @@ export function SearchInput({
   placeholder?: string;
   className?: string;
 }) {
+  const input = useRef<HTMLInputElement>(null);
   return (
     <div className={cn("relative w-full sm:max-w-xs", className)}>
       <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
       <Input
+        ref={input}
         id={id}
         type="search"
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         aria-label={placeholder}
-        className="h-10 rounded-xl bg-card pr-3 pl-9 md:text-sm"
+        className={cn("pl-9", value && "pr-9")}
       />
+      {value && (
+        <button
+          type="button"
+          aria-label="Kosongkan carian"
+          onClick={() => {
+            onChange("");
+            input.current?.focus();
+          }}
+          className="absolute top-1/2 right-1 grid size-8 -translate-y-1/2 place-items-center rounded-lg text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <X className="size-4" aria-hidden />
+        </button>
+      )}
     </div>
   );
 }

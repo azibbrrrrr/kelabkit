@@ -39,6 +39,7 @@
   --color-destructive-border: var(--destructive-border);
   --color-border: var(--border);
   --color-input: var(--input);
+  --color-input-hover: var(--input-hover);
   --color-ring: var(--ring);
   --color-success: var(--success);
   --color-warning: var(--warning);
@@ -116,8 +117,10 @@
      3.4:1 or better against white, the page and every tint in all five themes. */
   --destructive-border: #e05252;
   --border: #f5d6df;
-  /* Control boundaries (inputs, checkboxes) need 3:1; --border stays decorative. */
-  --input: #b97e99;
+  /* Control boundaries (inputs, checkboxes) need 3:1; --border stays decorative. One neutral grey
+     for every theme: 3.17:1 or better on white and on all five page backgrounds. Hover darkens. */
+  --input: #868d98;
+  --input-hover: #6b7280;
   /* Focus ring at full strength: 3:1 or better against white and the page background. */
   --ring: var(--primary-fill);
   --success: #16a34a;
@@ -185,7 +188,6 @@
   --accent: #f6f2fe;
   --accent-foreground: #5b3aa8;
   --border: #e2d9f7;
-  --input: #9488bc;
   --chart-1: #8e6bd8;
   --chart-2: #b39ae8;
   --chart-3: #d3c5f3;
@@ -210,7 +212,6 @@
   --accent: #effaf8;
   --accent-foreground: #0f6e64;
   --border: #cdebe6;
-  --input: #6a9897;
   --chart-1: #1e9e91;
   --chart-2: #5cc2b7;
   --chart-3: #a5e0d9;
@@ -235,7 +236,6 @@
   --accent: #fff3ec;
   --accent-foreground: #a3461a;
   --border: #f8dacb;
-  --input: #af8775;
   --chart-1: #ee8455;
   --chart-2: #f4a882;
   --chart-3: #f9cbb3;
@@ -260,7 +260,6 @@
   --accent: #f2f7f1;
   --accent-foreground: #3f6647;
   --border: #d8e6d6;
-  --input: #7f9587;
   --chart-1: #6e9e78;
   --chart-2: #95ba9c;
   --chart-3: #bfd6c2;
@@ -298,13 +297,47 @@
     background: color-mix(in srgb, var(--primary) 30%, transparent);
     color: var(--foreground);
   }
-  /* Keeps 16px inputs on phones so iOS does not zoom while the treasurer types. */
-  @media (max-width: 767px) {
+  /* Keeps 16px inputs on touch devices so iOS does not zoom while the treasurer types. */
+  @media (pointer: coarse) {
     input,
     select,
     textarea {
       font-size: 16px !important;
     }
+  }
+}
+
+/* Shared chrome of every text-like field (Input, Textarea, SelectTrigger, pickers): 1px neutral
+   border, card-white fill, 10px radius (matches buttons). Height and font size stay on the
+   component (h-10 text-sm, h-11 text-base on coarse pointers). Focus = ring-colour border plus a
+   soft 3px halo, never a second border. */
+@utility field-control {
+  border: 1px solid var(--input);
+  border-radius: 10px;
+  background-color: var(--card);
+  color: var(--foreground);
+  outline: none;
+  transition: border-color 120ms ease-out, box-shadow 120ms ease-out;
+  &::placeholder {
+    color: var(--muted-foreground);
+  }
+  &:hover:not(:disabled, :focus-visible, [aria-invalid="true"]) {
+    border-color: var(--input-hover);
+  }
+  &:focus-visible {
+    border-color: var(--ring);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 20%, transparent);
+  }
+  &[aria-invalid="true"] {
+    border-color: var(--destructive);
+  }
+  &[aria-invalid="true"]:focus-visible {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--destructive) 20%, transparent);
+  }
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+    background-color: var(--muted);
   }
 }
 

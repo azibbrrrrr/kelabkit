@@ -23,7 +23,7 @@ import type { Member, Sen } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { ListPlus, SearchX, UserCheck, UserPlus, UsersRound, Wallet } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 
 // The member register: who is in the club, which collections they are in, and what they
 // still owe now. Balances come from the read model (view.memberTotals), never computed here.
@@ -36,6 +36,8 @@ export function AhliPage() {
   const { data, view } = useSnapshot();
   const router = useRouter();
   const [query, setQuery] = useState("");
+  // The heavy filter/render follows the keystroke at lower priority, so typing never waits on it.
+  const deferredQuery = useDeferredValue(query);
   const [filter, setFilter] = useState<Filter>("all");
   const [addOne, setAddOne] = useState(false);
   const [addMany, setAddMany] = useState(false);
@@ -66,7 +68,7 @@ export function AhliPage() {
   );
 
   const rows = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = deferredQuery.trim().toLowerCase();
     const digits = q.replace(/\D/g, "");
     return all.filter(({ member, dueNow }) => {
       if (filter === "active" && !member.active) return false;
@@ -76,7 +78,7 @@ export function AhliPage() {
       if (member.name.toLowerCase().includes(q)) return true;
       return digits.length >= 3 && (member.phone ?? "").replace(/\D/g, "").includes(digits);
     });
-  }, [all, filter, query]);
+  }, [all, filter, deferredQuery]);
 
   const owingTotal = all.reduce((total, row) => total + row.dueNow, 0);
 

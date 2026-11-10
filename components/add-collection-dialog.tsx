@@ -116,7 +116,7 @@ export function AddCollectionDialog({
           </DialogHeader>
           <div className="grid gap-1.5">
             <Label htmlFor="col-name">Nama kutipan</Label>
-            <Input id="col-name" autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder="cth. Jamuan Akhir Tahun" className="h-11 rounded-xl" />
+            <Input id="col-name" autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder="cth. Jamuan Akhir Tahun" />
           </div>
           <div className="grid gap-1.5">
             <Label id="col-type-label">Jenis</Label>

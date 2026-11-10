@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 import { BadgeCheck, FilterX, Hourglass, Plus, ReceiptText, Undo2, UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 
 // Every payment transaction, with the review queue for payments recorded before the money
 // was confirmed. Nothing here edits a payment: confirm and reverse go through PaymentList.
@@ -67,6 +67,8 @@ export function BayaranPage() {
   const tab: Tab = TABS.includes(raw as Tab) ? (raw as Tab) : "semua";
 
   const [query, setQuery] = useState("");
+  // The heavy filter/render follows the keystroke at lower priority, so typing never waits on it.
+  const deferredQuery = useDeferredValue(query);
   const [method, setMethod] = useState<PaymentMethod | "all">("all");
   const [state, setState] = useState<PaymentState | "all">("all");
   const [from, setFrom] = useState("");
@@ -108,7 +110,7 @@ export function BayaranPage() {
 
   const rows = useMemo(() => {
     const base = tab === "semua" ? sorted : reversed;
-    const q = query.trim().toLowerCase();
+    const q = deferredQuery.trim().toLowerCase();
     return base.filter((payment) => {
       if (method !== "all" && payment.method !== method) return false;
       if (tab === "semua" && state !== "all" && payment.state !== state) return false;
@@ -121,7 +123,7 @@ export function BayaranPage() {
       }
       return true;
     });
-  }, [tab, sorted, reversed, query, method, state, from, to, view.membersById]);
+  }, [tab, sorted, reversed, deferredQuery, method, state, from, to, view.membersById]);
 
   const selectedPayment = selected ? data.payments.find((payment) => payment.id === selected) ?? null : null;
 

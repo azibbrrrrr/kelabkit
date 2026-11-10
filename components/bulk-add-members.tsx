@@ -371,7 +371,7 @@ export function BulkAddMembersDialog({
                           onChange={(event) => update(row.key, { name: event.target.value, distinct: false })}
                           aria-label={`Nama baris ${index + 1}`}
                           aria-invalid={flag.blocking || undefined}
-                          className="h-10 min-w-0 flex-1 rounded-xl bg-card"
+                          className="min-w-0 flex-1"
                         />
                         <Button
                           type="button"
@@ -396,7 +396,7 @@ export function BulkAddMembersDialog({
                           onChange={(event) => update(row.key, { phone: event.target.value })}
                           placeholder="No. telefon (pilihan)"
                           aria-label={`No. telefon baris ${index + 1}`}
-                          className="h-9 rounded-xl bg-card"
+                          className="h-9 pointer-coarse:h-11"
                         />
                       </div>
                       {flag.warnings.length > 0 && (
