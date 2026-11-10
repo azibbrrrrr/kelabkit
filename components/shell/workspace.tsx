@@ -7,7 +7,7 @@ import { IsiPantasButton, IsiPantasPill, IsiPantasSheet } from "@/components/isi
 import { AppSidebar } from "@/components/shell/app-sidebar";
 import { GlobalSearch } from "@/components/shell/global-search";
 import { LanguagePill } from "@/components/language-pill";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -21,25 +21,30 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Separator } from "@/components/ui/separator";
 import { SidebarInset, SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { Spinner } from "@/components/ui/spinner";
+import { authClient } from "@/lib/auth/client";
+import { leaveDemo } from "@/lib/auth/mode";
 import { formatDay, formatMoney, initials } from "@/lib/format";
 import { useLocale, useT } from "@/lib/i18n/react";
 import { isActive } from "@/lib/nav";
 import { cn } from "@/lib/utils";
-import { Bell, ChevronDown, House, Menu, Plus, Settings, Sheet, TriangleAlert, UsersRound } from "lucide-react";
+import { Bell, ChevronDown, House, LogOut, Menu, Plus, Settings, Sheet, TriangleAlert, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, type CSSProperties, type ReactNode } from "react";
 
-export function Workspace({ children }: { children: ReactNode }) {
+export type ShellUser = { name: string; email: string; image: string | null };
+
+/** `user` is the signed-in Google account; absent in demo mode. */
+export function Workspace({ user, children }: { user?: ShellUser; children: ReactNode }) {
   return (
-    <KelabDataProvider>
+    <KelabDataProvider mode={user ? "neon" : "demo"}>
       <IsiPantasProvider>
         <SidebarProvider style={{ "--sidebar-width-icon": "3.5rem" } as CSSProperties}>
           <RestoreCollapsedSidebar />
           <AppSidebar />
           <SidebarInset className="page-glow relative min-w-0 overflow-x-clip md:peer-data-[variant=inset]:overflow-clip md:peer-data-[variant=inset]:rounded-2xl md:peer-data-[variant=inset]:border md:peer-data-[variant=inset]:border-border/70 md:peer-data-[variant=inset]:shadow-[0_1px_2px_color-mix(in_srgb,var(--foreground)_4%,transparent),0_8px_24px_-16px_color-mix(in_srgb,var(--primary)_22%,transparent)] print:m-0! print:rounded-none! print:border-0! print:shadow-none!">
             <Floral asset="corner-top-right" className="top-0 right-0 z-0 hidden w-[260px] opacity-80 lg:block" />
-            <TopBar />
+            <TopBar user={user} />
             <main className="relative z-10 flex flex-1 flex-col pb-24 md:pb-0 print:pb-0">
               <DataGate>{children}</DataGate>
             </main>
@@ -72,11 +77,16 @@ function RestoreCollapsedSidebar() {
   return null;
 }
 
-function TopBar() {
+function TopBar({ user }: { user?: ShellUser }) {
   const t = useT();
   const { demo, data } = useKelab();
   const { isMobile, state } = useSidebar();
-  const treasurer = data?.club.treasurerName ?? t("shell.treasurer");
+  const treasurer = user?.name ?? data?.club.treasurerName ?? t("shell.treasurer");
+  const signOut = async () => {
+    if (user) await authClient.signOut().catch(() => undefined);
+    leaveDemo();
+    window.location.assign("/masuk/");
+  };
   const toggleLabel = isMobile ? t("shell.openMenu") : state === "collapsed" ? t("shell.expandSidebar") : t("shell.collapseSidebar");
   return (
     <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b border-border/70 bg-background/80 px-3 backdrop-blur-xl md:rounded-t-2xl md:px-6 print:hidden">
@@ -99,6 +109,7 @@ function TopBar() {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="h-auto gap-2.5 rounded-xl px-1.5 py-1 font-normal hover:bg-primary-tint aria-expanded:bg-primary-tint">
               <Avatar className="size-9 border-2 border-primary-light">
+                {user?.image && <AvatarImage src={user.image} alt="" referrerPolicy="no-referrer" />}
                 <AvatarFallback className="bg-primary-light text-xs font-semibold text-primary-strong">{initials(treasurer)}</AvatarFallback>
               </Avatar>
               <span className="hidden text-left leading-tight md:block">
@@ -111,6 +122,7 @@ function TopBar() {
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>
               <span className="block text-sm">{treasurer}</span>
+              {user && <span className="block truncate text-xs font-normal text-muted-foreground">{user.email}</span>}
               <span className="block text-xs font-normal text-muted-foreground">{data?.club.name}</span>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
@@ -118,6 +130,9 @@ function TopBar() {
               <Link href="/tetapan/">
                 <Settings /> {t("shell.settingsAndTheme")}
               </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => void signOut()}>
+              <LogOut /> {user ? t("shell.signOut") : t("shell.leaveDemo")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

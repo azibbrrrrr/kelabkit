@@ -6,7 +6,7 @@ Collection and payment tracker for a Malaysian Kelab Guru dan Kakitangan (KGK) t
 
 ## Status
 
-Phase 1 (UI on demo data). No backend yet: `lib/backend/demo.ts` keeps data in the browser's localStorage. Phase 2 adds Neon Postgres behind the same `KelabBackend` interface. Engineering conventions follow Growlink Admin (`Growlink-Project/growlink-admin`), never its branding or business logic.
+Two backends behind one `KelabBackend` interface: `lib/backend/demo.ts` (browser localStorage, "Cuba demo", no account) and `lib/backend/neon.ts` (Google sign-in via Neon Auth, data in Neon Postgres through server actions). The server picks one per request in `app/(kelab)/layout.tsx` (`kk_mode=demo` cookie, else the session). Engineering conventions follow Growlink Admin (`Growlink-Project/growlink-admin`), never its branding or business logic.
 
 ## Rules
 
@@ -41,6 +41,10 @@ npm run db:seed       # demo club on the dev branch (needs KELABKIT_DB_ENV=dev)
 npm run db:test       # money + tenancy tests against the dev database (not part of npm test)
 ```
 
-Phase 2 database: `db/schema.ts`, `db/migrations/`, `docs/design/phase-2-backend.md`. Copy `.env.example` to `.env.local`.
+Phase 2 database and auth: `db/schema.ts`, `db/migrations/`, `docs/design/phase-2-backend.md`. Copy `.env.example` to `.env.local`.
+
+- Only `lib/db/with-club.ts` may touch Postgres (`tests/db-boundary.test.ts`). Server code uses `withClub`/`withUser`; money tables are written only by `kk_*` SQL functions, never by direct SQL.
+- Every server action goes through `act()` (`lib/server/act.ts`): session and club come from the server, never from arguments. Actions return a `Result`; `lib/backend/neon.ts` turns it back into a `KelabError`.
+- Signed-out visitors are redirected to `/masuk` by `proxy.ts`. Browser probes need the `kk_mode=demo` cookie to reach the app without an account.
 
 Commits: Conventional Commits.
