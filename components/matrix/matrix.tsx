@@ -6,6 +6,7 @@ import { useKelab, useSnapshot } from "@/components/data-provider";
 import { CellEditor } from "@/components/matrix/cell-editor";
 import { MonthTile } from "@/components/matrix/month-tile";
 import { ChargeStatusChips, EmptyState, FilterPills, Money, PageHeader, PageShell, SearchInput, StatusChip } from "@/components/shared";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -20,7 +21,7 @@ import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { messageFor } from "@/lib/errors";
-import { formatMoney, formatMoneyShort, formatMonth } from "@/lib/format";
+import { formatMoney, formatMoneyShort, formatMonth, initials } from "@/lib/format";
 import { cellStatusLabels } from "@/lib/labels";
 import { monthOf } from "@/lib/money/months";
 import type { Collection, Member, Sen } from "@/lib/types";
@@ -42,7 +43,7 @@ import {
   UserPlus,
 } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { toast } from "sonner";
 
 // The Excel-like tracker: members are rows, collections (or months of a monthly
@@ -56,6 +57,17 @@ type Sort = "name" | "owing";
 type Active = { r: number; c: number };
 
 const MEMBER_COL_W = 224;
+
+// Frozen-column edges. The scroller carries data-at-start / data-at-end (set from its scroll
+// position, not React state, so scrolling never re-renders the grid); each edge shadow shows
+// only while content is hidden behind that frozen column.
+const LEFT_EDGE =
+  "border-r-grid-edge after:pointer-events-none after:absolute after:inset-y-0 after:left-[calc(100%+1px)] after:w-3 after:bg-linear-to-r after:from-grid-shadow after:to-transparent after:opacity-0 group-data-[at-start=false]/grid:after:opacity-100";
+const RIGHT_EDGE =
+  "border-l-grid-edge before:pointer-events-none before:absolute before:inset-y-0 before:right-[calc(100%+1px)] before:w-3 before:bg-linear-to-l before:from-grid-shadow before:to-transparent before:opacity-0 group-data-[at-end=false]/grid:before:opacity-100";
+// Row highlight on hover, and for the active cell's row while the grid has focus or the editor
+// is open. Background colour only, 100ms.
+const ROW_FADE = "transition-[background-color] duration-100";
 
 export function MatrixPage() {
   const { data, view } = useSnapshot();
@@ -311,6 +323,29 @@ function Grid({
   const [dirty, setDirty] = useState(false);
   const [guard, setGuard] = useState(false);
   const scroller = useRef<HTMLDivElement>(null);
+  const groupRow = useRef<HTMLTableRowElement>(null);
+  // The month row sticks directly under the group row; measured so no body cell shows
+  // through a gap when the group labels wrap or grow.
+  const [groupRowH, setGroupRowH] = useState(41);
+
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    const update = () => {
+      const max = el.scrollWidth - el.clientWidth;
+      el.dataset.atStart = String(el.scrollLeft <= 1);
+      el.dataset.atEnd = String(el.scrollLeft >= max - 1);
+    };
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    if (el.firstElementChild) observer.observe(el.firstElementChild);
+    return () => {
+      el.removeEventListener("scroll", update);
+      observer.disconnect();
+    };
+  }, []);
 
   // Keep the active cell inside the grid when filters shrink it.
   const r = Math.min(active.r, rows.length - 1);
@@ -394,6 +429,16 @@ function Grid({
   const headerGroups = table.getHeaderGroups();
   const hasGroups = headerGroups.length > 1;
 
+  useLayoutEffect(() => {
+    const el = groupRow.current;
+    if (!el || !hasGroups) return;
+    const measure = () => setGroupRowH(el.getBoundingClientRect().height);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasGroups]);
+
   const rowTotals = (member: Member) => {
     let dueNow = 0;
     for (const column of columns) {
@@ -424,17 +469,17 @@ function Grid({
         aria-label="Matriks kutipan"
         aria-rowcount={rows.length + (hasGroups ? 3 : 2)}
         onKeyDown={onKeyDown}
-        className="max-h-[calc(100svh-15rem)] min-h-64 overflow-auto overscroll-contain rounded-2xl"
+        className="group/grid max-h-[calc(100svh-15rem)] min-h-64 overflow-auto overscroll-contain rounded-2xl"
       >
         <table className="border-separate border-spacing-0 text-[13px]">
           <thead>
             {headerGroups.map((group, gi) => (
-              <tr key={group.id}>
+              <tr key={group.id} ref={gi === 0 ? groupRow : undefined}>
                 {gi === 0 && (
                   <th
                     rowSpan={headerGroups.length}
                     style={{ width: MEMBER_COL_W, minWidth: MEMBER_COL_W }}
-                    className="sticky top-0 left-0 z-30 border-r border-b border-border bg-primary-tint px-4 text-left align-bottom text-xs font-semibold text-muted-foreground"
+                    className={cn("sticky top-0 left-0 z-30 border-r border-b border-border bg-primary-tint px-4 text-left align-bottom text-xs font-semibold text-muted-foreground", LEFT_EDGE)}
                   >
                     <div className="py-3">Ahli ({rows.length})</div>
                   </th>
@@ -456,13 +501,13 @@ function Grid({
                       rowSpan={single && hasGroups ? 2 : 1}
                       className={cn(
                         "sticky z-20 border-b border-l border-border bg-primary-tint px-3 text-left align-bottom font-semibold",
-                        gi === 0 ? "top-0" : "top-[41px]",
+                        gi === 0 && "top-0",
                         isGroup && "border-b-primary/30",
                       )}
-                      style={{ minWidth: column ? (column.period ? 104 : 156) : undefined }}
+                      style={{ minWidth: column ? (column.period ? 104 : 156) : undefined, top: gi === 0 ? undefined : groupRowH }}
                     >
                       {isGroup || single ? (
-                        <ColumnHeader collection={collection} onHide={() => onHide(collection.id)} wide={!isGroup} />
+                        <ColumnHeader collection={collection} onHide={() => onHide(collection.id)} wide={!isGroup} pinned={isGroup} />
                       ) : (
                         <div className={cn("py-2 text-xs", column?.period && column.period.month === monthOf(view.today) && "text-primary-strong")}>
                           {column?.short}
@@ -475,7 +520,7 @@ function Grid({
                 {gi === 0 && (
                   <th
                     rowSpan={headerGroups.length}
-                    className="sticky top-0 right-0 z-30 min-w-[120px] border-b border-l border-border bg-primary-tint px-3 text-right align-bottom text-xs font-semibold text-muted-foreground shadow-[-8px_0_12px_-10px_rgba(0,0,0,.18)]"
+                    className={cn("sticky top-0 right-0 z-30 min-w-[120px] border-b border-l border-border bg-primary-tint px-3 text-right align-bottom text-xs font-semibold text-muted-foreground", RIGHT_EDGE)}
                   >
                     <div className="py-3">Baki semasa</div>
                   </th>
@@ -486,20 +531,38 @@ function Grid({
           <tbody>
             {rows.map((member, ri) => {
               const due = rowTotals(member);
+              const activeRow = ri === r;
+              // Highlight: hover always; the active cell's row only while the grid holds focus or
+              // the editor is open, so an untouched grid does not mark row one.
+              const highlight = cn(
+                "group-hover/row:bg-primary-tint",
+                activeRow && (editing ? "bg-primary-tint" : "group-focus-within/grid:bg-primary-tint"),
+              );
               return (
                 <tr key={member.id} className="group/row">
                   <th
                     scope="row"
                     style={{ width: MEMBER_COL_W, minWidth: MEMBER_COL_W, maxWidth: MEMBER_COL_W }}
                     className={cn(
-                      "sticky left-0 z-10 border-r border-b border-border bg-card px-4 py-2 text-left font-medium group-hover/row:bg-primary-tint",
-                      ri === r && "bg-primary-tint",
+                      "sticky left-0 z-10 border-r border-b border-border bg-grid-frozen px-4 py-2 text-left font-medium group-hover/row:shadow-[inset_3px_0_0_var(--primary)]",
+                      LEFT_EDGE,
+                      ROW_FADE,
+                      highlight,
+                      activeRow && (editing ? "shadow-[inset_3px_0_0_var(--primary)]" : "group-focus-within/grid:shadow-[inset_3px_0_0_var(--primary)]"),
                     )}
                   >
-                    <Link href={`/ahli/${member.id}/`} className="block truncate hover:text-primary-strong hover:underline" tabIndex={-1}>
-                      {member.name}
-                    </Link>
-                    {!member.active && <span className="text-[11px] font-normal text-muted-foreground">Tidak aktif</span>}
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <Avatar className="size-7 after:hidden" aria-hidden>
+                        <AvatarFallback className="bg-primary-light text-[11px] font-semibold text-primary-strong">{initials(member.name)}</AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0">
+                        <Link href={`/ahli/${member.id}/`} className="block truncate hover:text-primary-strong hover:underline" tabIndex={-1}>
+                          {member.name}
+                        </Link>
+                        {/* foreground/70, not muted: muted grey drops under 4.5:1 on the highlighted row. */}
+                        {!member.active && <span className="block text-[11px] font-normal text-foreground/70">Tidak aktif</span>}
+                      </div>
+                    </div>
                   </th>
                   {columns.map((column, ci) => {
                     const cell = view.cell(member, column);
@@ -523,9 +586,14 @@ function Grid({
                         }}
                         onFocus={(event) => own(event) && (ri !== r || ci !== c) && setActive({ r: ri, c: ci })}
                         className={cn(
-                          "relative h-[58px] cursor-cell border-b border-l border-border px-2.5 align-middle outline-none group-hover/row:bg-primary-tint/50",
-                          isActive && "z-[5] bg-primary-tint ring-2 ring-primary ring-inset",
-                          column.period && column.period.month === monthOf(view.today) && !isActive && "bg-primary-tint/30",
+                          "relative h-[58px] cursor-cell border-b border-l border-border px-2.5 align-middle outline-none",
+                          ROW_FADE,
+                          isActive
+                            ? "z-[5] bg-primary-tint ring-2 ring-primary ring-inset"
+                            : column.period && column.period.month === monthOf(view.today)
+                              ? "bg-primary-tint/30"
+                              : ri % 2 === 1 && "bg-grid-zebra",
+                          highlight,
                         )}
                       >
                         <CellView cell={cell} />
@@ -561,7 +629,7 @@ function Grid({
                       </td>
                     );
                   })}
-                  <td className="sticky right-0 z-[6] border-b border-l border-border bg-card px-3 text-right font-semibold tabular-nums shadow-[-8px_0_12px_-10px_rgba(0,0,0,.18)] group-hover/row:bg-primary-tint">
+                  <td className={cn("sticky right-0 z-10 border-b border-l border-border bg-grid-frozen px-3 text-right font-semibold tabular-nums", RIGHT_EDGE, ROW_FADE, highlight)}>
                     {due > 0 ? <span className="text-st-unpaid">{formatMoney(due)}</span> : <span className="text-st-paid">RM 0.00</span>}
                   </td>
                 </tr>
@@ -570,7 +638,7 @@ function Grid({
           </tbody>
           <tfoot>
             <tr>
-              <th className="sticky bottom-0 left-0 z-30 border-t border-r border-border bg-primary-light px-4 py-2.5 text-left text-xs font-semibold">
+              <th className={cn("sticky bottom-0 left-0 z-30 border-t border-r border-border bg-primary-light px-4 py-2.5 text-left text-xs font-semibold", LEFT_EDGE)}>
                 Jumlah diterima
               </th>
               {columns.map((column) => {
@@ -582,7 +650,7 @@ function Grid({
                   </td>
                 );
               })}
-              <td className="sticky right-0 bottom-0 z-30 border-t border-l border-border bg-primary-light" />
+              <td className={cn("sticky right-0 bottom-0 z-30 border-t border-l border-border bg-primary-light", RIGHT_EDGE)} />
             </tr>
           </tfoot>
         </table>
@@ -648,7 +716,7 @@ function CellView({ cell }: { cell: MatrixCell }) {
 }
 
 /** Header for a collection: name (double-click or menu to rename), amount, actions. */
-function ColumnHeader({ collection, onHide, wide }: { collection: Collection; onHide: () => void; wide: boolean }) {
+function ColumnHeader({ collection, onHide, wide, pinned }: { collection: Collection; onHide: () => void; wide: boolean; pinned?: boolean }) {
   const { run } = useKelab();
   const { view } = useSnapshot();
   const [renaming, setRenaming] = useState(false);
@@ -687,7 +755,12 @@ function ColumnHeader({ collection, onHide, wide }: { collection: Collection; on
     collection.type === "voluntary" ? "Sukarela" : collection.type === "monthly" ? `${formatMoneyShort(collection.defaultAmount ?? 0)}/bln` : formatMoneyShort(collection.defaultAmount ?? 0);
 
   return (
-    <div className={cn("flex items-start justify-between gap-1 py-2", wide ? "max-w-[220px]" : "")}>
+    // A monthly group's label pins beside the frozen Ahli column (its th's px-3 included) while
+    // the group's months scroll under it, until the group itself scrolls out.
+    <div
+      className={cn("flex items-start justify-between gap-1 py-2", wide && "max-w-[220px]", pinned && "sticky w-max max-w-[260px] gap-3")}
+      style={pinned ? { left: MEMBER_COL_W + 12 } : undefined}
+    >
       <div className="min-w-0">
         {renaming ? (
           <input
