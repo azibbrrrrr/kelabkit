@@ -8,6 +8,7 @@ import "server-only";
 import { neonConfig, Pool, type PoolClient } from "@neondatabase/serverless";
 import ws from "ws";
 import { KelabError, errorMessages, type ErrorCode } from "@/lib/errors";
+import type { RateLimit } from "@/lib/rate-limit";
 
 neonConfig.webSocketConstructor = ws;
 
@@ -28,7 +29,18 @@ type Options = {
   readOnlySnapshot?: boolean;
   /** Names this transaction in timing logs (e.g. "load"). */
   label?: string;
+  /**
+   * Counts this transaction against the session user's budget (kk_rate_hit, migration 0006) and refuses it
+   * with RATE_LIMITED when over. The check rides in the preamble batch, so it costs no extra round trip.
+   */
+  rateLimit?: RateLimit;
 };
+
+/** The statement that spends one hit. Scope is a fixed word and the numbers are integers from our own constants. */
+function rateHitSql(limit: RateLimit): string {
+  if (!/^[a-z_]{1,24}$/.test(limit.scope) || !Number.isInteger(limit.limit) || !Number.isInteger(limit.windowSeconds)) throw new Error("Invalid rate limit.");
+  return `select kk_rate_hit('${limit.scope}', ${limit.limit}, ${limit.windowSeconds}) as allowed`;
+}
 
 // Round trips and wall time per transaction, so "is it slow" is a number. Logged in `next dev`
 // or when KELABKIT_TIMING=1; also pushed to globalThis.__kelabTimings for tests. Never logs SQL or values.
@@ -73,24 +85,40 @@ async function run<T>(userId: string, clubId: string | null, fn: (tx: Tx) => Pro
         },
       })
     : client;
+  // Set once this transaction has been counted in-transaction; a rollback would undo that count.
+  let limited: RateLimit | null = null;
   try {
     // One round trip for the whole preamble (simple protocol, several statements). The ids are
     // validated UUIDs above, so inlining them is safe; a non-member makes kk_assert_member raise,
     // which aborts the batch and lands in the rollback below. A club id from a cookie or request is
     // never trusted: membership is checked in this same batch, before anything else runs.
-    await tx.query(
+    const preamble = (await tx.query(
       [
         options.readOnlySnapshot ? "begin isolation level repeatable read read only" : "begin",
         "set local role kelabkit_app",
         `select set_config('app.user_id', '${userId}', true), set_config('app.club_id', '${clubId ?? ""}', true)`,
         clubId ? `select kk_assert_member('${clubId}'::uuid)` : "select 1",
+        ...(options.rateLimit ? [rateHitSql(options.rateLimit)] : []),
       ].join("; "),
-    );
+    )) as unknown as { rows: { allowed?: boolean }[] }[];
+    if (options.rateLimit) {
+      // Membership came first in the batch, so a stranger gets FORBIDDEN, never a count.
+      if (preamble.at(-1)?.rows[0]?.allowed !== true) throw new KelabError("RATE_LIMITED");
+      limited = options.rateLimit;
+    }
     const result = await fn(tx);
     await tx.query("commit");
     return result;
   } catch (error) {
     await client.query("rollback").catch(() => undefined);
+    // The rollback took this request's hit with it. Charge it again in its own tiny transaction (one
+    // round trip, failure path only), so a client that only ever sends refused requests still runs out
+    // of budget. Never for RATE_LIMITED itself: that one is already over.
+    if (limited && !(error instanceof KelabError && error.code === "RATE_LIMITED")) {
+      await client
+        .query(["begin", "set local role kelabkit_app", `select set_config('app.user_id', '${userId}', true)`, rateHitSql(limited), "commit"].join("; "))
+        .catch(() => client.query("rollback").catch(() => undefined));
+    }
     throw mapDbError(error);
   } finally {
     client.release();

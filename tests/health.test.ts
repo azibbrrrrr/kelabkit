@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { appVersion, buildHealth } from "@/lib/server/health";
+import { appVersion, buildHealth, memoizeHealth } from "@/lib/server/health";
 
 const ok = () => Promise.resolve();
 const never = (signal: AbortSignal) => new Promise<void>((_, reject) => signal.addEventListener("abort", () => reject(new Error("aborted"))));
@@ -47,5 +47,30 @@ describe("appVersion", () => {
     expect(appVersion({ VERCEL_GIT_COMMIT_SHA: "0123456789abcdef" })).toBe("0123456");
     expect(appVersion({})).toBe("dev");
     expect(appVersion({ VERCEL_GIT_COMMIT_SHA: " " })).toBe("dev");
+  });
+});
+
+describe("memoizeHealth", () => {
+  it("runs the probes once for a burst and again after the ttl", async () => {
+    let calls = 0;
+    let clock = 0;
+    const get = memoizeHealth(async () => ++calls, 5000, () => clock);
+    const burst = await Promise.all(Array.from({ length: 200 }, () => get()));
+    expect(new Set(burst)).toEqual(new Set([1]));
+    clock = 4999;
+    expect(await get()).toBe(1);
+    clock = 5000;
+    expect(await get()).toBe(2);
+    expect(calls).toBe(2);
+  });
+
+  it("does not cache a rejected run", async () => {
+    let calls = 0;
+    const get = memoizeHealth(async () => {
+      if (++calls === 1) throw new Error("boom");
+      return "ok";
+    }, 5000);
+    await expect(get()).rejects.toThrow("boom");
+    expect(await get()).toBe("ok");
   });
 });

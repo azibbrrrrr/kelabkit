@@ -19,6 +19,7 @@ import {
   date,
   foreignKey,
   index,
+  integer,
   jsonb,
   pgEnum,
   pgTable,
@@ -323,4 +324,12 @@ export const userPrefs = pgTable("user_prefs", {
   userId: uuid("user_id").primaryKey(),
   prefs: jsonb("prefs").notNull().default(sql`'{}'::jsonb`),
   updatedAt: instant("updated_at").notNull().defaultNow(),
+});
+
+// Fixed-window counters for kk_rate_hit(). One row per scope and user ("mutation:<user id>"). RLS on, no
+// privilege for kelabkit_app: only the SECURITY DEFINER function touches it (migration 0006).
+export const rateLimits = pgTable("rate_limits", {
+  bucket: text("bucket").primaryKey(),
+  windowStart: instant("window_start").notNull().defaultNow(),
+  hits: integer("hits").notNull().default(0),
 });

@@ -90,6 +90,8 @@ async function wipeStored(club: string) {
 
 const TABLES = ["audit_logs", "attachments", "payment_allocations", "payments", "charges", "participants", "collection_periods", "collections", "members", "club_settings", "club_members"];
 async function dropClub(club: string) {
+  // Mutating actions spend the session user's rate budget (migration 0006); the test users' buckets go with their club.
+  await admin.query("delete from rate_limits where bucket in (select 'mutation:' || user_id::text from club_members where club_id = $1)", [club]);
   for (const table of TABLES) await admin.query(`delete from ${table} where club_id = $1`, [club]);
   await admin.query("delete from clubs where id = $1", [club]);
 }

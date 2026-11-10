@@ -25,6 +25,7 @@ import { attachmentKey, checkProofFile, isUuid, MAX_ACTIVE_ATTACHMENTS, type Pro
 import { checkAmount, checkClubChanges, checkReason, cleanName } from "@/lib/backend/rules";
 import { checkCollectionIcon, describeIcon } from "@/lib/collection-icon";
 import { withClub, withUser, type Tx } from "@/lib/db/with-club";
+import { MUTATION_LIMIT } from "@/lib/rate-limit";
 import { KelabError } from "@/lib/errors";
 import { today } from "@/lib/format";
 import { dueDateFor, isMonth, monthsBetween } from "@/lib/money/months";
@@ -112,7 +113,7 @@ const db = <T>(ctx: Ctx, fn: (tx: Tx) => Promise<T>, label = "change") =>
       }
       return value;
     },
-    { label },
+    { label, rateLimit: MUTATION_LIMIT },
   );
 
 async function audit(tx: Tx, ctx: Ctx, action: AuditAction, entityId: string, summary: string, reason: string | null = null) {
@@ -390,7 +391,7 @@ export async function prepareAttachmentUploads(ctx: Ctx, paymentId: string, file
     if ((await paymentStateFor(tx, paymentId)) === "reversed") throw new KelabError("ATTACHMENT_PAYMENT_REVERSED");
     const { rows } = await tx.query("select count(*)::int as n from attachments where payment_id = $1 and removed_at is null", [paymentId]);
     if (rows[0].n + files.length > MAX_ACTIVE_ATTACHMENTS) throw new KelabError("ATTACHMENT_LIMIT");
-  }, { label: "attachment_prepare" });
+  }, { label: "attachment_prepare", rateLimit: MUTATION_LIMIT });
   return Promise.all(
     files.map(async (file, i) => {
       const attachmentId = randomUUID();
