@@ -41,7 +41,7 @@ export function MonthTile({ cell, onOpen }: { cell: MatrixCell; onOpen: () => vo
       onClick={onOpen}
       aria-label={`${month}: ${words}, baki ${formatMoney(ledger.remaining)}`}
       title={`${month}: ${words}`}
-      className={cn("grid h-12 place-items-center rounded-lg text-[10px] leading-tight font-semibold transition-[scale] duration-150 ease-out motion-safe:active:scale-[0.96]", tone)}
+      className={cn("grid h-12 place-items-center rounded-lg text-[10px] leading-tight font-semibold transition-transform active:scale-95", tone)}
     >
       {month}
       <span className="font-normal">

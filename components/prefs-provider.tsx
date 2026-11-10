@@ -24,14 +24,8 @@ function readPrefs(): Preferences {
 
 function apply(prefs: Preferences) {
   const root = document.documentElement;
-  // Switch the palette with transitions off, so every colour transition does not fire at once.
-  const freeze = document.createElement("style");
-  freeze.textContent = "*,*::before,*::after{transition:none!important}";
-  document.head.appendChild(freeze);
   root.dataset.accent = prefs.theme;
   root.dataset.floral = prefs.floral ? "on" : "off";
-  void window.getComputedStyle(root).opacity;
-  requestAnimationFrame(() => freeze.remove());
 }
 
 /** Runs before paint (inlined in the root layout) so the saved theme never flashes. */

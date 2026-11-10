@@ -1193,7 +1193,7 @@ function AddParticipantsDialog({ collection, open, onOpenChange }: { collection:
         {candidates.length === 0 ? (
           <p className="rounded-xl bg-primary-tint px-3 py-4 text-center text-sm text-muted-foreground">Semua ahli aktif sudah termasuk dalam kutipan ini.</p>
         ) : (
-          <div className="grid min-h-0 gap-3 overflow-y-auto overscroll-contain">
+          <div className="grid min-h-0 gap-3 overflow-y-auto">
             {!voluntary && (
               <div className="grid gap-1.5">
                 <Label htmlFor="add-amount">{isMonthly(collection) ? "Amaun sebulan" : "Amaun perlu dibayar"}</Label>
@@ -1216,7 +1216,7 @@ function AddParticipantsDialog({ collection, open, onOpenChange }: { collection:
               </div>
             )}
             <SearchInput id="add-participant-search" value={query} onChange={setQuery} placeholder="Cari ahli…" className="sm:max-w-none" />
-            <ul className="grid max-h-72 gap-1 overflow-y-auto overscroll-contain rounded-xl border border-border p-1">
+            <ul className="grid max-h-72 gap-1 overflow-y-auto rounded-xl border border-border p-1">
               {visible.length === 0 ? (
                 <li className="px-3 py-4 text-center text-sm text-muted-foreground">Tiada ahli sepadan.</li>
               ) : (
