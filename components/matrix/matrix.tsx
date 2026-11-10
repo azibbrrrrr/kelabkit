@@ -5,7 +5,8 @@ import { AddMemberDialog } from "@/components/add-member-dialog";
 import { useKelab, useSnapshot } from "@/components/data-provider";
 import { CellEditor, focusEditorStart } from "@/components/matrix/cell-editor";
 import { MonthTile } from "@/components/matrix/month-tile";
-import { ChargeStatusChips, EmptyState, FilterPills, Money, PageHeader, PageShell, SearchInput, StatusChip } from "@/components/shared";
+import { RestoreCollectionDialog } from "@/components/restore-collection-dialog";
+import { ChargeStatusChips, EmptyState, FilterPills, PageHeader, PageShell, SearchInput, StatusChip, Toolbar } from "@/components/shared";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -34,13 +35,14 @@ import { messageFor } from "@/lib/errors";
 import { formatMoney, formatMoneyShort, formatMonth, initials } from "@/lib/format";
 import { cellStatusLabels } from "@/lib/labels";
 import { monthOf } from "@/lib/money/months";
-import type { Collection, CollectionStatus, Member, Sen } from "@/lib/types";
+import type { Collection, CollectionStatus, Member } from "@/lib/types";
 import { sortCollections, type MatrixCell, type MatrixColumn } from "@/lib/view";
 import { cn } from "@/lib/utils";
 import { getCoreRowModel, useReactTable, type ColumnDef } from "@tanstack/react-table";
 import {
   ArrowDownUp,
   Archive,
+  ArchiveRestore,
   Columns3,
   EllipsisVertical,
   ExternalLink,
@@ -118,6 +120,8 @@ export function MatrixPage() {
   const [layout, setLayout] = useState<"auto" | "grid" | "cards">("auto");
   const [addMember, setAddMember] = useState(false);
   const [addColumn, setAddColumn] = useState(false);
+  const [restoring, setRestoring] = useState<Collection | null>(null);
+  const columnsButton = useRef<HTMLButtonElement>(null);
   const memberOpener = useOpener();
   const columnOpener = useOpener();
   const openAddMember = () => {
@@ -136,6 +140,8 @@ export function MatrixPage() {
       ),
     [data.collections, showCompleted],
   );
+  // Archived collections never show as columns; the Lajur menu lists them so they can be restored.
+  const archived = useMemo(() => sortCollections(data.collections).filter((collection) => collection.status === "archived"), [data.collections]);
   const visibleCollections = collections.filter((collection) => !hidden[collection.id]);
   const thisMonth = monthOf(view.today);
   const columns = useMemo(
@@ -180,35 +186,15 @@ export function MatrixPage() {
     return rows;
   }, [data.members, query, rowFilter, rowSummary, showInactive, sort]);
 
-  const totals = useMemo(() => {
-    let expected = 0;
-    let received = 0;
-    let dueNow = 0;
-    let pending = 0;
-    for (const { member } of members) {
-      for (const column of columns) {
-        const cell = view.cell(member, column);
-        if (cell.kind === "charge") {
-          expected += cell.ledger.required;
-          received += cell.ledger.confirmed;
-          pending += cell.ledger.pending;
-          if (!cell.ledger.future) dueNow += cell.ledger.remaining;
-        } else if (cell.kind === "voluntary") {
-          received += cell.received;
-          pending += cell.pending;
-        }
-      }
-    }
-    return { expected, received, dueNow, pending };
-  }, [members, columns, view]);
-
   const showGrid = layout === "grid" || (layout === "auto" && !isMobile);
 
   return (
     <PageShell className="max-w-none lg:px-6">
+      {/* One line, no description: the grid is the page. Totals live in the grid's footer row and the
+          keyboard hints in its footer bar. */}
       <PageHeader
+        compact
         title="Matriks Kutipan"
-        description="Setiap baris seorang ahli, setiap lajur satu kutipan atau bulan. Klik sel untuk rekod bayaran; Enter untuk edit, anak panah untuk bergerak."
         actions={
           <>
             <Button variant="brand" onClick={openAddMember}>
@@ -221,16 +207,9 @@ export function MatrixPage() {
         }
       />
 
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-        <Figure label="Dijangka (paparan ini)" value={totals.expected} />
-        <Figure label="Diterima" value={totals.received} tone="paid" />
-        <Figure label="Baki semasa" value={totals.dueNow} tone={totals.dueNow > 0 ? "unpaid" : undefined} />
-        <Figure label="Menunggu semakan" value={totals.pending} tone={totals.pending > 0 ? "pending" : undefined} />
-      </div>
-
-      <div className="flex flex-col gap-2.5 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
-          <SearchInput id="matrix-search" value={query} onChange={setQuery} placeholder="Cari ahli…" />
+      <Toolbar
+        search={<SearchInput id="matrix-search" value={query} onChange={setQuery} placeholder="Cari ahli…" />}
+        tabs={
           <FilterPills
             label="Tapis baris"
             value={rowFilter}
@@ -243,64 +222,80 @@ export function MatrixPage() {
               { value: "settled", label: "Selesai" },
             ]}
           />
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Columns3 /> Lajur
-                {Object.values(hidden).some(Boolean) && <span className="text-primary-strong">•</span>}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-64">
-              <DropdownMenuLabel>Tunjuk kutipan</DropdownMenuLabel>
-              {collections.map((collection) => (
-                <DropdownMenuCheckboxItem
-                  key={collection.id}
-                  checked={!hidden[collection.id]}
-                  onSelect={(event) => event.preventDefault()}
-                  onCheckedChange={(value) => setHidden((current) => ({ ...current, [collection.id]: !value }))}
-                >
-                  <span className="truncate">{collection.name}</span>
+        }
+        actions={
+          <>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button ref={columnsButton} variant="outline" size="sm">
+                  <Columns3 /> Lajur
+                  {Object.values(hidden).some(Boolean) && <span className="text-primary-strong">•</span>}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="max-h-[min(70svh,var(--radix-dropdown-menu-content-available-height))] w-64 overflow-y-auto">
+                <DropdownMenuLabel>Tunjuk kutipan</DropdownMenuLabel>
+                {collections.map((collection) => (
+                  <DropdownMenuCheckboxItem
+                    key={collection.id}
+                    checked={!hidden[collection.id]}
+                    onSelect={(event) => event.preventDefault()}
+                    onCheckedChange={(value) => setHidden((current) => ({ ...current, [collection.id]: !value }))}
+                  >
+                    <span className="truncate">{collection.name}</span>
+                  </DropdownMenuCheckboxItem>
+                ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuCheckboxItem checked={monthScope === "to_date"} onSelect={(e) => e.preventDefault()} onCheckedChange={(v) => setMonthScope(v ? "to_date" : "all")}>
+                  Sembunyi bulan akan datang
                 </DropdownMenuCheckboxItem>
-              ))}
-              <DropdownMenuSeparator />
-              <DropdownMenuCheckboxItem checked={monthScope === "to_date"} onSelect={(e) => e.preventDefault()} onCheckedChange={(v) => setMonthScope(v ? "to_date" : "all")}>
-                Sembunyi bulan akan datang
-              </DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem checked={showCompleted} onSelect={(e) => e.preventDefault()} onCheckedChange={(v) => setShowCompleted(v === true)}>
-                Tunjuk kutipan selesai
-              </DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem checked={showInactive} onSelect={(e) => e.preventDefault()} onCheckedChange={(v) => setShowInactive(v === true)}>
-                Tunjuk ahli tidak aktif
-              </DropdownMenuCheckboxItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          {/* Accessible name leads with the visible text (label in name). */}
-          <Button variant="outline" size="sm" onClick={() => setSort(sort === "name" ? "owing" : "name")}>
-            <ArrowDownUp /> {sort === "name" ? "Nama A–Z" : "Baki tertinggi"}
-            <span className="sr-only">, tukar susunan</span>
-          </Button>
-          <div className="flex rounded-[10px] border border-border bg-card p-0.5 md:hidden" role="group" aria-label="Paparan">
-            <button
-              type="button"
-              aria-pressed={!showGrid}
-              onClick={() => setLayout("cards")}
-              className={cn("flex h-8 items-center gap-1 rounded-[7px] px-2.5 text-xs", !showGrid && "bg-primary-light font-semibold text-primary-strong")}
-            >
-              <Rows3 className="size-3.5" /> Kad
-            </button>
-            <button
-              type="button"
-              aria-pressed={showGrid}
-              onClick={() => setLayout("grid")}
-              className={cn("flex h-8 items-center gap-1 rounded-[7px] px-2.5 text-xs", showGrid && "bg-primary-light font-semibold text-primary-strong")}
-            >
-              <LayoutGrid className="size-3.5" /> Jadual
-            </button>
-          </div>
-        </div>
-      </div>
+                <DropdownMenuCheckboxItem checked={showCompleted} onSelect={(e) => e.preventDefault()} onCheckedChange={(v) => setShowCompleted(v === true)}>
+                  Tunjuk kutipan selesai
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem checked={showInactive} onSelect={(e) => e.preventDefault()} onCheckedChange={(v) => setShowInactive(v === true)}>
+                  Tunjuk ahli tidak aktif
+                </DropdownMenuCheckboxItem>
+                {archived.length > 0 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel>Diarkib</DropdownMenuLabel>
+                    {archived.map((collection) => (
+                      <DropdownMenuItem key={collection.id} onSelect={() => setRestoring(collection)}>
+                        <span className="min-w-0 flex-1 truncate text-muted-foreground">{collection.name}</span>
+                        <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-primary-strong">
+                          <ArchiveRestore className="size-3.5" /> Pulihkan
+                        </span>
+                      </DropdownMenuItem>
+                    ))}
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            {/* Accessible name leads with the visible text (label in name). */}
+            <Button variant="outline" size="sm" onClick={() => setSort(sort === "name" ? "owing" : "name")}>
+              <ArrowDownUp /> {sort === "name" ? "Nama A–Z" : "Baki tertinggi"}
+              <span className="sr-only">, tukar susunan</span>
+            </Button>
+            <div className="flex rounded-[10px] border border-border bg-card p-0.5 md:hidden" role="group" aria-label="Paparan">
+              <button
+                type="button"
+                aria-pressed={!showGrid}
+                onClick={() => setLayout("cards")}
+                className={cn("flex h-8 items-center gap-1 rounded-[7px] px-2.5 text-xs", !showGrid && "bg-primary-light font-semibold text-primary-strong")}
+              >
+                <Rows3 className="size-3.5" /> Kad
+              </button>
+              <button
+                type="button"
+                aria-pressed={showGrid}
+                onClick={() => setLayout("grid")}
+                className={cn("flex h-8 items-center gap-1 rounded-[7px] px-2.5 text-xs", showGrid && "bg-primary-light font-semibold text-primary-strong")}
+              >
+                <LayoutGrid className="size-3.5" /> Jadual
+              </button>
+            </div>
+          </>
+        }
+      />
 
       {data.members.length === 0 ? (
         <EmptyState
@@ -330,25 +325,8 @@ export function MatrixPage() {
 
       <AddMemberDialog open={addMember} onOpenChange={setAddMember} onCloseAutoFocus={memberOpener.restore} />
       <AddCollectionDialog open={addColumn} onOpenChange={setAddColumn} onCloseAutoFocus={columnOpener.restore} />
+      <RestoreCollectionDialog collection={restoring} onClose={() => setRestoring(null)} fallbackFocus={() => columnsButton.current} />
     </PageShell>
-  );
-}
-
-function Figure({ label, value, tone }: { label: string; value: Sen; tone?: "paid" | "unpaid" | "pending" }) {
-  return (
-    <div className="rounded-2xl border border-border bg-card px-3.5 py-3">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p
-        className={cn(
-          "mt-0.5 text-[17px] font-bold tracking-[-.01em] tabular-nums md:text-lg",
-          tone === "paid" && "text-st-paid",
-          tone === "unpaid" && "text-st-unpaid",
-          tone === "pending" && "text-st-pending",
-        )}
-      >
-        {formatMoney(value)}
-      </p>
-    </div>
   );
 }
 
@@ -509,7 +487,7 @@ function Grid({
 
   return (
     <div className="min-w-0 rounded-2xl border border-border bg-card shadow-[0_1px_2px_rgba(0,0,0,.03)]">
-      <div ref={scroller} className="group/grid max-h-[calc(100svh-15rem)] min-h-64 overflow-auto overscroll-contain rounded-2xl">
+      <div ref={scroller} className="group/grid max-h-[calc(100svh-18rem)] min-h-64 overflow-auto overscroll-contain rounded-2xl">
         {/* All rows and columns are rendered, so the counts equal the DOM: header rows + members + footer. */}
         <table
           role="grid"
@@ -517,7 +495,9 @@ function Grid({
           aria-rowcount={headerGroups.length + rows.length + 1}
           aria-colcount={columns.length + 2}
           onKeyDown={onKeyDown}
-          className="border-separate border-spacing-0 text-[13px]"
+          // min-w-full: with few columns the table still spans the card; the collection columns share
+          // the extra width (Ahli and Baki semasa have fixed widths), so Baki semasa stays at the right edge.
+          className="min-w-full border-separate border-spacing-0 text-[13px]"
         >
           <thead>
             {headerGroups.map((group, gi) => (
@@ -570,6 +550,7 @@ function Grid({
                   <th
                     scope="col"
                     rowSpan={headerGroups.length}
+                    style={{ width: 120 }}
                     className={cn("sticky top-0 right-0 z-30 min-w-[120px] border-b border-l border-border bg-primary-tint px-3 text-right align-bottom text-xs font-semibold text-muted-foreground", RIGHT_EDGE)}
                   >
                     <div className="py-3">Baki semasa</div>
@@ -829,7 +810,7 @@ function ArchiveDialog({ collection, onClose, onArchived }: { collection: Collec
         <AlertDialogHeader>
           <AlertDialogTitle>Arkibkan &quot;{collection?.name}&quot;?</AlertDialogTitle>
           <AlertDialogDescription>
-            Semua caj, bayaran dan log audit dikekalkan. Lajur ini disembunyikan daripada Matriks dan tidak menerima bayaran baharu. Anda boleh memulihkannya dari halaman Kutipan.
+            Semua caj, bayaran dan log audit dikekalkan. Lajur ini disembunyikan daripada Matriks dan tidak menerima bayaran baharu. Pulihkan bila-bila masa dari menu Lajur atau halaman Kutipan.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

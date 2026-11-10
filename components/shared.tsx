@@ -10,9 +10,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { formatMoney } from "@/lib/format";
 import { cellStatusLabels, overdueLabel, pendingLabel, type CellStatus, type Tone } from "@/lib/labels";
 import { cn } from "@/lib/utils";
-import { Check, CircleDashed, CircleDot, Clock, Hourglass, Minus, Search, TriangleAlert, type LucideIcon } from "lucide-react";
+import { Check, Circle, Clock, Hourglass, Minus, Search, TriangleAlert, type LucideIcon } from "lucide-react";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ComponentType, type KeyboardEvent, type ReactNode, type SVGProps } from "react";
 
 // Layout ---------------------------------------------------------------------------------
 
@@ -29,15 +29,18 @@ export function PageHeader({
   description,
   actions,
   back,
+  compact,
 }: {
   title: ReactNode;
   description?: ReactNode;
   actions?: ReactNode;
   /** A link above the title back to the parent list. */
   back?: { href: string; label: string };
+  /** One line: title left, actions right, wrapping only when they do not fit. For work surfaces like the Matriks. */
+  compact?: boolean;
 }) {
   return (
-    <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div className={cn("flex gap-4", compact ? "flex-wrap items-center justify-between gap-y-3" : "flex-col lg:flex-row lg:items-end lg:justify-between")}>
       <div className="min-w-0">
         {back && (
           <Link href={back.href} className="mb-2 inline-flex items-center gap-1 text-xs font-medium text-primary-strong hover:underline">
@@ -203,10 +206,23 @@ const toneClass: Record<Tone, string> = {
   brand: "bg-primary-light text-primary-strong",
 };
 
-const toneIcon: Partial<Record<Tone, LucideIcon>> = {
+type StatusIcon = ComponentType<SVGProps<SVGSVGElement> & { strokeWidth?: number }>;
+
+/** A circle with its left half filled: part of the amount is paid. Same 24px grid and stroke as lucide. */
+export function CircleHalf({ strokeWidth = 2, ...props }: SVGProps<SVGSVGElement> & { strokeWidth?: number }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 2a10 10 0 0 0 0 20Z" fill="currentColor" />
+    </svg>
+  );
+}
+
+// Unpaid is an empty circle, partial a half-filled one, paid a tick: the fill tells the story.
+const toneIcon: Partial<Record<Tone, StatusIcon>> = {
   paid: Check,
-  partial: CircleDot,
-  unpaid: CircleDashed,
+  partial: CircleHalf,
+  unpaid: Circle,
   overdue: TriangleAlert,
   exempt: Minus,
   na: Minus,
@@ -479,40 +495,128 @@ export function SearchInput({
   );
 }
 
-/** A row of pill toggles for filtering a list; scrolls sideways on narrow screens. */
+/**
+ * Single-row underline tabs for filtering a list. Never wraps: on narrow widths it scrolls
+ * sideways, with an edge fade showing more tabs are hidden. A radio group (one choice applies at
+ * once) with the APG radio keyboard: one tab stop, arrow keys move and select, Home / End.
+ */
 export function FilterPills<V extends string>({
   value,
   onChange,
   options,
   label,
+  className,
 }: {
   value: V;
   onChange: (value: V) => void;
   options: { value: V; label: string; count?: number }[];
   label: string;
+  className?: string;
 }) {
+  const scroller = useRef<HTMLDivElement>(null);
+  const radios = useRef<(HTMLButtonElement | null)[]>([]);
+  const selected = options.findIndex((option) => option.value === value);
+
+  // Edge state lives on data attributes (like the Matriks grid) so scrolling never re-renders.
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    const update = () => {
+      el.dataset.atStart = String(el.scrollLeft <= 1);
+      el.dataset.atEnd = String(el.scrollLeft >= el.scrollWidth - el.clientWidth - 1);
+    };
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => {
+      el.removeEventListener("scroll", update);
+      observer.disconnect();
+    };
+  }, []);
+
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    const last = options.length - 1;
+    const from = Math.max(0, selected);
+    let next: number;
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") next = from === last ? 0 : from + 1;
+    else if (event.key === "ArrowLeft" || event.key === "ArrowUp") next = from === 0 ? last : from - 1;
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = last;
+    else return;
+    event.preventDefault();
+    onChange(options[next].value);
+    radios.current[next]?.focus();
+  };
+
+  const fade = "pointer-events-none absolute inset-y-0 w-8 from-background to-transparent opacity-0 transition-opacity duration-150";
   return (
-    <div role="radiogroup" aria-label={label} className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
-      {options.map((option) => (
-        <button
-          key={option.value}
-          type="button"
-          role="radio"
-          aria-checked={value === option.value}
-          onClick={() => onChange(option.value)}
-          className={cn(
-            "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border px-3 text-xs font-medium transition-colors",
-            value === option.value
-              ? "border-transparent bg-primary-fill text-primary-foreground"
-              : "border-border bg-card text-muted-foreground hover:bg-primary-tint hover:text-foreground",
-          )}
-        >
-          {option.label}
-          {option.count !== undefined && (
-            <span className={cn("tabular-nums", value === option.value ? "text-primary-foreground" : "text-muted-foreground")}>{option.count}</span>
-          )}
-        </button>
-      ))}
+    <div className={cn("group/tabs relative min-w-0", className)}>
+      <div
+        ref={scroller}
+        role="radiogroup"
+        aria-label={label}
+        onKeyDown={onKeyDown}
+        className="peer flex min-w-0 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {options.map((option, i) => {
+          const checked = i === selected;
+          return (
+            <button
+              key={option.value}
+              ref={(el) => {
+                radios.current[i] = el;
+              }}
+              type="button"
+              role="radio"
+              aria-checked={checked}
+              // Roving tabindex: only the checked radio (or the first, if none is) is a tab stop.
+              tabIndex={checked || (selected < 0 && i === 0) ? 0 : -1}
+              onClick={() => onChange(option.value)}
+              className={cn(
+                "relative inline-flex h-10 shrink-0 items-center gap-1.5 rounded-md px-3 text-[13px] whitespace-nowrap outline-none transition-colors duration-150",
+                "after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full after:transition-colors after:duration-150",
+                "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+                checked ? "font-semibold text-foreground after:bg-primary-fill" : "font-medium text-muted-foreground hover:text-foreground hover:after:bg-border",
+              )}
+            >
+              {/* The bold copy reserves the selected width, so tabs do not shift when the choice changes. */}
+              <span className="grid">
+                <span aria-hidden className="invisible col-start-1 row-start-1 font-semibold">
+                  {option.label}
+                </span>
+                <span className="col-start-1 row-start-1">{option.label}</span>
+              </span>
+              {option.count !== undefined && (
+                <span
+                  className={cn(
+                    "rounded-full px-1.5 text-[11px] leading-[18px] font-medium tabular-nums",
+                    checked ? "bg-primary-light text-primary-strong" : "bg-muted text-muted-foreground",
+                  )}
+                >
+                  {option.count}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+      <span aria-hidden className={cn(fade, "left-0 bg-linear-to-r peer-data-[at-start=false]:opacity-100")} />
+      <span aria-hidden className={cn(fade, "right-0 bg-linear-to-l peer-data-[at-end=false]:opacity-100")} />
+    </div>
+  );
+}
+
+/**
+ * The list toolbar, one row from 1024px: search (fixed width) left, filter tabs filling the
+ * middle, actions pushed right. Below that it stacks: search, tabs (scrolling), actions.
+ */
+export function Toolbar({ search, tabs, actions, className }: { search?: ReactNode; tabs?: ReactNode; actions?: ReactNode; className?: string }) {
+  return (
+    <div className={cn("flex min-w-0 flex-col gap-2 lg:flex-row lg:items-center lg:gap-4", className)}>
+      {search && <div className="w-full shrink-0 lg:w-64">{search}</div>}
+      {tabs && <div className="min-w-0 lg:flex-1">{tabs}</div>}
+      {actions && <div className="flex shrink-0 flex-wrap items-center gap-2 lg:ml-auto">{actions}</div>}
     </div>
   );
 }

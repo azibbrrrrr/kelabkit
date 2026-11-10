@@ -13,7 +13,9 @@ import {
   SearchInput,
   StatCard,
   StatusChip,
+  Toolbar,
 } from "@/components/shared";
+import { RestoreCollectionDialog } from "@/components/restore-collection-dialog";
 import { Button } from "@/components/ui/button";
 import { formatDay, formatMoney, formatMonth, formatPercent } from "@/lib/format";
 import { totalsOf } from "@/lib/money/ledger";
@@ -30,12 +32,13 @@ import {
   SearchX,
   Users,
   WalletCards,
+  ArchiveRestore,
   CircleCheck,
   CircleAlert,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 // Kutipan KGK: every collection as a card, grouped by status. Figures come from
 // view.collectionTotals (charges and confirmed allocations); pending money is shown
@@ -78,6 +81,8 @@ export function KutipanList() {
   const { data, view } = useSnapshot();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
+  const [restoring, setRestoring] = useState<Collection | null>(null);
+  const tabs = useRef<HTMLDivElement>(null);
 
   const collections = useMemo(() => sortCollections(data.collections), [data.collections]);
   const counts = useMemo(() => {
@@ -165,21 +170,25 @@ export function KutipanList() {
             />
           </div>
 
-          <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
-            <SearchInput id="kutipan-search" value={query} onChange={setQuery} placeholder="Cari kutipan…" />
-            <FilterPills
-              label="Tapis ikut status"
-              value={status}
-              onChange={setStatus}
-              options={[
-                { value: "all", label: "Semua", count: collections.length },
-                { value: "active", label: "Aktif", count: counts.active },
-                { value: "draft", label: "Draf", count: counts.draft },
-                { value: "completed", label: "Selesai", count: counts.completed },
-                { value: "archived", label: "Diarkib", count: counts.archived },
-              ]}
-            />
-          </div>
+          <Toolbar
+            search={<SearchInput id="kutipan-search" value={query} onChange={setQuery} placeholder="Cari kutipan…" />}
+            tabs={
+              <div ref={tabs}>
+                <FilterPills
+                  label="Tapis ikut status"
+                  value={status}
+                  onChange={setStatus}
+                  options={[
+                    { value: "all", label: "Semua", count: collections.length },
+                    { value: "active", label: "Aktif", count: counts.active },
+                    { value: "draft", label: "Draf", count: counts.draft },
+                    { value: "completed", label: "Selesai", count: counts.completed },
+                    { value: "archived", label: "Diarkib", count: counts.archived },
+                  ]}
+                />
+              </div>
+            }
+          />
 
           {visible.length === 0 ? (
             <EmptyState
@@ -211,7 +220,7 @@ export function KutipanList() {
                   <ul className="grid grid-cols-1 gap-3 lg:grid-cols-2 2xl:grid-cols-3">
                     {rows.map((collection) => (
                       <li key={collection.id} className="min-w-0">
-                        <CollectionCard collection={collection} view={view} payments={data.payments} />
+                        <CollectionCard collection={collection} view={view} payments={data.payments} onRestore={() => setRestoring(collection)} />
                       </li>
                     ))}
                   </ul>
@@ -221,11 +230,17 @@ export function KutipanList() {
           )}
         </>
       )}
+      {/* A restored card leaves the Diarkib view, taking its button with it: focus goes to the status tabs. */}
+      <RestoreCollectionDialog
+        collection={restoring}
+        onClose={() => setRestoring(null)}
+        fallbackFocus={() => tabs.current?.querySelector<HTMLElement>('[role="radio"][tabindex="0"]')}
+      />
     </PageShell>
   );
 }
 
-function CollectionCard({ collection, view, payments }: { collection: Collection; view: View; payments: Payment[] }) {
+function CollectionCard({ collection, view, payments, onRestore }: { collection: Collection; view: View; payments: Payment[]; onRestore: () => void }) {
   const Icon = collectionTypeIcons[collection.type];
   const totals = view.collectionTotals(collection.id);
   const voluntary = collection.type === "voluntary";
@@ -238,10 +253,11 @@ function CollectionCard({ collection, view, payments }: { collection: Collection
       : totals.counts;
 
   return (
-    <Link
-      href={`/kutipan/${collection.id}/`}
+    // The title link is stretched over the card (after:inset-0), so the whole card still opens the
+    // collection and the Pulihkan button can sit inside without nesting a button in a link.
+    <div
       className={cn(
-        "group flex h-full min-w-0 flex-col gap-3.5 rounded-2xl border border-border bg-card p-4 shadow-[0_1px_2px_color-mix(in_srgb,var(--primary)_4%,transparent)] transition-colors outline-none hover:border-primary/40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background md:p-5",
+        "group relative flex h-full min-w-0 flex-col gap-3.5 rounded-2xl border border-border bg-card p-4 shadow-[0_1px_2px_color-mix(in_srgb,var(--primary)_4%,transparent)] transition-colors hover:border-primary/40 has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring has-[a:focus-visible]:ring-offset-2 has-[a:focus-visible]:ring-offset-background md:p-5",
         collection.status === "archived" && "bg-card/70",
       )}
     >
@@ -251,7 +267,11 @@ function CollectionCard({ collection, view, payments }: { collection: Collection
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1">
-            <h3 className="min-w-0 text-[15px] leading-snug font-semibold break-words group-hover:text-primary-strong">{collection.name}</h3>
+            <h3 className="min-w-0 text-[15px] leading-snug font-semibold break-words group-hover:text-primary-strong">
+              <Link href={`/kutipan/${collection.id}/`} className="outline-none after:absolute after:inset-0 after:rounded-2xl">
+                {collection.name}
+              </Link>
+            </h3>
             <LabelChip entry={collectionStatusLabels[collection.status]} compact />
           </div>
           <p className="mt-0.5 text-xs text-muted-foreground">
@@ -311,7 +331,12 @@ function CollectionCard({ collection, view, payments }: { collection: Collection
             <Hourglass className="size-3.5" aria-hidden /> {formatMoney(pending)} menunggu semakan
           </p>
         )}
+        {collection.status === "archived" && (
+          <Button variant="outline" size="sm" className="relative z-10 justify-self-start" onClick={onRestore}>
+            <ArchiveRestore /> Pulihkan
+          </Button>
+        )}
       </div>
-    </Link>
+    </div>
   );
 }

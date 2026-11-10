@@ -22,7 +22,9 @@ import {
   SectionCard,
   StatCard,
   StatusChip,
+  Toolbar,
 } from "@/components/shared";
+import { RestoreCollectionDialog } from "@/components/restore-collection-dialog";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -67,7 +69,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { toast } from "sonner";
 
 // One collection: its figures, its participants and every member's charge. Figures and
@@ -350,6 +352,8 @@ function StatusActions({ collection, dueNow, onAddParticipants }: { collection: 
   const { run } = useKelab();
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState<StatusChange | null>(null);
+  const [restoring, setRestoring] = useState(false);
+  const actions = useRef<HTMLDivElement>(null);
 
   const change = async (next: StatusChange) => {
     setBusy(true);
@@ -385,16 +389,9 @@ function StatusActions({ collection, dueNow, onAddParticipants }: { collection: 
     confirm: "Arkibkan",
     success: `"${collection.name}" diarkib. Semua rekod dikekalkan.`,
   };
-  const restore: StatusChange = {
-    status: "completed",
-    title: "Pulihkan dari arkib",
-    body: "",
-    confirm: "Pulihkan",
-    success: `"${collection.name}" dipulihkan sebagai Selesai.`,
-  };
-
   return (
-    <>
+    // display: contents keeps the buttons laid out by PageHeader; the ref gives restore a focus target.
+    <div ref={actions} className="contents">
       {collection.status !== "archived" && (
         <Button variant="brand" onClick={onAddParticipants}>
           <UserPlus /> Tambah peserta
@@ -411,8 +408,8 @@ function StatusActions({ collection, dueNow, onAddParticipants }: { collection: 
         </Button>
       )}
       {collection.status === "archived" ? (
-        <Button variant="outline" onClick={() => void change(restore)} disabled={busy}>
-          {busy ? <Spinner className="size-4" /> : <ArchiveRestore />} Pulihkan dari arkib
+        <Button onClick={() => setRestoring(true)} disabled={busy}>
+          <ArchiveRestore /> Pulihkan
         </Button>
       ) : (
         <>
@@ -443,7 +440,13 @@ function StatusActions({ collection, dueNow, onAddParticipants }: { collection: 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+      {/* The Pulihkan button is replaced once restored; focus moves to the first new action. */}
+      <RestoreCollectionDialog
+        collection={restoring ? collection : null}
+        onClose={() => setRestoring(false)}
+        fallbackFocus={() => actions.current?.querySelector<HTMLElement>("button, a")}
+      />
+    </div>
   );
 }
 
@@ -607,8 +610,9 @@ function memberCell(member: Member) {
   );
 }
 
-function TableToolbar({ children }: { children: ReactNode }) {
-  return <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">{children}</div>;
+/** Search and status tabs above each tracking table: the shared one-row Toolbar. */
+function TableToolbar({ search, tabs }: { search: ReactNode; tabs: ReactNode }) {
+  return <Toolbar search={search} tabs={tabs} />;
 }
 
 const matchesQuery = (member: Member, query: string) => !query.trim() || member.name.toLowerCase().includes(query.trim().toLowerCase());
@@ -740,10 +744,10 @@ function ChargeTable({
   return (
     <section className="grid min-w-0 grid-cols-1 gap-3" aria-label="Penjejakan bayaran">
       <h2 className="text-[15px] font-semibold">Penjejakan bayaran{column.period ? ` · ${formatMonthLong(column.period.month)}` : ""}</h2>
-      <TableToolbar>
-        <SearchInput id="kutipan-detail-search" value={query} onChange={setQuery} placeholder="Cari ahli…" />
-        <FilterPills label="Tapis status" value={filter} onChange={setFilter} options={options} />
-      </TableToolbar>
+      <TableToolbar
+        search={<SearchInput id="kutipan-detail-search" value={query} onChange={setQuery} placeholder="Cari ahli…" />}
+        tabs={<FilterPills label="Tapis status" value={filter} onChange={setFilter} options={options} />}
+      />
       <DataTable
         rows={visible}
         columns={tableColumns}
@@ -894,23 +898,25 @@ function AllMonthsTable({
           &ldquo;Rekod&rdquo; membuka bulan tertua yang masih berbaki. Pilih bulan di atas untuk melihat satu bulan sahaja.
         </p>
       </div>
-      <TableToolbar>
-        <SearchInput id="kutipan-detail-search" value={query} onChange={setQuery} placeholder="Cari ahli…" />
-        <FilterPills
-          label="Tapis baris"
-          value={filter}
-          onChange={setFilter}
-          options={(
-            [
-              ["all", "Semua"],
-              ["owing", "Ada baki"],
-              ["overdue", "Lewat"],
-              ["pending", "Menunggu"],
-              ["settled", "Selesai"],
-            ] as [MonthsFilter, string][]
-          ).map(([value, label]) => ({ value, label, count: rows.filter((row) => matches(row, value)).length }))}
-        />
-      </TableToolbar>
+      <TableToolbar
+        search={<SearchInput id="kutipan-detail-search" value={query} onChange={setQuery} placeholder="Cari ahli…" />}
+        tabs={
+          <FilterPills
+            label="Tapis baris"
+            value={filter}
+            onChange={setFilter}
+            options={(
+              [
+                ["all", "Semua"],
+                ["owing", "Ada baki"],
+                ["overdue", "Lewat"],
+                ["pending", "Menunggu"],
+                ["settled", "Selesai"],
+              ] as [MonthsFilter, string][]
+            ).map(([value, label]) => ({ value, label, count: rows.filter((row) => matches(row, value)).length }))}
+          />
+        }
+      />
       <DataTable
         rows={visible}
         columns={tableColumns}
@@ -1012,22 +1018,24 @@ function VoluntaryTable({
   return (
     <section className="grid min-w-0 grid-cols-1 gap-3" aria-label="Sumbangan ahli">
       <h2 className="text-[15px] font-semibold">Sumbangan ahli</h2>
-      <TableToolbar>
-        <SearchInput id="kutipan-detail-search" value={query} onChange={setQuery} placeholder="Cari ahli…" />
-        <FilterPills
-          label="Tapis sumbangan"
-          value={filter}
-          onChange={setFilter}
-          options={(
-            [
-              ["all", "Semua"],
-              ["given", "Sudah menyumbang"],
-              ["none", "Belum menyumbang"],
-              ["pending", "Menunggu"],
-            ] as [VoluntaryFilter, string][]
-          ).map(([value, label]) => ({ value, label, count: rows.filter((row) => matches(row, value)).length }))}
-        />
-      </TableToolbar>
+      <TableToolbar
+        search={<SearchInput id="kutipan-detail-search" value={query} onChange={setQuery} placeholder="Cari ahli…" />}
+        tabs={
+          <FilterPills
+            label="Tapis sumbangan"
+            value={filter}
+            onChange={setFilter}
+            options={(
+              [
+                ["all", "Semua"],
+                ["given", "Sudah menyumbang"],
+                ["none", "Belum menyumbang"],
+                ["pending", "Menunggu"],
+              ] as [VoluntaryFilter, string][]
+            ).map(([value, label]) => ({ value, label, count: rows.filter((row) => matches(row, value)).length }))}
+          />
+        }
+      />
       <DataTable
         rows={visible}
         columns={tableColumns}
