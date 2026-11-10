@@ -1,6 +1,7 @@
 "use client";
 
 import { BrandMark } from "@/components/brand";
+import { ModalBody, ModalFooter, ModalHeader, ModalText } from "@/components/modal";
 import { useKelab, useSnapshot } from "@/components/data-provider";
 import { Blossom } from "@/components/floral";
 import { ChoiceCard, ChoiceCards } from "@/components/choice";
@@ -11,10 +12,6 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
@@ -338,16 +335,16 @@ function DemoDataCard() {
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Set semula data demo?</AlertDialogTitle>
-              <AlertDialogDescription>
+            <ModalHeader alert icon={RotateCcw} tone="danger" title="Set semula data demo?" />
+            <ModalBody>
+              <ModalText alert>
                 Semua ahli, kutipan, bayaran dan log audit yang anda tambah atau ubah dalam pelayar ini akan dipadam dan diganti dengan data contoh asal. Tindakan ini tidak boleh dibatalkan.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={busy}>Batal</AlertDialogCancel>
+              </ModalText>
+            </ModalBody>
+            <ModalFooter>
+              <AlertDialogCancel variant="ghost" disabled={busy}>Batal</AlertDialogCancel>
               <AlertDialogAction
-                variant="destructive"
+                variant="danger"
                 disabled={busy}
                 onClick={(event) => {
                   // Keep the dialog open until the reset finishes.
@@ -358,7 +355,7 @@ function DemoDataCard() {
                 {busy && <Spinner className="size-4" />}
                 Ya, set semula
               </AlertDialogAction>
-            </AlertDialogFooter>
+            </ModalFooter>
           </AlertDialogContent>
         </AlertDialog>
       </div>

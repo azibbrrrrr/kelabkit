@@ -5,11 +5,8 @@ import {
   AlertDialog,
   AlertDialogCancel,
   AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { ModalBody, ModalFooter, ModalHeader } from "@/components/modal";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -17,6 +14,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { messageFor } from "@/lib/errors";
 import { formatMoney } from "@/lib/format";
 import type { Collection } from "@/lib/types";
+import { ArchiveRestore } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -41,7 +39,6 @@ export function RestoreCollectionDialog({
     <AlertDialog open={collection !== null} onOpenChange={(open) => !open && onClose()}>
       <AlertDialogContent
         size="sm"
-        className="rounded-2xl"
         onOpenAutoFocus={() => {
           opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
         }}
@@ -85,29 +82,31 @@ function RestoreBody({ collection, onClose }: { collection: Collection; onClose:
 
   return (
     <>
-      <AlertDialogHeader>
-        <AlertDialogTitle>Pulihkan &quot;{collection.name}&quot;?</AlertDialogTitle>
-        <AlertDialogDescription>
-          {balance > 0 ? `Masih ada baki ${formatMoney(balance)}.` : "Tiada baki tertunggak."} Semua caj dan bayaran kekal seperti sebelum diarkib.
-        </AlertDialogDescription>
-      </AlertDialogHeader>
-      <RadioGroup value={target} onValueChange={(value) => setTarget(value as Target)} aria-label="Status selepas dipulihkan" className="gap-2">
-        <Option
-          value="active"
-          title="Aktif"
-          hint={hasMembers ? "Kembali ke Matriks dan menerima bayaran." : "Tambah peserta dahulu untuk mengaktifkan."}
-          disabled={!hasMembers}
-        />
-        <Option value="completed" title="Selesai" hint="Untuk rujukan; bayaran lewat masih boleh direkod." />
-      </RadioGroup>
-      <AlertDialogFooter>
-        <AlertDialogCancel disabled={busy}>Batal</AlertDialogCancel>
+      <ModalHeader
+        alert
+        icon={ArchiveRestore}
+        title={<>Pulihkan &quot;{collection.name}&quot;?</>}
+        description={`${balance > 0 ? `Masih ada baki ${formatMoney(balance)}.` : "Tiada baki tertunggak."} Semua caj dan bayaran kekal seperti sebelum diarkib.`}
+      />
+      <ModalBody>
+        <RadioGroup value={target} onValueChange={(value) => setTarget(value as Target)} aria-label="Status selepas dipulihkan" className="gap-2">
+          <Option
+            value="active"
+            title="Aktif"
+            hint={hasMembers ? "Kembali ke Matriks dan menerima bayaran." : "Tambah peserta dahulu untuk mengaktifkan."}
+            disabled={!hasMembers}
+          />
+          <Option value="completed" title="Selesai" hint="Untuk rujukan; bayaran lewat masih boleh direkod." />
+        </RadioGroup>
+      </ModalBody>
+      <ModalFooter>
+        <AlertDialogCancel variant="ghost" disabled={busy}>Batal</AlertDialogCancel>
         {/* A plain button, not AlertDialogAction, so the dialog stays open until the change succeeds. */}
         <Button onClick={() => void restore()} disabled={busy}>
           {busy && <Spinner className="size-4" />}
           Pulihkan
         </Button>
-      </AlertDialogFooter>
+      </ModalFooter>
     </>
   );
 }
@@ -117,7 +116,7 @@ function Option({ value, title, hint, disabled }: { value: Target; title: string
   return (
     <Label
       htmlFor={id}
-      className="flex cursor-pointer items-start gap-3 rounded-xl border border-border p-3 font-normal has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary-tint has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60"
+      className="flex cursor-pointer items-start gap-3 rounded-[10px] border border-border p-3 font-normal has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary-tint has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60"
     >
       <RadioGroupItem id={id} value={value} disabled={disabled} className="mt-0.5" />
       <span className="grid gap-0.5">

@@ -1,16 +1,10 @@
 "use client";
 
-import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { ModalBody, ModalFooter, ModalHeader, ModalText } from "@/components/modal";
+import { AlertDialog, AlertDialogCancel, AlertDialogContent } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/lib/i18n/react";
+import { TriangleAlert } from "lucide-react";
 import { useRef } from "react";
 
 // Focus hand-back and the unsaved-input guard shared by every editor surface of the matrix
@@ -63,7 +57,6 @@ export function DiscardDialog({
     <AlertDialog open={open} onOpenChange={(next) => !next && onKeep()}>
       <AlertDialogContent
         size="sm"
-        className="rounded-2xl"
         onOpenAutoFocus={() => (discarded.current = false)}
         // Keep: focus returns to the field being edited. Discard: the editor's own close hands
         // focus back to its cell or tile.
@@ -72,14 +65,14 @@ export function DiscardDialog({
           if (!discarded.current) restoreFocus();
         }}
       >
-        <AlertDialogHeader>
-          <AlertDialogTitle>{t("editor.discardTitle")}</AlertDialogTitle>
-          <AlertDialogDescription>{t("editor.discardDescription")}</AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>{t("editor.keepEditing")}</AlertDialogCancel>
+        <ModalHeader alert icon={TriangleAlert} tone="danger" title={t("editor.discardTitle")} />
+        <ModalBody>
+          <ModalText alert>{t("editor.discardDescription")}</ModalText>
+        </ModalBody>
+        <ModalFooter>
+          <AlertDialogCancel variant="ghost">{t("editor.keepEditing")}</AlertDialogCancel>
           <Button
-            variant="destructive"
+            variant="danger"
             onClick={() => {
               discarded.current = true;
               onDiscard();
@@ -87,7 +80,7 @@ export function DiscardDialog({
           >
             {t("editor.discard")}
           </Button>
-        </AlertDialogFooter>
+        </ModalFooter>
       </AlertDialogContent>
     </AlertDialog>
   );

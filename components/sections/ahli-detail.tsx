@@ -18,13 +18,11 @@ import {
   StatCard,
 } from "@/components/shared";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ModalBody, ModalError, ModalField, ModalFooter, ModalHeader, ModalSection, modalFormClass } from "@/components/modal";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { messageFor } from "@/lib/errors";
 import { useT } from "@/lib/i18n/react";
 import { formatDateTime, formatDay, formatMoney, formatMoneyShort, formatMonth, waNumber } from "@/lib/format";
@@ -44,6 +42,7 @@ import {
   ReceiptText,
   TriangleAlert,
   UserCheck,
+  UserPen,
   UserRoundX,
   UserX,
   WalletCards,
@@ -212,7 +211,6 @@ export function AhliDetail({ id }: { id: string }) {
 function Participation({ member }: { member: Member }) {
   const t = useT();
   const { data, view } = useSnapshot();
-  const isMobile = useIsMobile();
   const [open, setOpen] = useState<MatrixCell | null>(null);
   const [dirty, setDirty] = useState(false);
 
@@ -253,28 +251,13 @@ function Participation({ member }: { member: Member }) {
         </ul>
       )}
 
-      {isMobile ? (
-        <Sheet open={current !== null} onOpenChange={close}>
-          <SheetContent side="bottom" className="max-h-[90svh] overflow-y-auto rounded-t-3xl px-4 pt-2 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-            <div className="mx-auto mb-1 h-1.5 w-10 rounded-full bg-border" aria-hidden />
-            <SheetHeader className="sr-only">
-              <SheetTitle>Caj ahli</SheetTitle>
-              <SheetDescription>Rekod bayaran, ubah amaun atau lihat sejarah</SheetDescription>
-            </SheetHeader>
-            {current && <CellEditor cell={current} onDone={done} onDirtyChange={setDirty} />}
-          </SheetContent>
-        </Sheet>
-      ) : (
-        <Dialog open={current !== null} onOpenChange={close}>
-          <DialogContent className="max-h-[92svh] overflow-y-auto rounded-2xl sm:max-w-md">
-            <DialogHeader className="sr-only">
-              <DialogTitle>Caj ahli</DialogTitle>
-              <DialogDescription>Rekod bayaran, ubah amaun atau lihat sejarah</DialogDescription>
-            </DialogHeader>
-            {current && <CellEditor cell={current} onDone={done} onDirtyChange={setDirty} />}
-          </DialogContent>
-        </Dialog>
-      )}
+      {/* One Dialog: a centred card from 640px up, a bottom sheet below it. */}
+      <Dialog open={current !== null} onOpenChange={close}>
+        <DialogContent size="md">
+          <ModalHeader icon={WalletCards} title="Caj ahli" description="Rekod bayaran, ubah amaun atau lihat sejarah" />
+          <ModalBody>{current && <CellEditor cell={current} onDone={done} onDirtyChange={setDirty} />}</ModalBody>
+        </DialogContent>
+      </Dialog>
     </SectionCard>
   );
 }
@@ -412,7 +395,7 @@ function Figures({
 function EditMemberDialog({ member, open, onOpenChange }: { member: Member; open: boolean; onOpenChange: (open: boolean) => void }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92svh] overflow-y-auto rounded-2xl sm:max-w-md">
+      <DialogContent size="md">
         {/* Remount the form each time it opens so it starts from the stored values. */}
         {open && <EditMemberForm member={member} onClose={() => onOpenChange(false)} />}
       </DialogContent>
@@ -458,49 +441,54 @@ function EditMemberForm({ member, onClose }: { member: Member; onClose: () => vo
   };
 
   return (
-    <form onSubmit={submit} className="grid gap-4" noValidate>
-      <DialogHeader>
-        <DialogTitle>Edit profil ahli</DialogTitle>
-        <DialogDescription>Perubahan direkod dalam log audit. Rekod bayaran tidak terjejas.</DialogDescription>
-      </DialogHeader>
-      <div className="grid gap-1.5">
-        <Label htmlFor="edit-name">Nama penuh</Label>
-        <Input id="edit-name" value={name} onChange={(event) => setName(event.target.value)} aria-invalid={Boolean(clash) || undefined} />
-        {clash && (
-          <p className="flex items-start gap-1.5 text-xs text-st-partial">
-            <TriangleAlert className="mt-px size-3.5 shrink-0" aria-hidden />
-            Sama dengan ahli lain &quot;{clash.name}&quot;. Nama ahli mesti berbeza; tambah inisial atau nama penuh untuk membezakan.
-          </p>
-        )}
-      </div>
-      <div className="grid gap-1.5">
-        <Label>Kategori</Label>
-        <SegmentedChoice<MemberCategory | "">
-          label="Kategori"
-          optional
-          value={category ?? ""}
-          onChange={(value) => setCategory(value || null)}
-          options={(Object.keys(categoryLabels) as MemberCategory[]).map((value) => ({ value, label: categoryLabels[value] }))}
-        />
-      </div>
-      <div className="grid gap-1.5">
-        <Label htmlFor="edit-phone">No. telefon (pilihan)</Label>
-        <Input id="edit-phone" inputMode="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="012-345 6789" />
-      </div>
-      <div className="grid gap-1.5">
-        <Label htmlFor="edit-notes">Catatan (pilihan)</Label>
-        <Textarea id="edit-notes" rows={3} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="cth. Bertukar ke sekolah lain pada Jun" />
-      </div>
-      {error && <p className="text-xs font-medium text-st-unpaid">{error}</p>}
-      <DialogFooter className="gap-2">
-        <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
+    <form onSubmit={submit} className={modalFormClass} noValidate>
+      <ModalHeader icon={UserPen} title="Edit profil ahli" description="Perubahan direkod dalam log audit. Rekod bayaran tidak terjejas." />
+      <ModalBody>
+        <ModalSection label="Maklumat ahli">
+          <ModalField
+            label="Nama penuh"
+            htmlFor="edit-name"
+            helper={
+              clash && (
+                <span className="flex items-start gap-1.5 text-st-partial">
+                  <TriangleAlert className="mt-px size-3.5 shrink-0" aria-hidden />
+                  Sama dengan ahli lain &quot;{clash.name}&quot;. Nama ahli mesti berbeza; tambah inisial atau nama penuh untuk membezakan.
+                </span>
+              )
+            }
+          >
+            <Input id="edit-name" value={name} onChange={(event) => setName(event.target.value)} aria-invalid={Boolean(clash) || undefined} />
+          </ModalField>
+          <ModalField label="Kategori" labelId="edit-category-label">
+            <SegmentedChoice<MemberCategory | "">
+              joined
+              label="Kategori"
+              optional
+              value={category ?? ""}
+              onChange={(value) => setCategory(value || null)}
+              options={(Object.keys(categoryLabels) as MemberCategory[]).map((value) => ({ value, label: categoryLabels[value] }))}
+            />
+          </ModalField>
+        </ModalSection>
+        <ModalSection label="Hubungan" divided>
+          <ModalField label="No. telefon (pilihan)" htmlFor="edit-phone">
+            <Input id="edit-phone" inputMode="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="012-345 6789" />
+          </ModalField>
+          <ModalField label="Catatan (pilihan)" htmlFor="edit-notes">
+            <Textarea id="edit-notes" rows={3} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="cth. Bertukar ke sekolah lain pada Jun" />
+          </ModalField>
+        </ModalSection>
+        {error && <ModalError>{error}</ModalError>}
+      </ModalBody>
+      <ModalFooter>
+        <Button type="button" variant="ghost" onClick={onClose} disabled={busy}>
           Batal
         </Button>
         <Button type="submit" disabled={busy}>
           {busy && <Spinner className="size-4" />}
           Simpan perubahan
         </Button>
-      </DialogFooter>
+      </ModalFooter>
     </form>
   );
 }
@@ -534,32 +522,34 @@ function ActiveDialog({ member, open, onOpenChange }: { member: Member; open: bo
         onOpenChange(value);
       }}
     >
-      <DialogContent className="rounded-2xl sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{next ? `Aktifkan semula ${member.name}?` : `Nyahaktifkan ${member.name}?`}</DialogTitle>
-          <DialogDescription>
-            {next
-              ? "Ahli akan dipaparkan semula dalam senarai harian dan Matriks."
-              : "Gunakan ini untuk ahli yang bertukar atau bersara. Tiada apa-apa dipadam."}
-          </DialogDescription>
-        </DialogHeader>
-        {!next && (
-          <ul className="grid gap-1.5 rounded-xl bg-primary-tint px-3 py-2.5 text-xs text-foreground/80">
-            <li>• Sejarah bayaran dikekalkan sepenuhnya.</li>
-            <li>• Ahli kekal dalam rekod kutipan sedia ada; baki yang belum dijelaskan masih dikira.</li>
-            <li>• Ahli disembunyikan daripada Matriks secara lalai dan boleh diaktifkan semula bila-bila masa.</li>
-          </ul>
+      <DialogContent size="sm">
+        <ModalHeader
+          icon={next ? UserCheck : UserX}
+          tone={next ? "brand" : "danger"}
+          title={next ? `Aktifkan semula ${member.name}?` : `Nyahaktifkan ${member.name}?`}
+          description={next ? "Ahli akan dipaparkan semula dalam senarai harian dan Matriks." : "Gunakan ini untuk ahli yang bertukar atau bersara. Tiada apa-apa dipadam."}
+        />
+        {(!next || error) && (
+          <ModalBody>
+            {!next && (
+              <ul className="grid gap-1.5 rounded-[10px] bg-primary-tint px-3 py-2.5 text-xs text-foreground/80">
+                <li>• Sejarah bayaran dikekalkan sepenuhnya.</li>
+                <li>• Ahli kekal dalam rekod kutipan sedia ada; baki yang belum dijelaskan masih dikira.</li>
+                <li>• Ahli disembunyikan daripada Matriks secara lalai dan boleh diaktifkan semula bila-bila masa.</li>
+              </ul>
+            )}
+            {error && <ModalError>{error}</ModalError>}
+          </ModalBody>
         )}
-        {error && <p className="text-xs font-medium text-st-unpaid">{error}</p>}
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
+        <ModalFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>
             Batal
           </Button>
-          <Button onClick={() => void confirm()} disabled={busy}>
+          <Button variant={next ? "default" : "danger"} onClick={() => void confirm()} disabled={busy}>
             {busy && <Spinner className="size-4" />}
             {next ? "Aktifkan semula" : "Nyahaktifkan"}
           </Button>
-        </DialogFooter>
+        </ModalFooter>
       </DialogContent>
     </Dialog>
   );

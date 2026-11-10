@@ -1,13 +1,13 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
+import { ModalBody, ModalField, ModalFooter, ModalHeader, ModalText } from "@/components/modal";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { messageFor } from "@/lib/errors";
 import { useT } from "@/lib/i18n/react";
-import { cn } from "@/lib/utils";
+import { MessageSquareText, TriangleAlert } from "lucide-react";
 import { useId, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
@@ -67,40 +67,36 @@ export function ReasonDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => !busy && onOpenChange(next)}>
-      <DialogContent className="max-h-[92svh] overflow-y-auto rounded-2xl sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
-        </DialogHeader>
-        {children}
-        <div className="grid gap-1.5">
-          <Label htmlFor={id}>
-            {t("reason.label")}
-            {reasonRequired ? "" : t("reason.optional")}
-          </Label>
-          <Textarea
-            id={id}
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
-            placeholder={placeholder ?? t("reason.placeholder")}
-            rows={3}
-            aria-invalid={Boolean(error)}
-          />
-          {error && <p className="text-xs font-medium text-st-unpaid">{error}</p>}
-        </div>
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
+      <DialogContent size="sm">
+        <ModalHeader title={title} icon={destructive ? TriangleAlert : MessageSquareText} tone={destructive ? "danger" : "brand"} />
+        <ModalBody>
+          {/* The consequence is read in full: body text, not the two-line header description. */}
+          <ModalText>{description}</ModalText>
+          {children}
+          <ModalField
+            label={`${t("reason.label")}${reasonRequired ? "" : t("reason.optional")}`}
+            htmlFor={id}
+            error={error}
+          >
+            <Textarea
+              id={id}
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+              placeholder={placeholder ?? t("reason.placeholder")}
+              rows={3}
+              aria-invalid={Boolean(error)}
+            />
+          </ModalField>
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>
             {t("common.back")}
           </Button>
-          <Button
-            onClick={() => void submit()}
-            disabled={busy}
-            className={cn(destructive && "bg-st-overdue-bg text-white hover:bg-st-overdue-bg/90")}
-          >
+          <Button onClick={() => void submit()} disabled={busy} variant={destructive ? "danger" : "default"}>
             {busy && <Spinner className="size-4" />}
             {confirmLabel}
           </Button>
-        </DialogFooter>
+        </ModalFooter>
       </DialogContent>
     </Dialog>
   );

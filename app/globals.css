@@ -86,6 +86,9 @@
 /* Rose (default). Values from the Concept 04 colour tokens. */
 :root {
   --radius: 0.75rem;
+  /* Modal surface (dialog, alert dialog, bottom sheet). Fields and lists inside are 10px and inset
+     by 20-24px, so the outer curve stays concentric with them. */
+  --radius-modal: 1.25rem;
   --background: #fff7f9;
   --foreground: #1f2937;
   --card: #ffffff;
