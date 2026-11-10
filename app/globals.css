@@ -2,6 +2,10 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* Light only: the app never sets a .dark class, so dark: utilities (shadcn) must never apply.
+   Without this line Tailwind v4 ties dark: to prefers-color-scheme. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* KelabKit theme, Concept 04 "Rose Floral". Components read these tokens, never raw hex.
    An accent theme ([data-accent]) swaps only the brand palette. Status colours are fixed
    so "Dibayar" is green and "Lewat" is red in every theme. Light only (Phase 0 decision). */
