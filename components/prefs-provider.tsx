@@ -1,10 +1,10 @@
 "use client";
 
 import { savePrefs } from "@/app/actions/prefs";
-import { readLayout, writeLayout } from "@/components/matrix/view-pref";
+import { readDensity, readLayout, readSummary, writeDensity, writeLayout, writeSummary } from "@/components/matrix/view-pref";
 import { browserStorage, readWidths, writeWidths } from "@/components/matrix/column-widths";
 import { isLocale, LOCALE_COOKIE, setCurrentLocale, type Locale } from "@/lib/i18n";
-import { createPrefsSaver, isEmptyPrefs, PREFS_SOURCE_ATTR, mergePrefs, samePrefs, type MatrixLayout, type PrefsSaver, type StoredPrefs, type Widths } from "@/lib/prefs";
+import { createPrefsSaver, isEmptyPrefs, PREFS_SOURCE_ATTR, mergePrefs, samePrefs, type MatrixDensity, type MatrixLayout, type MatrixSummary, type PrefsSaver, type StoredPrefs, type Widths } from "@/lib/prefs";
 import { defaultPreferences, isThemeId, PREFS_KEY, type Preferences } from "@/lib/themes";
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
@@ -18,6 +18,8 @@ import { createContext, useCallback, useContext, useEffect, useLayoutEffect, use
 type Resolved = Preferences & {
   /** null = no saved choice: Jadual on desktop, Kad on phones. */
   matrixLayout: MatrixLayout | null;
+  matrixDensity: MatrixDensity;
+  matrixSummary: MatrixSummary;
   matrixWidths: Widths;
 };
 type PrefsState = Resolved & { setPrefs: (changes: StoredPrefs) => void };
@@ -25,7 +27,7 @@ export type AccountSeed = { initial: StoredPrefs | null };
 
 const PrefsContext = createContext<PrefsState | null>(null);
 
-const defaults: Resolved = { ...defaultPreferences, matrixLayout: null, matrixWidths: {} };
+const defaults: Resolved = { ...defaultPreferences, matrixLayout: null, matrixDensity: "comfortable", matrixSummary: "received", matrixWidths: {} };
 
 function resolve(stored: StoredPrefs): Resolved {
   return {
@@ -33,6 +35,8 @@ function resolve(stored: StoredPrefs): Resolved {
     floral: stored.floral ?? defaults.floral,
     locale: stored.locale ?? defaults.locale,
     matrixLayout: stored.matrixLayout ?? null,
+    matrixDensity: stored.matrixDensity ?? defaults.matrixDensity,
+    matrixSummary: stored.matrixSummary ?? defaults.matrixSummary,
     matrixWidths: stored.matrixWidths ?? {},
   };
 }
@@ -50,6 +54,10 @@ function readLocal(): StoredPrefs {
   }
   const layout = readLayout(browserStorage());
   if (layout) stored.matrixLayout = layout;
+  const density = readDensity(browserStorage());
+  if (density) stored.matrixDensity = density;
+  const summary = readSummary(browserStorage());
+  if (summary) stored.matrixSummary = summary;
   const widths = readWidths(browserStorage());
   if (Object.keys(widths).length > 0) stored.matrixWidths = widths;
   return stored;
@@ -158,7 +166,7 @@ export function PrefsProvider({ children, account, initialLocale }: { children: 
       const current = latest.current;
       // Only what actually differs: a resize that ends where it began saves nothing.
       const changed: StoredPrefs = {};
-      const before = { theme: current.theme, floral: current.floral, locale: current.locale, matrixLayout: current.matrixLayout ?? undefined, matrixWidths: current.matrixWidths } satisfies StoredPrefs;
+      const before = { theme: current.theme, floral: current.floral, locale: current.locale, matrixLayout: current.matrixLayout ?? undefined, matrixDensity: current.matrixDensity, matrixSummary: current.matrixSummary, matrixWidths: current.matrixWidths } satisfies StoredPrefs;
       for (const key of Object.keys(changes) as (keyof StoredPrefs)[]) {
         if (changes[key] === undefined) continue;
         if (!samePrefs({ [key]: changes[key] }, { [key]: before[key] })) Object.assign(changed, { [key]: changes[key] });
@@ -174,6 +182,8 @@ export function PrefsProvider({ children, account, initialLocale }: { children: 
       }
       if (touchesDisplay(changed)) mirrorDisplay(next);
       if (changed.matrixLayout) writeLayout(browserStorage(), changed.matrixLayout);
+      if (changed.matrixDensity) writeDensity(browserStorage(), changed.matrixDensity);
+      if (changed.matrixSummary) writeSummary(browserStorage(), changed.matrixSummary);
       if (changed.matrixWidths) writeWidths(browserStorage(), changed.matrixWidths);
     },
     [account, commit],
