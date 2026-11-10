@@ -28,3 +28,29 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+
+  e2e:
+    # Acceptance scenarios for the treasurer flows against the Demo backend (browser localStorage):
+    # no database and no secrets. Cross-club isolation is covered by db:test, not here.
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+        env:
+          CI: "true"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          include-hidden-files: true
+          path: |
+            e2e/.report
+            e2e/.results
+          retention-days: 7
