@@ -5,6 +5,7 @@ import { AddMemberDialog } from "@/components/add-member-dialog";
 import { useKelab, useSnapshot } from "@/components/data-provider";
 import { describeGhost, GhostValue, useGhost } from "@/components/isi-pantas/ghost";
 import { CellEditor, focusEditorStart } from "@/components/matrix/cell-editor";
+import { DiscardDialog, useLastFocus, useOpener } from "@/components/matrix/editor-guard";
 import {
   BALANCE_W,
   browserStorage,
@@ -19,7 +20,9 @@ import {
   type WidthPreset,
   type Widths,
 } from "@/components/matrix/column-widths";
+import { MemberCardGrid } from "@/components/matrix/member-card-grid";
 import { MonthTile } from "@/components/matrix/month-tile";
+import { readLayout, writeLayout, type MatrixLayout } from "@/components/matrix/view-pref";
 import { RestoreCollectionDialog } from "@/components/restore-collection-dialog";
 import { ChargeStatusChips, EmptyState, FilterPills, PageHeader, PageShell, SearchInput, StatusChip, Toolbar } from "@/components/shared";
 import {
@@ -110,30 +113,6 @@ const ROW_FADE = "transition-[background-color] duration-100";
 // PageUp / PageDown step, in rows.
 const PAGE_ROWS = 10;
 
-/** Remembers the element that opened a controlled overlay (no Radix Trigger) to hand focus back on close. */
-function useOpener() {
-  const ref = useRef<HTMLElement | null>(null);
-  const remember = () => {
-    ref.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-  };
-  const restore = (event: Event) => {
-    if (!ref.current?.isConnected) return; // opener gone (e.g. an empty state replaced): keep Radix's default
-    event.preventDefault();
-    ref.current.focus();
-  };
-  return { ref, remember, restore };
-}
-
-/** Tracks the last focused control inside an editor, so "Teruskan edit" can put focus back there. */
-function useLastFocus() {
-  const ref = useRef<HTMLElement | null>(null);
-  const onFocusCapture = (event: { target: EventTarget }) => {
-    if (event.target instanceof HTMLElement) ref.current = event.target;
-  };
-  const restore = () => requestAnimationFrame(() => ref.current?.isConnected && ref.current.focus());
-  return { onFocusCapture, restore };
-}
-
 export function MatrixPage() {
   const { data, view } = useSnapshot();
   const isMobile = useIsMobile();
@@ -144,7 +123,13 @@ export function MatrixPage() {
   const [showCompleted, setShowCompleted] = useState(false);
   const [showInactive, setShowInactive] = useState(false);
   const [sort, setSort] = useState<Sort>("name");
-  const [layout, setLayout] = useState<"auto" | "grid" | "cards">("auto");
+  // null = no saved choice: Jadual on desktop, Kad on phones. Read after mount (storage is client-only).
+  const [layout, setLayout] = useState<MatrixLayout | null>(null);
+  useEffect(() => setLayout(readLayout(browserStorage())), []);
+  const chooseLayout = (next: MatrixLayout) => {
+    setLayout(next);
+    writeLayout(browserStorage(), next);
+  };
   const [addMember, setAddMember] = useState(false);
   const [addColumn, setAddColumn] = useState(false);
   const [restoring, setRestoring] = useState<Collection | null>(null);
@@ -213,7 +198,7 @@ export function MatrixPage() {
     return rows;
   }, [data.members, query, rowFilter, rowSummary, showInactive, sort]);
 
-  const showGrid = layout === "grid" || (layout === "auto" && !isMobile);
+  const showGrid = (layout ?? (isMobile ? "cards" : "grid")) === "grid";
 
   return (
     <PageShell className="max-w-none lg:px-6">
@@ -305,10 +290,10 @@ export function MatrixPage() {
             <ToggleGroup
               type="single"
               value={showGrid ? "grid" : "cards"}
-              onValueChange={(next) => next && setLayout(next as "grid" | "cards")}
+              onValueChange={(next) => next && chooseLayout(next as MatrixLayout)}
               aria-label="Paparan"
               spacing={0}
-              className="gap-0 rounded-[10px] border border-border bg-card p-0.5 md:hidden"
+              className="gap-0 rounded-[10px] border border-border bg-card p-0.5"
             >
               <ToggleGroupItem value="cards" className="h-8 gap-1 rounded-[7px]! px-2.5 text-xs font-normal hover:bg-primary-tint data-[state=on]:bg-primary-light data-[state=on]:font-semibold data-[state=on]:text-primary-strong">
                 <Rows3 className="size-3.5" /> Kad
@@ -344,7 +329,11 @@ export function MatrixPage() {
       ) : showGrid ? (
         <Grid rows={members.map((row) => row.member)} columns={columns} collections={visibleCollections} onHide={(id) => setHidden((h) => ({ ...h, [id]: true }))} />
       ) : (
-        <MemberCards rows={members.map((row) => row.member)} columns={columns} />
+        isMobile ? (
+          <MemberCards rows={members.map((row) => row.member)} columns={columns} />
+        ) : (
+          <MemberCardGrid rows={members.map((row) => row.member)} columns={columns} />
+        )
       )}
 
       <AddMemberDialog open={addMember} onOpenChange={setAddMember} onCloseAutoFocus={memberOpener.restore} />
@@ -873,57 +862,6 @@ function Grid({
 }
 
 /**
- * Asked when a click lands outside an editor holding unsaved input. Esc and Batal never ask:
- * they are explicit cancels. Shared by the desktop popover and the phone sheet.
- */
-function DiscardDialog({
-  open,
-  onKeep,
-  onDiscard,
-  restoreFocus,
-}: {
-  open: boolean;
-  onKeep: () => void;
-  onDiscard: () => void;
-  /** Puts focus back on the field being edited; the outside click that opened this moved it away. */
-  restoreFocus: () => void;
-}) {
-  const discarded = useRef(false);
-  return (
-    <AlertDialog open={open} onOpenChange={(next) => !next && onKeep()}>
-      <AlertDialogContent
-        size="sm"
-        className="rounded-2xl"
-        onOpenAutoFocus={() => (discarded.current = false)}
-        // Keep: focus returns to the field being edited. Discard: the editor's own close hands
-        // focus back to its cell or tile.
-        onCloseAutoFocus={(event) => {
-          event.preventDefault();
-          if (!discarded.current) restoreFocus();
-        }}
-      >
-        <AlertDialogHeader>
-          <AlertDialogTitle>Buang perubahan?</AlertDialogTitle>
-          <AlertDialogDescription>Perubahan yang belum disimpan dalam editor ini akan hilang.</AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Teruskan edit</AlertDialogCancel>
-          <Button
-            variant="destructive"
-            onClick={() => {
-              discarded.current = true;
-              onDiscard();
-            }}
-          >
-            Buang
-          </Button>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
-}
-
-/**
  * Confirms archiving a collection from its column menu, then offers to undo. Undo restores the
  * status the collection had before (active, draft or completed), read before the change.
  */
@@ -1388,7 +1326,10 @@ function MemberCards({ rows, columns }: { rows: Member[]; columns: MatrixColumn[
                     if (cells.every((cell) => cell.kind === "na")) return null;
                     return (
                       <div key={collection.id} className="rounded-[20px] bg-primary-tint/60 p-2">
-                        <p className="mb-1.5 text-xs font-medium">{collection.name}</p>
+                        <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium">
+                          <CollectionIcon collection={collection} size="xs" />
+                          <span className="min-w-0 truncate">{collection.name}</span>
+                        </p>
                         <div className="grid grid-cols-6 gap-1">
                           {cells.map((cell) => (
                             <MonthTile key={cell.column.key} cell={cell} onOpen={() => show(cell)} />
@@ -1406,7 +1347,8 @@ function MemberCards({ rows, columns }: { rows: Member[]; columns: MatrixColumn[
                       onClick={() => show(cell)}
                       className="flex min-h-12 items-center justify-between gap-2 rounded-xl border border-border px-3 py-2 text-left active:bg-primary-tint"
                     >
-                      <span className="min-w-0">
+                      <CollectionIcon collection={collection} size="sm" />
+                      <span className="min-w-0 flex-1">
                         <span className="block truncate text-[13px] font-medium">{collection.name}</span>
                         <span className="block text-xs text-muted-foreground tabular-nums">
                           {cell.kind === "voluntary"

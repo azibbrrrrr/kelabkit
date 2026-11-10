@@ -34,8 +34,11 @@ export function CellEditor({
   initialInput,
   onDone,
   onDirtyChange,
+  hideTitle,
 }: {
   cell: MatrixCell;
+  /** The host already names the member and the line (the side panel's accordion). */
+  hideTitle?: boolean;
   /** A digit typed on the selected cell, carried into the amount field. */
   initialInput?: string;
   onDone: () => void;
@@ -46,10 +49,12 @@ export function CellEditor({
 
   return (
     <div className="grid gap-3">
-      <div className="min-w-0">
-        <p className="truncate text-[15px] font-semibold">{cell.member.name}</p>
-        <p className="truncate text-xs text-muted-foreground">{title}</p>
-      </div>
+      {!hideTitle && (
+        <div className="min-w-0">
+          <p className="truncate text-[15px] font-semibold">{cell.member.name}</p>
+          <p className="truncate text-xs text-muted-foreground">{title}</p>
+        </div>
+      )}
       {archived ? (
         <p className="rounded-xl bg-muted px-3 py-2 text-sm text-muted-foreground">Kutipan ini telah diarkib. Rekod hanya boleh dilihat.</p>
       ) : cell.kind === "na" ? (

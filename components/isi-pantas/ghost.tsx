@@ -43,3 +43,17 @@ export function GhostValue({ ghost }: { ghost: Ghost }) {
     </button>
   );
 }
+
+/** Small "+RMx" chip on a card line while suggestions wait. Decorative: the line's label carries the words. */
+export function GhostBadge({ amountSen, className }: { amountSen: number; className?: string }) {
+  return (
+    <span
+      aria-hidden
+      data-isi-ghost-badge
+      title="Cadangan Isi Pantas belum direkod"
+      className={cn("isi-ghost isi-ghost-pulse cursor-default inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums", className)}
+    >
+      <Sparkles className="size-3" />+{formatMoneyShort(amountSen)}
+    </span>
+  );
+}
