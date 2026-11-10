@@ -1192,10 +1192,12 @@ function ColumnHeader({
     // th's px-3 included) while the group's months scroll under it, until the group scrolls out.
     <div
       className={cn("flex items-start justify-between gap-1 py-2", pinned && "sticky w-max gap-3")}
-      style={pinned ? { left: pinned.left, maxWidth: Math.min(260, pinned.maxWidth) } : undefined}
+      // Renaming a pinned label: take the label's full allowance so the input is not content-sized.
+      style={pinned ? { left: pinned.left, maxWidth: Math.min(260, pinned.maxWidth), width: renaming ? Math.min(260, pinned.maxWidth) : undefined } : undefined}
     >
-      {/* data-fit: auto-fit measures this block, plus the menu button and gap beside it. */}
-      <div className="min-w-0" data-fit={pinned ? undefined : 28}>
+      {/* data-fit: auto-fit measures this block, plus the menu button and gap beside it. While
+          renaming it grows to every pixel left of the ⋮ button, so the input fills the header. */}
+      <div className={cn("min-w-0", renaming && "flex-1")} data-fit={pinned ? undefined : 28}>
         {renaming ? (
           <input
             ref={renameInput}
@@ -1204,6 +1206,8 @@ function ColumnHeader({
             value={name}
             disabled={busy}
             onChange={(event) => setName(event.target.value)}
+            // Select the whole name on open: it shows from its first letter and typing replaces it.
+            onFocus={(event) => event.currentTarget.select()}
             onBlur={() => void commit()}
             onKeyDown={(event) => {
               if (event.key === "Enter") void commit();
@@ -1214,7 +1218,8 @@ function ColumnHeader({
               event.stopPropagation();
             }}
             aria-label="Nama kutipan"
-            className="h-7 w-full min-w-32 rounded-md border border-primary bg-card px-1.5 text-[13px] font-semibold outline-none"
+            // w-full min-w-0: exactly the header's width beside the ⋮ button, never wider, even in a 120px column.
+            className="h-7 w-full min-w-0 rounded-md border border-primary bg-card px-1.5 text-[13px] font-semibold outline-none"
           />
         ) : (
           // Plain text, not a button: renaming is a menu action (keyboard and touch). Double-click
