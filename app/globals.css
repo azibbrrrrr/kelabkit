@@ -22,6 +22,10 @@
   --color-primary-strong: var(--primary-strong);
   --color-primary-light: var(--primary-light);
   --color-primary-tint: var(--primary-tint);
+  --color-grid-frozen: var(--grid-frozen);
+  --color-grid-zebra: var(--grid-zebra);
+  --color-grid-edge: var(--grid-edge);
+  --color-grid-shadow: var(--grid-shadow);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
@@ -137,6 +141,14 @@
   --st-na-bg: #f3f4f6;
   --st-future: #475569;
   --st-future-bg: #f1f5f9;
+
+  /* Matriks grid, derived from the accent so every theme follows. Frozen columns sit on a
+     tint lighter than the row highlight (--primary-tint), so muted and status text on a
+     highlighted frozen cell keeps 4.5:1. */
+  --grid-frozen: color-mix(in srgb, var(--primary-tint) 75%, var(--card));
+  --grid-zebra: color-mix(in srgb, var(--primary-tint) 45%, var(--card));
+  --grid-edge: color-mix(in srgb, var(--primary) 30%, var(--border));
+  --grid-shadow: color-mix(in srgb, var(--foreground) 16%, transparent);
 }
 
 [data-accent="lavender"] {
