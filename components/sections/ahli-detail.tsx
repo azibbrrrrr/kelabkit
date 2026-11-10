@@ -274,7 +274,7 @@ function CollectionItem({ collection, member, onOpen }: { collection: Collection
 
   const header = (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-      <Link href={`/kutipan/${collection.id}/`} className="min-w-0 text-[14px] font-semibold break-words hover:text-primary-strong hover:underline">
+      <Link href={`/kutipan/${collection.id}/`} className="min-w-0 text-body font-semibold break-words hover:text-primary-strong hover:underline">
         {collection.name}
       </Link>
       <span className="text-xs text-muted-foreground">{collectionTypeLabels[collection.type]}</span>
@@ -338,7 +338,7 @@ function CollectionItem({ collection, member, onOpen }: { collection: Collection
       <div className="flex flex-wrap items-start justify-between gap-2">
         {header}
         <span className="flex flex-wrap gap-1">
-          <span className="inline-flex h-5 items-center rounded-full bg-st-paid-bg px-2 text-[11px] font-medium text-st-paid tabular-nums">
+          <span className="inline-flex h-5 items-center rounded-full bg-st-paid-bg px-2 text-caption font-medium text-st-paid tabular-nums">
             {t("memberDetail.participation.monthsPaid", { paid: totals.counts.paid, total: chargeCells.length })}
           </span>
           {totals.counts.overdue > 0 && <LabelChip entry={[`${overdueLabel[0]} · ${totals.counts.overdue}`, overdueLabel[1]]} compact />}
@@ -373,18 +373,18 @@ function Figures({
     <dl className="grid grid-cols-3 gap-2 text-xs">
       <div className="min-w-0">
         <dt className="text-muted-foreground">{t("memberDetail.figures.required")}</dt>
-        <dd className="truncate font-semibold tabular-nums">{required === null ? t("memberDetail.figures.exempt") : formatMoney(required)}</dd>
+        <dd className="font-semibold tabular-nums">{required === null ? t("memberDetail.figures.exempt") : formatMoney(required)}</dd>
       </div>
       <div className="min-w-0">
         <dt className="text-muted-foreground">{t("memberDetail.figures.received")}</dt>
-        <dd className="truncate font-semibold text-st-paid tabular-nums">{formatMoney(paid)}</dd>
+        <dd className="font-semibold text-st-paid tabular-nums">{formatMoney(paid)}</dd>
       </div>
       <div className="min-w-0">
         <dt className="text-muted-foreground">{upcoming !== undefined ? t("memberDetail.figures.balanceCurrent") : t("memberDetail.figures.balance")}</dt>
-        <dd className={cn("truncate font-semibold tabular-nums", remaining > 0 ? "text-st-unpaid" : "text-foreground")}>{formatMoney(remaining)}</dd>
+        <dd className={cn("font-semibold tabular-nums", remaining > 0 ? "text-st-unpaid" : "text-foreground")}>{formatMoney(remaining)}</dd>
       </div>
       {(pending > 0 || (upcoming ?? 0) > 0) && (
-        <p className="col-span-3 text-[11px] text-muted-foreground">
+        <p className="col-span-3 text-caption text-muted-foreground">
           {pending > 0 && <>{t("memberDetail.figures.pending", { amount: formatMoney(pending) })} </>}
           {(upcoming ?? 0) > 0 && <>{t("memberDetail.figures.upcoming", { amount: formatMoney(upcoming ?? 0) })}</>}
         </p>

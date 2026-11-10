@@ -15,7 +15,7 @@ export function MonthTile({ cell, onOpen, compact }: { cell: MatrixCell; onOpen:
   const month = cell.column.period ? formatMonth(cell.column.period.month, false) : "";
   if (cell.kind !== "charge")
     return (
-      <span className={cn("grid place-items-center rounded-lg bg-st-na-bg text-[10px] text-st-na", compact ? "h-8" : "h-12")}>
+      <span className={cn("grid place-items-center rounded-lg bg-st-na-bg text-caption text-st-na", compact ? "h-8" : "h-12")}>
         <span>
           {month}
           <span className="sr-only">: {cellStatusLabels.na[0]}</span>
@@ -50,7 +50,7 @@ export function MonthTile({ cell, onOpen, compact }: { cell: MatrixCell; onOpen:
       onClick={(event) => onOpen(event.currentTarget)}
       aria-label={`${month}${shown ? ` ${shown}` : ""}: ${words}, ${t("card.dueLabel", { amount: formatMoney(ledger.remaining) })}`}
       title={`${month}: ${words}`}
-      className={cn("grid place-items-center rounded-lg text-[10px] leading-tight font-semibold transition-[scale] duration-150 ease-out motion-safe:active:scale-[0.96]", compact ? "h-8" : "h-12", tone)}
+      className={cn("grid place-items-center rounded-lg text-caption leading-tight font-semibold transition-[scale] duration-150 ease-out motion-safe:active:scale-[0.96]", compact ? "h-8" : "h-12", tone)}
     >
       {month}{" "}
       {!compact && <span className="font-normal">{shown ?? (status === "paid" ? "✓" : "—")}</span>}

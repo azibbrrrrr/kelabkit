@@ -56,8 +56,8 @@ export function CreateClubPage({ defaultTreasurer }: { defaultTreasurer: string 
         <div className="flex items-start gap-3">
           <BrandMark size="lg" />
           <div>
-            <h1 className="font-display text-[22px] leading-tight font-bold tracking-[-.02em]">{t("auth.createClubTitle")}</h1>
-            <p className="mt-1 text-[13px] text-muted-foreground">{t("auth.createClubHint")}</p>
+            <h1 className="font-display text-h1 tracking-[-.02em]">{t("auth.createClubTitle")}</h1>
+            <p className="mt-1 text-small text-muted-foreground">{t("auth.createClubHint")}</p>
           </div>
         </div>
         <div className="grid gap-1.5">

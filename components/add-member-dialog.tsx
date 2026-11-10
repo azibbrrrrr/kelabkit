@@ -109,7 +109,7 @@ export function AddMemberDialog({
                 <Input id="member-name" autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder={t("dialogs.addMember.namePlaceholder")} />
               </ModalField>
               {similar && (
-                <label className="flex items-center gap-2 text-[13px]">
+                <label className="flex items-center gap-2 text-small">
                   <Checkbox checked={allowDuplicate} onCheckedChange={(value) => setAllowDuplicate(value === true)} />
                   {t("dialogs.addMember.distinct")}
                 </label>

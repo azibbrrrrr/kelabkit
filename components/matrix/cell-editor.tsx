@@ -57,7 +57,7 @@ export function CellEditor({
     <div className="grid gap-3">
       {!hideTitle && (
         <div className="min-w-0">
-          <p className="truncate text-[15px] font-semibold">{cell.member.name}</p>
+          <p className="truncate text-h3 font-semibold">{cell.member.name}</p>
           <p className="truncate text-xs text-muted-foreground">{title}</p>
         </div>
       )}
@@ -103,7 +103,7 @@ function EditorTabs({ tabs }: { tabs: [EditorTab, string][] }) {
         <TabsTrigger
           key={id}
           value={id}
-          className="min-h-9 rounded-lg px-1.5 text-[11.5px] font-medium whitespace-nowrap text-muted-foreground transition-colors data-active:bg-card data-active:font-semibold data-active:text-primary-strong data-active:shadow-sm"
+          className="min-h-9 rounded-lg px-1.5 text-caption font-medium whitespace-nowrap text-muted-foreground transition-colors data-active:bg-card data-active:font-semibold data-active:text-primary-strong data-active:shadow-sm"
         >
           {label}
         </TabsTrigger>
@@ -117,7 +117,7 @@ function Figures({ items }: { items: [string, ReactNode][] }) {
     <dl className="grid grid-cols-3 gap-2 rounded-xl border border-border bg-card p-2.5 text-center">
       {items.map(([label, value]) => (
         <div key={label} className="min-w-0">
-          <dt className="text-[11px] text-muted-foreground">{label}</dt>
+          <dt className="text-caption text-muted-foreground">{label}</dt>
           <dd className="truncate text-sm font-semibold tabular-nums">{value}</dd>
         </div>
       ))}
@@ -435,12 +435,12 @@ function PayForm({
       <PaymentDetails {...form} />
       <div className="grid grid-cols-2 gap-2 pt-1">
         <Button type="button" variant="outline" onClick={onDone} disabled={form.busy}>
-          {t("editor.cancel")} <kbd className="hidden text-[10px] text-muted-foreground sm:inline">Esc</kbd>
+          {t("editor.cancel")} <kbd className="hidden text-caption text-muted-foreground sm:inline">Esc</kbd>
         </Button>
         {/* Disabled only while saving: the double-submit guard. Bad input is reported on submit. */}
         <Button type="submit" disabled={form.busy}>
           {form.busy && <Spinner className="size-4" />}
-          {form.busy ? t("common.saving") : t("common.save")} <kbd className="hidden text-[10px] opacity-80 sm:inline">↵</kbd>
+          {form.busy ? t("common.saving") : t("common.save")} <kbd className="hidden text-caption opacity-80 sm:inline">↵</kbd>
         </Button>
       </div>
     </form>

@@ -712,7 +712,7 @@ function ReportView({ report, header }: { report: Report; header: [string, strin
         <div className="flex flex-col gap-3 border-b border-border pb-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <p className="text-xs font-semibold tracking-wide text-primary-strong uppercase">{report.title}</p>
-            <h2 className="mt-1 font-display text-lg font-bold break-words">{club[1]}</h2>
+            <h2 className="mt-1 font-display text-h2 break-words">{club[1]}</h2>
             <p className="text-xs text-muted-foreground">
               {school[1] !== "—" && `${school[1]} · `}{t("reports.sessionLine", { session: session[1] })}
             </p>
@@ -736,8 +736,8 @@ function ReportView({ report, header }: { report: Report; header: [string, strin
           <dl className="grid grid-cols-2 gap-2 lg:grid-cols-4 print:grid-cols-4">
             {report.summary.map((item) => (
               <div key={item.label} className="min-w-0 rounded-xl border border-border bg-card px-3 py-2.5">
-                <dt className="text-[11.5px] text-muted-foreground">{item.label}</dt>
-                <dd className="mt-0.5 text-[15px] font-bold tabular-nums">{formatMoney(item.sen)}</dd>
+                <dt className="text-caption text-muted-foreground">{item.label}</dt>
+                <dd className="mt-0.5 text-h3 font-bold tabular-nums">{formatMoney(item.sen)}</dd>
               </div>
             ))}
           </dl>
@@ -784,7 +784,7 @@ function ReportTable({ report }: { report: Report }) {
       data-report-table
       className="@container/report relative hidden min-w-0 overflow-hidden rounded-xl border border-border md:block print:block print:overflow-visible print:rounded-none [&_[data-slot=table-container]]:overscroll-x-contain [&_[data-slot=table-container]]:print:overflow-visible"
     >
-      <Table className="text-[13px] print:text-[10px]">
+      <Table className="text-small print:text-caption">
         <TableHeader className="bg-primary-tint">
           <TableRow className="hover:bg-transparent">
             {report.columns.map((col) => (
@@ -837,7 +837,7 @@ function ReportCards({ report }: { report: Report }) {
   const card = (key: string, values: Record<string, Value>, total?: boolean) => (
     <li key={key} className={cn("min-w-0 rounded-xl border border-border p-3", total ? "bg-primary-tint/60" : "bg-card")}>
       <p className="text-sm font-semibold break-words">{screenText(head, values[head.key] ?? null)}</p>
-      <dl className="mt-2 grid grid-cols-1 gap-1 text-[13px]">
+      <dl className="mt-2 grid grid-cols-1 gap-1 text-small">
         {rest.map((col) => {
           const value = values[col.key] ?? null;
           if (total && value === null) return null;

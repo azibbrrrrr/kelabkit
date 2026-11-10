@@ -240,15 +240,15 @@ function ThemeCard() {
           <div className="mb-3 flex items-center justify-between gap-3">
             <span className="flex items-center gap-2">
               <BrandMark size="sm" />
-              <span className="font-display text-[15px] font-bold">KelabKit</span>
+              <span className="font-display text-h3 font-bold">KelabKit</span>
             </span>
             <span className="text-xs text-muted-foreground">{t("settings.theme.previewPage")}</span>
           </div>
           <div className="rounded-xl bg-card p-4 shadow-[0_1px_2px_rgba(0,0,0,.04)]">
             <p className="text-xs text-muted-foreground">{t("settings.theme.previewReceived")}</p>
-            <Money sen={figures.received} className="mt-1 block text-[22px] font-bold tracking-[-.015em]" />
+            <Money sen={figures.received} className="mt-1 block text-figure tracking-[-.015em]" />
             <ProgressBar value={figures.chargesReceived} max={figures.expected} className="mt-3" label={t("settings.theme.previewProgress")} />
-            <p className="mt-1.5 text-[11px] text-muted-foreground">
+            <p className="mt-1.5 text-caption text-muted-foreground">
               {t("settings.theme.previewPercentOf", { percent: formatPercent(figures.chargesReceived, figures.expected) })}
             </p>
             <Button asChild className="mt-3 w-full">

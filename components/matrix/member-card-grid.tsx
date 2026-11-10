@@ -85,7 +85,7 @@ function ProgressRing({ value }: { value: number }) {
           className={done ? "stroke-st-paid" : "stroke-primary"}
         />
       </svg>
-      <span className="text-[10px] font-semibold tabular-nums">{Math.round(value * 100)}</span>
+      <span className="text-caption font-semibold tabular-nums">{Math.round(value * 100)}</span>
     </span>
   );
 }
@@ -152,14 +152,14 @@ export const MemberCardGrid = memo(function MemberCardGrid({ rows, columns }: { 
                     data-member-card={member.id}
                     aria-label={label}
                     onClick={(event) => openPanel(member, event.currentTarget)}
-                    className="block max-w-full truncate rounded text-left text-[15px] font-semibold outline-none after:absolute after:inset-0 after:rounded-2xl after:content-['']"
+                    className="block max-w-full truncate rounded text-left text-h3 font-semibold outline-none after:absolute after:inset-0 after:rounded-2xl after:content-['']"
                   >
                     {member.name}
                   </button>
                   <p aria-hidden className={cn("text-xs tabular-nums", summary.dueNow > 0 ? "font-semibold text-st-unpaid" : "font-semibold text-st-paid")}>
                     {summary.dueNow > 0 ? t("matrix.balance", { amount: formatMoney(summary.dueNow) }) : t("matrix.settled")}
                   </p>
-                  {!member.active && <span className="mt-0.5 inline-block rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{t("matrix.inactive")}</span>}
+                  {!member.active && <span className="mt-0.5 inline-block rounded-full bg-muted px-2 py-0.5 text-caption font-medium text-muted-foreground">{t("matrix.inactive")}</span>}
                 </div>
                 <ProgressRing value={ratio} />
               </div>
@@ -202,7 +202,7 @@ export const MemberCardGrid = memo(function MemberCardGrid({ rows, columns }: { 
                     >
                       <CollectionIcon collection={collection} size="sm" />
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[13px] font-medium">{collection.name}</span>
+                        <span className="block truncate text-small font-medium">{collection.name}</span>
                         <span className="flex items-center gap-1.5 text-xs text-muted-foreground tabular-nums">
                           <span className="whitespace-nowrap">
                             {cell.kind === "voluntary"
@@ -389,7 +389,7 @@ function MemberPanel({
                     <AvatarFallback className="bg-primary-light text-sm font-semibold text-primary-strong">{initials(member.name)}</AvatarFallback>
                   </Avatar>
                   <div className="min-w-0">
-                    <SheetTitle className="truncate text-lg font-semibold">{member.name}</SheetTitle>
+                    <SheetTitle className="truncate text-h2">{member.name}</SheetTitle>
                     <SheetDescription className="flex flex-wrap items-center gap-x-2 text-xs">
                       <span>{member.category ? categoryLabels[member.category] : t("card.noCategory")}</span>
                       {member.phone && (
@@ -398,7 +398,7 @@ function MemberPanel({
                           {member.phone}
                         </span>
                       )}
-                      {!member.active && <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium">{t("matrix.inactive")}</span>}
+                      {!member.active && <span className="rounded-full bg-muted px-2 py-0.5 text-caption font-medium">{t("matrix.inactive")}</span>}
                     </SheetDescription>
                   </div>
                 </div>
@@ -427,7 +427,7 @@ function MemberPanel({
                   <Total label={pendingLabel[0]} value={formatMoney(summary.pending)} tone={summary.pending > 0 ? "text-st-pending" : undefined} />
                 </dl>
 
-                <h3 className="mt-5 mb-2 text-sm font-semibold">{t("card.collections")}</h3>
+                <h3 className="mt-5 mb-2 text-h3">{t("card.collections")}</h3>
                 <ul className="grid grid-cols-[minmax(0,1fr)] gap-2">
                   {lines
                     .filter(({ facts }) => facts.participates)
@@ -437,7 +437,7 @@ function MemberPanel({
                 </ul>
                 {lines.some(({ facts }) => !facts.participates) && (
                   <>
-                    <h3 className="mt-5 mb-2 text-sm font-semibold text-muted-foreground">{cellStatusLabels.na[0]}</h3>
+                    <h3 className="mt-5 mb-2 text-h3 text-muted-foreground">{cellStatusLabels.na[0]}</h3>
                     <ul className="grid grid-cols-[minmax(0,1fr)] gap-2">
                       {lines
                         .filter(({ facts }) => !facts.participates)
@@ -458,7 +458,7 @@ function MemberPanel({
                   </>
                 )}
 
-                <h3 className="mt-5 mb-2 text-sm font-semibold">{t("card.history")}</h3>
+                <h3 className="mt-5 mb-2 text-h3">{t("card.history")}</h3>
                 <PaymentList payments={shownPayments} />
                 {payments.length > 6 && (
                   <Button variant="ghost" size="sm" className="mt-2" onClick={() => setShowAllPayments(!showAllPayments)}>
@@ -489,7 +489,7 @@ function Total({ label, value, tone }: { label: string; value: string; tone?: st
   return (
     <div className="rounded-xl bg-primary-tint/60 px-3 py-2.5">
       <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className={cn("text-base font-semibold tabular-nums", tone)}>{value}</dd>
+      <dd className={cn("text-h3 tabular-nums", tone)}>{value}</dd>
     </div>
   );
 }
@@ -514,7 +514,7 @@ function PanelGroup({
     return <PanelLine cell={facts.cells[0]} name={collection.name} collection={collection} suggested={facts.suggested} expanded={expanded} onToggle={onToggle} onDone={onDone} onDirtyChange={onDirtyChange} />;
   return (
     <li className="rounded-xl border border-border p-1.5">
-      <div className="flex items-center gap-2 px-2 py-1.5 text-[13px] font-medium">
+      <div className="flex items-center gap-2 px-2 py-1.5 text-small font-medium">
         <CollectionIcon collection={collection} size="sm" />
         <span className="min-w-0 flex-1 truncate">{collection.name}</span>
         <span className="shrink-0 text-xs tabular-nums">
@@ -587,7 +587,7 @@ function PanelLine({
       >
         {collection && <CollectionIcon collection={collection} size="sm" />}
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[13px] font-medium">{name}</span>
+          <span className="block truncate text-small font-medium">{name}</span>
           <span className="flex items-center gap-1.5 text-xs text-muted-foreground tabular-nums">
             {live.kind === "na"
               ? t("card.includeHint")

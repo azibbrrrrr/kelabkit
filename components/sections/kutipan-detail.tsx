@@ -239,7 +239,7 @@ function CollectionDetail({ collection }: { collection: Collection }) {
             <div className="grid gap-3">
               <div className="flex flex-wrap items-baseline justify-between gap-x-3 text-sm">
                 <span>
-                  <Money sen={totals.received} className="text-lg font-bold" />
+                  <Money sen={totals.received} className="text-h2 font-bold" />
                   <span className="text-muted-foreground"> / {formatMoney(totals.expected)}</span>
                 </span>
                 <span className="font-medium text-primary-strong tabular-nums">{formatPercent(totals.received, totals.expected)}</span>
@@ -249,7 +249,7 @@ function CollectionDetail({ collection }: { collection: Collection }) {
                 counts={totals.counts}
                 future={scopeLedgers.filter((ledger) => ledger.future && ledger.status === "unpaid" && ledger.pending === 0).length}
               />
-              {monthly && month === "all" && <p className="text-[11px] text-muted-foreground">{t("collectionDetail.progress.countNote")}</p>}
+              {monthly && month === "all" && <p className="text-caption text-muted-foreground">{t("collectionDetail.progress.countNote")}</p>}
             </div>
           </SectionCard>
           <InfoCard collection={collection} />
@@ -705,7 +705,7 @@ function ChargeTable({
         return (
           <span className="block">
             {formatMoney(ledger.confirmed)}
-            {ledger.pending > 0 && <span className="block text-[11px] text-st-pending">{t("collectionDetail.charge.pendingSuffix", { amount: formatMoney(ledger.pending) })}</span>}
+            {ledger.pending > 0 && <span className="block text-caption text-st-pending">{t("collectionDetail.charge.pendingSuffix", { amount: formatMoney(ledger.pending) })}</span>}
           </span>
         );
       },
@@ -756,7 +756,7 @@ function ChargeTable({
 
   return (
     <section className="grid min-w-0 grid-cols-1 gap-3" aria-label={t("collectionDetail.charge.sectionAria")}>
-      <h2 className="text-[15px] font-semibold">{t("collectionDetail.charge.heading")}{column.period ? ` · ${formatMonthLong(column.period.month)}` : ""}</h2>
+      <h2 className="text-h2">{t("collectionDetail.charge.heading")}{column.period ? ` · ${formatMonthLong(column.period.month)}` : ""}</h2>
       <TableToolbar
         search={<SearchInput id="kutipan-detail-search" value={query} onChange={setQuery} placeholder={t("collectionDetail.member.searchPlaceholder")} />}
         tabs={<FilterPills label={t("collectionDetail.charge.filterLabel")} value={filter} onChange={setFilter} options={options} />}
@@ -855,7 +855,7 @@ function AllMonthsTable({
       cell: (row) => (
         <span className="block">
           {formatMoney(row.totals.received)}
-          {row.totals.pending > 0 && <span className="block text-[11px] text-st-pending">{t("collectionDetail.charge.pendingSuffix", { amount: formatMoney(row.totals.pending) })}</span>}
+          {row.totals.pending > 0 && <span className="block text-caption text-st-pending">{t("collectionDetail.charge.pendingSuffix", { amount: formatMoney(row.totals.pending) })}</span>}
         </span>
       ),
     },
@@ -907,7 +907,7 @@ function AllMonthsTable({
   return (
     <section className="grid min-w-0 grid-cols-1 gap-3" aria-label={t("collectionDetail.months.sectionAria")}>
       <div>
-        <h2 className="text-[15px] font-semibold">{t("collectionDetail.months.heading")}</h2>
+        <h2 className="text-h2">{t("collectionDetail.months.heading")}</h2>
         <p className="text-xs text-muted-foreground">
           {t("collectionDetail.months.hintBefore")}
         </p>
@@ -1032,7 +1032,7 @@ function VoluntaryTable({
 
   return (
     <section className="grid min-w-0 grid-cols-1 gap-3" aria-label={t("collectionDetail.voluntaryTable.sectionAria")}>
-      <h2 className="text-[15px] font-semibold">{t("collectionDetail.voluntaryTable.heading")}</h2>
+      <h2 className="text-h2">{t("collectionDetail.voluntaryTable.heading")}</h2>
       <TableToolbar
         search={<SearchInput id="kutipan-detail-search" value={query} onChange={setQuery} placeholder={t("collectionDetail.member.searchPlaceholder")} />}
         tabs={

@@ -59,12 +59,12 @@ export function IsiPantasButton() {
         close();
         opener.current?.focus();
       }}
-      className="isi-spark-btn hidden size-9 shrink-0 items-center justify-center gap-2 rounded-[10px] text-[13px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background md:inline-flex xl:w-auto xl:px-3 print:hidden"
+      className="isi-spark-btn hidden size-9 shrink-0 items-center justify-center gap-2 rounded-[10px] text-small font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background md:inline-flex xl:w-auto xl:px-3 print:hidden"
     >
       <Sparkles className="size-4" aria-hidden />
       {/* Icon only below xl so the top bar fits at tablet width; the name stays for assistive tech. */}
       <span className="sr-only xl:not-sr-only">{t("quickFill.name")}</span>
-      <kbd aria-hidden className="hidden rounded-[5px] bg-white/20 px-1.5 font-mono text-[10.5px] leading-[18px] xl:inline">
+      <kbd aria-hidden className="hidden rounded-[5px] bg-white/20 px-1.5 font-mono text-caption leading-[18px] xl:inline">
         /
       </kbd>
     </button>
@@ -88,7 +88,7 @@ export function IsiPantasPill() {
       tabIndex={open ? -1 : undefined}
       onClick={(event) => openSheet(event.currentTarget)}
       className={cn(
-        "isi-pill fixed right-4 bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-40 flex h-11 items-center gap-1.5 rounded-[14px] px-3.5 text-[13px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:hidden print:hidden",
+        "isi-pill fixed right-4 bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-40 flex h-11 items-center gap-1.5 rounded-[14px] px-3.5 text-small font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:hidden print:hidden",
         open && "invisible",
       )}
     >
@@ -235,10 +235,10 @@ function Body({ data, view, onClose, mobile = false }: { data: Snapshot; view: V
           <Sparkles className="size-[18px]" />
         </span>
         <div className="min-w-0">
-          <Title id="isi-title" className="font-display text-[17px] leading-6 font-semibold text-foreground">
+          <Title id="isi-title" className="font-display text-h2 text-foreground">
             {t("quickFill.name")}
           </Title>
-          <Description id="isi-sub" aria-live="polite" className="truncate text-[13px] leading-[18px] text-muted-foreground">
+          <Description id="isi-sub" aria-live="polite" className="truncate text-small leading-[18px] text-muted-foreground">
             {subtitle}
           </Description>
         </div>
@@ -253,7 +253,7 @@ function Body({ data, view, onClose, mobile = false }: { data: Snapshot; view: V
           </Button>
         </div>
       </div>
-      <ul aria-label={t("quickFill.context.label")} className="relative mx-4 mb-2 flex flex-wrap gap-1.5 text-[11px] text-muted-foreground">
+      <ul aria-label={t("quickFill.context.label")} className="relative mx-4 mb-2 flex flex-wrap gap-1.5 text-caption text-muted-foreground">
         <li className="rounded-full border border-border bg-card px-2.5 py-0.5">
           {t("quickFill.context.page")} <b className="font-semibold text-foreground">{page}</b>
         </li>
@@ -281,7 +281,7 @@ function EmptyFeed() {
       <div className="px-1.5 pt-2.5 pb-0.5 text-center">
         <Flower2 aria-hidden className="mx-auto size-8 text-primary" />
         <p className="mt-1 font-semibold">{t("quickFill.empty.title")}</p>
-        <p className="mt-1 text-[12.5px] text-muted-foreground">{t("quickFill.empty.text")}</p>
+        <p className="mt-1 text-small text-muted-foreground">{t("quickFill.empty.text")}</p>
       </div>
       <ul className="grid gap-2" aria-label={t("quickFill.empty.examples")}>
         {EXAMPLES.map((example) => (
@@ -292,14 +292,14 @@ function EmptyFeed() {
                 setDraft(example.text);
                 requestAnimationFrame(() => document.getElementById("isi-input")?.focus());
               }}
-              className="flex w-full items-start gap-2.5 rounded-[14px] border border-border bg-card px-3 py-2.5 text-left text-[12px] transition-colors outline-none hover:border-primary/50 hover:bg-primary-tint focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex w-full items-start gap-2.5 rounded-[14px] border border-border bg-card px-3 py-2.5 text-left text-caption transition-colors outline-none hover:border-primary/50 hover:bg-primary-tint focus-visible:ring-2 focus-visible:ring-ring"
             >
               <span aria-hidden className="grid size-[26px] shrink-0 place-items-center rounded-lg bg-primary-tint text-primary-strong">
                 <example.icon className="size-3.5" />
               </span>
               <span className="min-w-0">
                 <span className="block font-medium">{t(example.title)}</span>
-                <span className="block truncate text-[11px] text-muted-foreground">“{example.text.split("\n")[0]}”</span>
+                <span className="block truncate text-caption text-muted-foreground">“{example.text.split("\n")[0]}”</span>
               </span>
             </button>
           </li>
@@ -313,7 +313,7 @@ function BotLine({ children, className }: { children: ReactNode; className?: str
   return (
     <div className="flex items-start gap-2">
       <span aria-hidden className="isi-orb mt-0.5 size-6 shrink-0 rounded-lg" />
-      <div className={cn("min-w-0 rounded-[4px_14px_14px_14px] border border-border bg-card px-3 py-2 text-[12.5px]", className)}>{children}</div>
+      <div className={cn("min-w-0 rounded-[4px_14px_14px_14px] border border-border bg-card px-3 py-2 text-small", className)}>{children}</div>
     </div>
   );
 }
@@ -331,15 +331,15 @@ function TurnView({ turn, data, view, activeMembers, onReveal }: { turn: Turn; d
   ];
   return (
     <div data-turn className="flex scroll-mt-2 flex-col gap-2.5">
-      <div className="isi-bubble max-w-[88%] self-end rounded-[16px_16px_4px_16px] px-3 py-2.5 text-[12.5px] break-words whitespace-pre-wrap">
-        <span className="mb-1 flex items-center gap-1 text-[10.5px] font-semibold">
+      <div className="isi-bubble max-w-[88%] self-end rounded-[16px_16px_4px_16px] px-3 py-2.5 text-small break-words whitespace-pre-wrap">
+        <span className="mb-1 flex items-center gap-1 text-caption font-semibold">
           <ClipboardPaste aria-hidden className="size-3" /> {t(lines === 1 ? "quickFill.turn.pastedOne" : "quickFill.turn.pastedMany", { count: lines })}
         </span>
         {turn.text}
       </div>
       {turn.phase === "thinking" ? (
         <BotLine className="w-[240px]">
-          <ol className="grid gap-1 text-[11.5px] text-muted-foreground" aria-label={t("quickFill.turn.steps")}>
+          <ol className="grid gap-1 text-caption text-muted-foreground" aria-label={t("quickFill.turn.steps")}>
             {steps.map((label, i) => (
               <li key={label} className={cn(i < turn.step && "text-st-paid", i === turn.step && "font-semibold text-primary-strong")}>
                 {i < turn.step ? "✓" : i === turn.step ? "●" : "○"} {label}
@@ -428,7 +428,7 @@ function SuggestionCard({ item, data, view }: { item: Item; data: Snapshot; view
 
   if (status === "dismissed")
     return (
-      <div id={`isi-card-${s.id}`} tabIndex={-1} className="flex items-center gap-2 rounded-xl border border-dashed border-border px-3 py-1.5 text-[11.5px] text-muted-foreground outline-none">
+      <div id={`isi-card-${s.id}`} tabIndex={-1} className="flex items-center gap-2 rounded-xl border border-dashed border-border px-3 py-1.5 text-caption text-muted-foreground outline-none">
         <span className="min-w-0 flex-1 truncate">
           {t("quickFill.card.dismissed", { name: member?.name ?? t("quickFill.card.unknownMember"), amount: formatMoney(s.amountSen) })}
         </span>
@@ -451,25 +451,25 @@ function SuggestionCard({ item, data, view }: { item: Item; data: Snapshot; view
         status === "accepted" && "isi-card-done",
       )}
     >
-      <span aria-hidden className="mt-0.5 grid size-[30px] place-items-center rounded-full bg-primary-light text-[11px] font-bold text-primary-strong">
+      <span aria-hidden className="mt-0.5 grid size-[30px] place-items-center rounded-full bg-primary-light text-caption font-bold text-primary-strong">
         {member ? initials(member.name) : "?"}
       </span>
       <div className="min-w-0">
-        <p className="text-[12.5px] leading-tight font-semibold">
+        <p className="text-small leading-tight font-semibold">
           {member?.name ?? t("quickFill.card.unknownMember")}
           {s.issues.includes("NAME_AMBIGUOUS") && live && "?"}
         </p>
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-caption text-muted-foreground">
           {collection && <CollectionIcon collection={collection} size="xs" className="mr-1 inline-block align-[-2px]" />}
           {what.join(" · ")}
         </p>
         {live && item.files.length > 0 && (
-          <p className="mt-0.5 flex items-center gap-1 text-[11px] text-primary-strong">
+          <p className="mt-0.5 flex items-center gap-1 text-caption text-primary-strong">
             <Paperclip aria-hidden className="size-3 shrink-0" /> {t(item.files.length === 1 ? "quickFill.card.proofOne" : "quickFill.card.proofMany", { count: item.files.length })}
           </p>
         )}
         {warn && (
-          <ul id={issuesId} className="mt-0.5 grid gap-0.5 text-[11px] font-medium text-st-partial">
+          <ul id={issuesId} className="mt-0.5 grid gap-0.5 text-caption font-medium text-st-partial">
             {s.issues.map((code) => (
               <li key={code} className="flex items-start gap-1">
                 <TriangleAlert aria-hidden className="mt-[2px] size-3 shrink-0" />
@@ -478,15 +478,15 @@ function SuggestionCard({ item, data, view }: { item: Item; data: Snapshot; view
             ))}
           </ul>
         )}
-        <q className="mt-1 line-clamp-2 block text-[11px] text-muted-foreground italic">
+        <q className="mt-1 line-clamp-2 block text-caption text-muted-foreground italic">
           {before}
           <mark className="rounded-[3px] bg-[#fde68a] px-0.5 text-foreground not-italic">{amountText}</mark>
           {after}
         </q>
       </div>
       <div className="text-right">
-        <p className="text-[13px] font-semibold whitespace-nowrap tabular-nums">{formatMoney(s.amountSen)}</p>
-        <p className="mt-0.5 flex items-center justify-end gap-1 text-[10.5px] text-muted-foreground">
+        <p className="text-small font-semibold whitespace-nowrap tabular-nums">{formatMoney(s.amountSen)}</p>
+        <p className="mt-0.5 flex items-center justify-end gap-1 text-caption text-muted-foreground">
           <span aria-hidden className={cn("isi-ring size-3.5 rounded-full", s.confidence < CONFIDENT && "isi-ring-low")} style={{ "--p": `${pct}%` } as CSSProperties} />
           <span className="sr-only">{t("quickFill.card.confidence")}</span>
           {pct}%
@@ -494,16 +494,16 @@ function SuggestionCard({ item, data, view }: { item: Item; data: Snapshot; view
       </div>
       <div className="col-span-full flex flex-wrap items-center gap-1.5">
         {status === "accepted" ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-st-paid-bg px-2.5 py-0.5 text-[11.5px] font-semibold text-st-paid">
+          <span className="inline-flex items-center gap-1 rounded-full bg-st-paid-bg px-2.5 py-0.5 text-caption font-semibold text-st-paid">
             <Check aria-hidden className="size-3.5" /> {s.method === "transfer" ? t("quickFill.card.recordedPending") : t("quickFill.card.recorded")}
           </span>
         ) : status === "applying" ? (
-          <span className="inline-flex items-center gap-1.5 text-[11.5px] font-medium text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5 text-caption font-medium text-muted-foreground">
             <Spinner className="size-3.5" /> {t("quickFill.card.recording")}
           </span>
         ) : (
           <>
-            <Button size="sm" className="h-7 rounded-[9px] px-2.5 text-[11.5px] font-semibold" disabled={!canRecord || busy} aria-describedby={warn ? issuesId : undefined} onClick={() => void accept([s.id])}>
+            <Button size="sm" className="h-7 rounded-[9px] px-2.5 text-caption font-semibold" disabled={!canRecord || busy} aria-describedby={warn ? issuesId : undefined} onClick={() => void accept([s.id])}>
               {primary}
             </Button>
             {status === "pending" && <EditPicker item={item} data={data} view={view} />}
@@ -512,12 +512,12 @@ function SuggestionCard({ item, data, view }: { item: Item; data: Snapshot; view
                 <X />
               </Button>
             )}
-            {status === "undone" && <span className="text-[11px] text-muted-foreground">{t("quickFill.card.undone")}</span>}
+            {status === "undone" && <span className="text-caption text-muted-foreground">{t("quickFill.card.undone")}</span>}
           </>
         )}
       </div>
       {item.error && (
-        <p role="alert" className="col-span-full -mt-1 text-[11.5px] font-medium text-destructive">
+        <p role="alert" className="col-span-full -mt-1 text-caption font-medium text-destructive">
           {t("quickFill.card.notRecorded", { error: item.error })}
         </p>
       )}
@@ -580,12 +580,12 @@ function EditPicker({ item, data, view }: { item: Item; data: Snapshot; view: Vi
       }}
     >
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="h-7 rounded-[9px] bg-card px-2.5 text-[11.5px] font-semibold" disabled={busy}>
+        <Button variant="outline" size="sm" className="h-7 rounded-[9px] bg-card px-2.5 text-caption font-semibold" disabled={busy}>
           {t("quickFill.edit.button")}
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-[300px] p-3.5" aria-label={t("quickFill.edit.title")}>
-        <p className="mb-2.5 text-[13px] font-semibold">{t("quickFill.edit.titleAmount", { amount: formatMoney(s.amountSen) })}</p>
+        <p className="mb-2.5 text-small font-semibold">{t("quickFill.edit.titleAmount", { amount: formatMoney(s.amountSen) })}</p>
         <label className="mb-1 block text-xs font-medium" htmlFor={`isi-member-${s.id}`}>
           {t("quickFill.edit.member")}
         </label>
@@ -663,11 +663,11 @@ function BulkBar({ items }: { items: Item[] }) {
   const confident = items.filter((item) => item.status === "pending" && isConfident(item.s)).length;
   const review = items.length - confident;
   return (
-    <div className="isi-bulk relative mx-4 mb-2 flex items-center gap-2 rounded-[14px] border border-border px-3 py-2 text-[12px]">
+    <div className="isi-bulk relative mx-4 mb-2 flex items-center gap-2 rounded-[14px] border border-border px-3 py-2 text-caption">
       <span className="min-w-0">
         ✓ <b className="text-primary-strong">{confident}</b> {t("quickFill.bulk.confident")} · <b className="text-primary-strong">{review}</b> {t("quickFill.bulk.review")}
       </span>
-      <Button size="sm" className="brand-gradient ml-auto h-8 shrink-0 rounded-[10px] px-3 text-[12px] font-semibold" disabled={!confident || busy} onClick={() => void acceptConfident()}>
+      <Button size="sm" className="brand-gradient ml-auto h-8 shrink-0 rounded-[10px] px-3 text-caption font-semibold" disabled={!confident || busy} onClick={() => void acceptConfident()}>
         {t("quickFill.bulk.acceptConfident", { count: confident })}
       </Button>
     </div>
@@ -692,14 +692,14 @@ function DoneCard({ turn, onReveal }: { turn: Turn; onReveal?: () => void }) {
   };
   if (summary.count === 0)
     return (
-      <div className="rounded-2xl border border-border bg-card p-3 text-[12.5px]" role="status">
+      <div className="rounded-2xl border border-border bg-card p-3 text-small" role="status">
         <p className="font-semibold">{t("quickFill.done.cancelledTitle")}</p>
         <p className="text-muted-foreground">{t(summary.undone === 1 ? "quickFill.done.cancelledOne" : "quickFill.done.cancelledMany", { count: summary.undone })}</p>
       </div>
     );
   return (
-    <div className="isi-done rounded-2xl border p-3 text-[12.5px]" role="status">
-      <p className="text-[22px] leading-tight font-bold text-st-paid tabular-nums">+{formatMoney(summary.total)}</p>
+    <div className="isi-done rounded-2xl border p-3 text-small" role="status">
+      <p className="text-figure text-st-paid tabular-nums">+{formatMoney(summary.total)}</p>
       <p>
         {t(summary.count === 1 ? "quickFill.done.recordedOne" : "quickFill.done.recordedMany", { count: summary.count })}
         {summary.pending > 0 && t("quickFill.done.pending", { count: summary.pending })}
@@ -750,16 +750,16 @@ function Composer() {
           onKeyDown={onKeyDown}
           rows={2}
           placeholder={t("quickFill.composer.placeholder")}
-          className="max-h-40 min-h-[40px] resize-none rounded-none border-0 bg-transparent p-0 text-[12.5px] shadow-none md:text-[12.5px] focus-visible:ring-0 dark:bg-transparent"
+          className="max-h-40 min-h-[40px] resize-none rounded-none border-0 bg-transparent p-0 text-small shadow-none md:text-small focus-visible:ring-0 dark:bg-transparent"
         />
         {clipError && (
-          <p role="alert" className="mt-1 text-[11px] text-destructive">
+          <p role="alert" className="mt-1 text-caption text-destructive">
             {clipError}
           </p>
         )}
         {(proofOpen || draftFiles.length > 0) && (
           <div className="mt-2 border-t border-border pt-2">
-            <p className="mb-1.5 text-[11px] text-muted-foreground">{t("quickFill.composer.proofHint")}</p>
+            <p className="mb-1.5 text-caption text-muted-foreground">{t("quickFill.composer.proofHint")}</p>
             <ProofField staged={draftFiles} onChange={setDraftFiles} />
           </div>
         )}
@@ -775,7 +775,7 @@ function Composer() {
           >
             <Paperclip />
             {draftFiles.length > 0 && (
-              <span aria-hidden className="absolute -top-1 -right-1 grid size-3.5 place-items-center rounded-full bg-primary-fill text-[9px] font-bold text-primary-foreground">
+              <span aria-hidden className="absolute -top-1 -right-1 grid size-3.5 place-items-center rounded-full bg-primary-fill text-caption font-bold text-primary-foreground">
                 {draftFiles.length}
               </span>
             )}
@@ -783,8 +783,8 @@ function Composer() {
           <Button variant="outline" size="icon-sm" className="size-7 rounded-lg" aria-label={t("quickFill.composer.paste")} title={t("quickFill.composer.paste")} onClick={() => void paste()}>
             <ClipboardPaste />
           </Button>
-          <span className="ml-1 hidden min-w-0 truncate text-[10.5px] text-muted-foreground sm:inline">{t("quickFill.composer.keys")}</span>
-          <Button size="sm" className="brand-gradient ml-auto h-[30px] rounded-[10px] px-3 text-[12px] font-semibold" disabled={!draft.trim() || busy} onClick={submit}>
+          <span className="ml-1 hidden min-w-0 truncate text-caption text-muted-foreground sm:inline">{t("quickFill.composer.keys")}</span>
+          <Button size="sm" className="brand-gradient ml-auto h-[30px] rounded-[10px] px-3 text-caption font-semibold" disabled={!draft.trim() || busy} onClick={submit}>
             {t("quickFill.composer.submit")} <Sparkles aria-hidden />
           </Button>
         </div>

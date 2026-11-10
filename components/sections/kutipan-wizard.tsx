@@ -425,7 +425,7 @@ function Stepper({ step, onGo }: { step: Step; onGo: (step: Step) => void }) {
                 {state === "done" ? <Check className="size-4" aria-hidden /> : index + 1}
               </span>
               <span className="min-w-0">
-                <span className={cn("block text-[11.5px] leading-tight font-semibold sm:text-sm", state === "todo" && "text-muted-foreground")}>
+                <span className={cn("block text-caption leading-tight font-semibold sm:text-sm", state === "todo" && "text-muted-foreground")}>
                   {item.title}
                 </span>
                 <span className="hidden text-xs text-muted-foreground sm:block">{item.hint}</span>
@@ -1044,8 +1044,8 @@ function ReviewStep({
           </p>
         ) : (
           <>
-            <p className="text-[13px] font-medium text-muted-foreground">{t("wizard.review.expectedTotal")}</p>
-            <p className="mt-0.5 text-[26px] leading-tight font-bold tracking-[-.02em] tabular-nums">{expectedTotal !== null ? formatMoney(expectedTotal) : "—"}</p>
+            <p className="text-small font-medium text-muted-foreground">{t("wizard.review.expectedTotal")}</p>
+            <p className="mt-0.5 text-figure tracking-[-.02em] tabular-nums">{expectedTotal !== null ? formatMoney(expectedTotal) : "—"}</p>
             <p className="mt-1 text-xs text-muted-foreground">
               {[
                 t(paying.length === 1 ? "wizard.review.summaryMembersOne" : "wizard.review.summaryMembers", { count: paying.length }),
@@ -1119,7 +1119,7 @@ function LiveSummary({
           </div>
           <div className="mt-1 border-t border-border pt-2.5">
             <dt className="text-xs text-muted-foreground">{voluntary ? t("wizard.summary.expectedTotal") : t(paying === 1 ? "wizard.summary.expectedTotalMembersOne" : "wizard.summary.expectedTotalMembers", { count: paying })}</dt>
-            <dd className="mt-0.5 text-xl font-bold tabular-nums">{voluntary ? t("wizard.summary.none") : expectedTotal !== null ? formatMoney(expectedTotal) : "—"}</dd>
+            <dd className="mt-0.5 text-figure tabular-nums">{voluntary ? t("wizard.summary.none") : expectedTotal !== null ? formatMoney(expectedTotal) : "—"}</dd>
           </div>
         </dl>
       </SectionCard>

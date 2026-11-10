@@ -55,8 +55,8 @@ export function PageHeader({
             ← {back.label}
           </Link>
         )}
-        <h1 className="font-display text-[24px] leading-[1.2] font-bold tracking-[-.02em] break-words md:text-[28px]">{title}</h1>
-        {description && <p className="mt-1.5 max-w-2xl text-[13px] text-muted-foreground">{description}</p>}
+        <h1 className="font-display text-h1 tracking-[-.02em] break-words md:text-display">{title}</h1>
+        {description && <p className="mt-1.5 max-w-2xl text-small text-pretty text-muted-foreground">{description}</p>}
       </div>
       {(actions || more) && (
         <div className="flex flex-wrap items-center gap-2 lg:shrink-0">
@@ -109,7 +109,7 @@ export function SectionCard({
           <div className="flex min-w-0 items-center gap-2.5">
             {Icon && <Icon className="size-[18px] shrink-0 text-primary" aria-hidden />}
             <div className="min-w-0">
-              {title && <h2 className="text-[15px] font-semibold tracking-[-.01em]">{title}</h2>}
+              {title && <h2 className="text-h2 tracking-[-.01em]">{title}</h2>}
               {description && <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>}
             </div>
           </div>
@@ -211,8 +211,8 @@ export function StatCard({
         <Icon className="size-5" aria-hidden />
       </span>
       <div className="min-w-0">
-        <div className="text-[13px] font-medium text-muted-foreground">{label}</div>
-        <div className="mt-1 text-[21px] leading-tight font-bold tracking-[-.015em] tabular-nums whitespace-nowrap @max-[160px]/stat:text-[17px] md:text-[23px]">{value}</div>
+        <div className="text-small font-medium text-muted-foreground">{label}</div>
+        <div className="mt-1 text-figure tracking-[-.015em] tabular-nums whitespace-nowrap @max-[160px]/stat:text-h3">{value}</div>
         {hint && <div className="mt-1.5 text-xs text-muted-foreground">{hint}</div>}
       </div>
     </Card>
@@ -293,8 +293,8 @@ export function StatusChip({ label, tone, className, compact }: { label: string;
     <span
       // The label truncates only when a caller lets the chip shrink (min-w-0 shrink), e.g. a narrow matrix column.
       className={cn(
-        "inline-flex h-6 shrink-0 items-center gap-1 rounded-full px-2.5 text-[11.5px] font-medium whitespace-nowrap",
-        compact && "h-5 px-2 text-[11px]",
+        "inline-flex h-6 shrink-0 items-center gap-1 rounded-full px-2.5 text-caption font-medium whitespace-nowrap",
+        compact && "h-5 px-2 text-caption",
         toneClass[tone],
         className,
       )}
@@ -646,7 +646,7 @@ export function FilterPills<V extends string>({
               tabIndex={checked || (selected < 0 && i === 0) ? 0 : -1}
               onClick={() => onChange(option.value)}
               className={cn(
-                "relative inline-flex h-10 shrink-0 items-center gap-1.5 rounded-md px-3 text-[13px] whitespace-nowrap outline-none transition-colors duration-150",
+                "relative inline-flex h-10 shrink-0 items-center gap-1.5 rounded-md px-3 text-small whitespace-nowrap outline-none transition-colors duration-150",
                 "after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full after:transition-colors after:duration-150",
                 "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
                 checked ? "font-semibold text-foreground after:bg-primary-fill" : "font-medium text-muted-foreground hover:text-foreground hover:after:bg-border",
@@ -662,7 +662,7 @@ export function FilterPills<V extends string>({
               {option.count !== undefined && (
                 <span
                   className={cn(
-                    "rounded-full px-1.5 text-[11px] leading-[18px] font-medium tabular-nums",
+                    "rounded-full px-1.5 text-caption leading-[18px] font-medium tabular-nums",
                     checked ? "bg-primary-light text-primary-strong" : "bg-muted text-muted-foreground",
                   )}
                 >

@@ -57,7 +57,7 @@ export function SegmentedChoice<T extends string>({
           value={option.value}
           className={cn(
             joined
-              ? "h-10 min-h-10 w-full min-w-0 rounded-none! border-y-0! border-r-0! border-l! border-border! bg-transparent px-2 text-[13px] leading-tight font-medium whitespace-normal text-muted-foreground first:border-l-0! hover:bg-primary-tint hover:text-foreground pointer-coarse:h-11 data-[state=on]:bg-primary-tint data-[state=on]:text-primary-strong"
+              ? "h-10 min-h-10 w-full min-w-0 rounded-none! border-y-0! border-r-0! border-l! border-border! bg-transparent px-2 text-small leading-tight font-medium whitespace-normal text-muted-foreground first:border-l-0! hover:bg-primary-tint hover:text-foreground pointer-coarse:h-11 data-[state=on]:bg-primary-tint data-[state=on]:text-primary-strong"
               : // Undo the group's joined-segment corners: these are separate pills.
                 "h-auto min-h-10 w-full min-w-0 rounded-xl! border border-border! bg-card px-2 text-xs leading-tight font-medium whitespace-normal text-muted-foreground hover:bg-primary-tint hover:text-foreground data-[state=on]:border-primary!",
             !joined && "data-[state=on]:bg-primary-tint data-[state=on]:text-primary-strong",

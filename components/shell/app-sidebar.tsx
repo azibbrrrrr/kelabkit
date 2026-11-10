@@ -64,7 +64,7 @@ export function AppSidebar() {
                         asChild
                         isActive={active}
                         tooltip={count > 0 ? t("shell.pendingTooltip", { title: item.title, count }) : item.title}
-                        className="h-11 gap-3 rounded-xl px-4 group-data-[collapsible=icon]:size-9! group-data-[collapsible=icon]:rounded-lg group-data-[collapsible=icon]:p-[9px]! text-[14px] font-medium text-sidebar-foreground data-active:brand-gradient data-active:font-semibold data-active:text-white data-active:shadow-[0_10px_20px_-12px_var(--primary)] [&_svg]:size-[18px]"
+                        className="h-11 gap-3 rounded-xl px-4 group-data-[collapsible=icon]:size-9! group-data-[collapsible=icon]:rounded-lg group-data-[collapsible=icon]:p-[9px]! text-body font-medium text-sidebar-foreground data-active:brand-gradient data-active:font-semibold data-active:text-white data-active:shadow-[0_10px_20px_-12px_var(--primary)] [&_svg]:size-[18px]"
                       >
                         <Link href={item.href} onClick={close} aria-current={active ? "page" : undefined}>
                           <item.icon />
@@ -73,7 +73,7 @@ export function AppSidebar() {
                       </SidebarMenuButton>
                       {count > 0 && (
                         <SidebarMenuBadge
-                          className="top-3 right-2 rounded-full bg-st-pending-bg text-st-pending peer-data-active/menu-button:bg-white peer-data-active/menu-button:text-primary-strong group-data-[collapsible=icon]:-top-1 group-data-[collapsible=icon]:-right-1 group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:h-4 group-data-[collapsible=icon]:min-w-4 group-data-[collapsible=icon]:px-1 group-data-[collapsible=icon]:text-[10px] group-data-[collapsible=icon]:ring-2 group-data-[collapsible=icon]:ring-sidebar"
+                          className="top-3 right-2 rounded-full bg-st-pending-bg text-st-pending peer-data-active/menu-button:bg-white peer-data-active/menu-button:text-primary-strong group-data-[collapsible=icon]:-top-1 group-data-[collapsible=icon]:-right-1 group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:h-4 group-data-[collapsible=icon]:min-w-4 group-data-[collapsible=icon]:px-1 group-data-[collapsible=icon]:text-caption group-data-[collapsible=icon]:ring-2 group-data-[collapsible=icon]:ring-sidebar"
                           aria-label={t("shell.pendingBadge", { count })}
                         >
                           {count}
@@ -101,7 +101,7 @@ export function AppSidebar() {
                   <School className="size-[18px]" />
                 </span>
                 <span className="min-w-0 flex-1 group-data-[collapsible=icon]:sr-only">
-                  <span className="block truncate text-[13px] font-semibold">{clubName}</span>
+                  <span className="block truncate text-small font-semibold">{clubName}</span>
                   <span className="block text-xs text-muted-foreground">{t("shell.session", { session })}</span>
                 </span>
                 <ChevronsUpDown className="size-4 text-muted-foreground group-data-[collapsible=icon]:hidden" />

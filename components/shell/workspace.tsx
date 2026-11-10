@@ -133,10 +133,10 @@ function TopBar({ user }: { user?: ShellUser }) {
       <Separator orientation="vertical" className="hidden data-vertical:h-5 data-vertical:self-center md:block" />
       <GlobalSearch className="hidden sm:block" />
       <div className="sm:hidden">
-        <span className="font-display text-[17px] font-bold">KelabKit</span>
+        <span className="font-display text-h2">KelabKit</span>
       </div>
       {demo && (
-        <span className="hidden shrink-0 rounded-full border border-dashed border-primary/50 bg-card px-2.5 py-0.5 text-[11px] font-medium text-primary-strong xl:inline-flex">
+        <span className="hidden shrink-0 rounded-full border border-dashed border-primary/50 bg-card px-2.5 py-0.5 text-caption font-medium text-primary-strong xl:inline-flex">
           {t("shell.demoData")}
         </span>
       )}
@@ -153,8 +153,8 @@ function TopBar({ user }: { user?: ShellUser }) {
                 <AvatarFallback className="bg-primary-light text-xs font-semibold text-primary-strong">{initials(treasurer)}</AvatarFallback>
               </Avatar>
               <span className="hidden text-left leading-tight xl:block">
-                <span className="block text-[13px] font-semibold">{treasurer}</span>
-                <span className="block text-[11px] text-muted-foreground">{t("shell.treasurer")}</span>
+                <span className="block text-small font-semibold">{treasurer}</span>
+                <span className="block text-caption text-muted-foreground">{t("shell.treasurer")}</span>
               </span>
               <ChevronDown className="hidden size-4 text-muted-foreground xl:block" />
             </Button>
@@ -193,7 +193,7 @@ function PendingBell() {
         <Button variant="ghost" size="icon" className="relative rounded-xl pointer-coarse:size-11" aria-label={t("shell.pendingBadge", { count: pending.length })}>
           <Bell className="size-5" />
           {pending.length > 0 && (
-            <span className="absolute top-1.5 right-1.5 grid size-4 place-items-center rounded-full bg-primary-fill text-[10px] font-semibold text-primary-foreground">
+            <span className="absolute top-1.5 right-1.5 grid size-4 place-items-center rounded-full bg-primary-fill text-caption font-semibold text-primary-foreground">
               {pending.length}
             </span>
           )}
@@ -243,7 +243,7 @@ function MobileNav() {
         href={href}
         aria-current={active ? "page" : undefined}
         className={cn(
-          "relative flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg text-[11px] font-medium text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+          "relative flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg text-caption font-medium text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
           // Not colour alone: a bold label and a bar above the icon mark the current page.
           active && "font-bold text-primary-strong after:absolute after:top-0 after:h-0.5 after:w-8 after:rounded-full after:bg-primary-fill",
         )}
@@ -275,7 +275,7 @@ function MobileNav() {
       <button
         type="button"
         onClick={() => setOpenMobile(true)}
-        className="flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg text-[11px] font-medium text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+        className="flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg text-caption font-medium text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
       >
         <Menu className="size-5" />
         {t("shell.menu")}
@@ -294,7 +294,7 @@ function DataGate({ children }: { children: ReactNode }) {
       <div className="grid flex-1 place-items-center p-6">
         <div className="max-w-md text-center">
           <TriangleAlert className="mx-auto mb-3 size-6 text-destructive" />
-          <h1 className="text-lg font-semibold">{t("shell.loadFailed")}</h1>
+          <h1 className="text-h1">{t("shell.loadFailed")}</h1>
           <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
           <Button variant="brand" className="mt-4" onClick={() => void refresh()}>
             {t("common.retry")}

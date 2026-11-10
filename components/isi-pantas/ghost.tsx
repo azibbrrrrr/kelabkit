@@ -39,7 +39,7 @@ export function GhostValue({ ghost }: { ghost: Ghost }) {
         focusCard(ghost.itemId);
       }}
       onDoubleClick={(event) => event.stopPropagation()}
-      className={cn("isi-ghost absolute inset-[3px] z-[1] flex min-w-0 items-center gap-1 overflow-hidden rounded-[9px] px-2 text-[11px] font-semibold whitespace-nowrap", recorded ? "isi-ghost-done" : "isi-ghost-pulse")}
+      className={cn("isi-ghost absolute inset-[3px] z-[1] flex min-w-0 items-center gap-1 overflow-hidden rounded-[9px] px-2 text-caption font-semibold whitespace-nowrap", recorded ? "isi-ghost-done" : "isi-ghost-pulse")}
     >
       {recorded ? <Check className="size-3 shrink-0" /> : <Sparkles className="size-3 shrink-0" />}
       <b className="font-semibold tabular-nums">+{formatMoneyShort(ghost.amountSen)}</b>
@@ -56,7 +56,7 @@ export function GhostBadge({ amountSen, className }: { amountSen: number; classN
       aria-hidden
       data-isi-ghost-badge
       title={t("quickFill.ghost.badge")}
-      className={cn("isi-ghost isi-ghost-pulse cursor-default inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums", className)}
+      className={cn("isi-ghost isi-ghost-pulse cursor-default inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-caption font-semibold tabular-nums", className)}
     >
       <Sparkles className="size-3" />+{formatMoneyShort(amountSen)}
     </span>
