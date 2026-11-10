@@ -40,7 +40,10 @@ test("5. matrix inline: add a member and a collection, type amounts into the cel
   await page.keyboard.press("Enter");
   await expect(cell).toHaveAccessibleName(/RM25 \/ RM25 Dibayar/);
 
-  // Persisted: still paid after a reload.
+  // Persisted: both payments are in storage, and the cell is still paid after a reload.
+  await expect
+    .poll(() => page.evaluate(() => (JSON.parse(localStorage.getItem("kelabkit-demo-v1") ?? "{}").payments ?? []).filter((p: { amount: number }) => p.amount === 1000 || p.amount === 1500).length))
+    .toBe(2);
   await page.reload();
   await expect(page.getByRole("gridcell", { name: /^Cikgu Ujian Matriks, Lajur Uji/ })).toHaveAccessibleName(/RM25 \/ RM25 Dibayar/);
 
