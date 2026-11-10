@@ -11,11 +11,11 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { messageFor } from "@/lib/errors";
 import { categoryLabels } from "@/lib/labels";
-import { parseCsv } from "@/lib/csv";
+import { ACCEPTED_CATEGORIES, buildMemberTemplate, invalidPhoneMessage, invalidCategoryMessage, MIN_PHONE_DIGITS, parseMemberCsv, phoneDigits, TEMPLATE_FILENAME, type ImportIssue } from "@/lib/member-import";
 import { normaliseName } from "@/lib/names";
 import type { MemberCategory } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { FileSpreadsheet, Info, TriangleAlert, X } from "lucide-react";
+import { ChevronDown, Download, FileSpreadsheet, Info, TriangleAlert, X } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -34,6 +34,8 @@ type Row = {
   phone: string;
   /** Treasurer confirmed this is a different person despite a similar name. */
   distinct: boolean;
+  /** kategori cell from the CSV that was not recognised; cleared once the treasurer picks one. */
+  invalidCategory?: string | null;
 };
 
 type CategoryValue = MemberCategory | typeof NO_CATEGORY;
@@ -42,48 +44,7 @@ let rowSeq = 0;
 const newKey = () => `r${++rowSeq}`;
 
 
-/** Excel in some locales saves CSV with semicolons; pick whichever the first line uses more. */
-function guessDelimiter(text: string) {
-  const first = text.split(/\r?\n/, 1)[0] ?? "";
-  return (first.match(/;/g)?.length ?? 0) > (first.match(/,/g)?.length ?? 0) ? ";" : ",";
-}
-
-function toCategory(value: string | undefined, fallback: MemberCategory | null): MemberCategory | null {
-  const v = (value ?? "").trim().toLowerCase();
-  if (!v) return fallback;
-  if (v.startsWith("guru") || v === "teacher") return "guru";
-  if (v.startsWith("kakitangan") || v.startsWith("staf") || v === "staff") return "kakitangan";
-  if (v.startsWith("lain") || v === "other") return "lain";
-  return fallback;
-}
-
 const cleanName = (name: string) => name.replace(/\s+/g, " ").trim();
-
-/** Rows from a CSV: first column is the name unless a header row names the columns. */
-function rowsFromCsv(text: string, fallback: MemberCategory | null): Row[] {
-  const table = parseCsv(text, guessDelimiter(text));
-  if (!table.length) return [];
-  const header = table[0].map((cell) => cell.trim().toLowerCase());
-  const nameAt = header.findIndex((cell) => cell === "nama" || cell === "name" || cell === "nama penuh");
-  const hasHeader = nameAt >= 0;
-  const col = (names: string[], fallbackIndex: number) => {
-    const index = header.findIndex((cell) => names.includes(cell));
-    return hasHeader ? index : fallbackIndex;
-  };
-  const nameIndex = hasHeader ? nameAt : 0;
-  const categoryIndex = col(["kategori", "category"], 1);
-  const phoneIndex = col(["telefon", "no. telefon", "no telefon", "phone", "tel"], 2);
-  return table
-    .slice(hasHeader ? 1 : 0)
-    .map((cells) => ({
-      key: newKey(),
-      name: cleanName(cells[nameIndex] ?? ""),
-      category: categoryIndex >= 0 ? toCategory(cells[categoryIndex], fallback) : fallback,
-      phone: phoneIndex >= 0 ? (cells[phoneIndex] ?? "").trim() : "",
-      distinct: false,
-    }))
-    .filter((row) => row.name !== "");
-}
 
 export function BulkAddMembersDialog({
   open,
@@ -101,6 +62,9 @@ export function BulkAddMembersDialog({
   const [fallback, setFallback] = useState<CategoryValue>("guru");
   const [rows, setRows] = useState<Row[]>([]);
   const [skipped, setSkipped] = useState(0);
+  // Rows the CSV import left out or changed, and file-level notes. Never silent.
+  const [notes, setNotes] = useState<ImportIssue[]>([]);
+  const [guideOpen, setGuideOpen] = useState(() => typeof window !== "undefined" && window.matchMedia("(min-width: 640px)").matches);
   const [source, setSource] = useState<"paste" | "csv">("paste");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -116,6 +80,7 @@ export function BulkAddMembersDialog({
     setText("");
     setRows([]);
     setSkipped(0);
+    setNotes([]);
     setError(null);
     setSource("paste");
     if (fileInput.current) fileInput.current.value = "";
@@ -131,6 +96,7 @@ export function BulkAddMembersDialog({
     if (!pastedNames.length) return setError("Tampal sekurang-kurangnya satu nama.");
     setRows(pastedNames.map((name) => ({ key: newKey(), name, category: fallbackCategory, phone: "", distinct: false })));
     setSkipped(pastedLines.length - pastedNames.length);
+    setNotes([]);
     setSource("paste");
     setError(null);
     setStep("preview");
@@ -140,12 +106,22 @@ export function BulkAddMembersDialog({
     if (!file) return;
     try {
       const content = await file.text();
-      const parsed = rowsFromCsv(content, fallbackCategory);
-      if (!parsed.length) {
-        setError("Fail CSV tiada nama. Lajur pertama mesti nama ahli.");
+      const { rows: parsed, issues } = parseMemberCsv(content, { defaultCategory: fallbackCategory });
+      const header = issues.find((issue) => issue.level === "error");
+      if (header) {
+        setError(header.message);
         return;
       }
-      setRows(parsed);
+      const kept = parsed.filter((row) => !row.isExample);
+      if (!kept.length) {
+        const why = issues.filter((issue) => issue.level === "skipped").map((issue) => `baris ${issue.line}: ${issue.message}`);
+        setError(`Fail CSV tiada ahli untuk diimport.${why.length ? ` ${why.join(" ")}` : ""}`);
+        return;
+      }
+      setRows(
+        kept.map((row) => ({ key: newKey(), name: row.name, category: row.category, phone: row.phone, distinct: false, invalidCategory: row.invalidCategory })),
+      );
+      setNotes(issues.filter((issue) => issue.level === "skipped" || issue.kind === "unknown-column"));
       setSkipped(0);
       setSource("csv");
       setError(null);
@@ -169,14 +145,30 @@ export function BulkAddMembersDialog({
       if (key && existing.has(key)) problems.push({ kind: "existing", text: `Mungkin sama dengan ahli sedia ada "${existing.get(key)}".` });
       if (key && firstRow.has(key)) problems.push({ kind: "repeat", text: `Berulang dengan baris ${firstRow.get(key)! + 1} dalam senarai ini.` });
       if (key && !firstRow.has(key)) firstRow.set(key, index);
+      const warnings: string[] = [];
+      if (row.invalidCategory && row.category === null) warnings.push(invalidCategoryMessage(row.invalidCategory));
+      const phone = row.phone.trim();
+      if (phone && phoneDigits(phone) < MIN_PHONE_DIGITS) warnings.push(invalidPhoneMessage(phone));
       const duplicate = problems.some((p) => p.kind === "existing" || p.kind === "repeat");
       const blocking = problems.some((p) => p.kind === "empty" || p.kind === "long") || (duplicate && !row.distinct);
-      return { problems, duplicate, blocking };
+      return { problems, warnings, duplicate, blocking };
     });
   }, [rows, data.members]);
 
   const blockingCount = flags.filter((flag) => flag.blocking).length;
   const duplicateCount = flags.filter((flag) => flag.duplicate).length;
+  const warningCount = flags.filter((flag) => flag.warnings.length > 0).length;
+
+  const downloadTemplate = () => {
+    const url = URL.createObjectURL(new Blob([buildMemberTemplate()], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = TEMPLATE_FILENAME;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
 
   const update = (key: string, patch: Partial<Row>) => {
     setRows((current) => current.map((row) => (row.key === key ? { ...row, ...patch } : row)));
@@ -269,12 +261,17 @@ export function BulkAddMembersDialog({
                   </span>
                   <div className="min-w-0">
                     <p className="text-sm font-medium">Import CSV (pilihan)</p>
-                    <p className="text-xs text-muted-foreground">Lajur pertama nama. Lajur pilihan: kategori, telefon.</p>
+                    <p className="text-xs text-muted-foreground">Guna templat supaya format tepat.</p>
                   </div>
                 </div>
-                <Button type="button" variant="brand" size="sm" onClick={() => fileInput.current?.click()}>
-                  Pilih fail
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" variant="outline" size="sm" onClick={downloadTemplate}>
+                    <Download aria-hidden /> Muat turun templat CSV
+                  </Button>
+                  <Button type="button" variant="brand" size="sm" onClick={() => fileInput.current?.click()}>
+                    Pilih fail
+                  </Button>
+                </div>
                 <input
                   ref={fileInput}
                   type="file"
@@ -285,6 +282,32 @@ export function BulkAddMembersDialog({
                   onChange={(event) => void fromFile(event.target.files?.[0])}
                 />
               </div>
+              <button
+                type="button"
+                aria-expanded={guideOpen}
+                aria-controls="csv-guide"
+                onClick={() => setGuideOpen((value) => !value)}
+                className="mt-2.5 flex items-center gap-1 text-xs font-medium text-primary-strong"
+              >
+                <ChevronDown className={cn("size-3.5 transition-transform", guideOpen && "rotate-180")} aria-hidden /> Panduan format CSV
+              </button>
+              {guideOpen && (
+                <ul id="csv-guide" className="mt-1.5 grid list-disc gap-1 pl-5 text-xs text-muted-foreground">
+                  <li>
+                    Pengepala: <b className="text-foreground">nama, kategori, telefon</b>. Satu ahli setiap baris.
+                  </li>
+                  <li>
+                    <b className="text-foreground">nama</b> wajib.
+                  </li>
+                  <li>
+                    <b className="text-foreground">kategori</b> pilihan: {ACCEPTED_CATEGORIES} (huruf besar atau kecil; &quot;staf&quot; dan &quot;lain-lain&quot; pun diterima).
+                  </li>
+                  <li>
+                    <b className="text-foreground">telefon</b> pilihan, format Malaysia, cth 012-345 6789.
+                  </li>
+                  <li>Fail berpembatas koma-bertitik (Excel bahasa Melayu) turut diterima. Baris contoh dalam templat diabaikan.</li>
+                </ul>
+              )}
             </div>
             {error && <p className="text-xs font-medium text-st-unpaid">{error}</p>}
             <DialogFooter className="gap-2">
@@ -302,12 +325,28 @@ export function BulkAddMembersDialog({
               <span className="font-medium text-foreground tabular-nums">{rows.length} ahli akan ditambah</span>
               {source === "csv" && <span>Dari fail CSV</span>}
               {skipped > 0 && <span className="tabular-nums">{skipped} baris kosong diabaikan</span>}
+              {warningCount > 0 && (
+                <span className="inline-flex items-center gap-1 text-st-partial tabular-nums">
+                  <TriangleAlert className="size-3.5" aria-hidden /> {warningCount} baris ada amaran
+                </span>
+              )}
               {duplicateCount > 0 && (
                 <span className="inline-flex items-center gap-1 text-st-partial tabular-nums">
                   <TriangleAlert className="size-3.5" aria-hidden /> {duplicateCount} mungkin pendua
                 </span>
               )}
             </div>
+
+            {notes.length > 0 && (
+              <div role="status" data-testid="import-notes" className="rounded-xl border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                <p className="font-medium text-foreground">Tidak dimasukkan / diabaikan</p>
+                <ul className="mt-1 grid gap-0.5">
+                  {notes.map((note, i) => (
+                    <li key={i}>{note.line ? `Baris ${note.line}: ` : ""}{note.message}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             {rows.length === 0 ? (
               <p className="rounded-xl border border-dashed border-border px-3 py-6 text-center text-sm text-muted-foreground">
@@ -348,7 +387,7 @@ export function BulkAddMembersDialog({
                       <div className="grid gap-2 pl-8 sm:grid-cols-2">
                         <CategorySelect
                           value={row.category ?? NO_CATEGORY}
-                          onChange={(value) => update(row.key, { category: value === NO_CATEGORY ? null : value })}
+                          onChange={(value) => update(row.key, { category: value === NO_CATEGORY ? null : value, invalidCategory: null })}
                           ariaLabel={`Kategori baris ${index + 1}`}
                         />
                         <Input
@@ -360,6 +399,15 @@ export function BulkAddMembersDialog({
                           className="h-9 rounded-xl bg-card"
                         />
                       </div>
+                      {flag.warnings.length > 0 && (
+                        <div className="grid gap-1.5 pl-8" data-testid="row-warnings">
+                          {flag.warnings.map((text) => (
+                            <p key={text} className="flex items-start gap-1.5 text-xs text-st-partial">
+                              <TriangleAlert className="mt-px size-3.5 shrink-0" aria-hidden /> {text}
+                            </p>
+                          ))}
+                        </div>
+                      )}
                       {flag.problems.length > 0 && (
                         <div className="grid gap-1.5 pl-8">
                           {flag.problems.map((problem) => (
