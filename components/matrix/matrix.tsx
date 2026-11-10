@@ -4,6 +4,20 @@ import { AddCollectionDialog } from "@/components/add-collection-dialog";
 import { AddMemberDialog } from "@/components/add-member-dialog";
 import { useKelab, useSnapshot } from "@/components/data-provider";
 import { CellEditor, focusEditorStart } from "@/components/matrix/cell-editor";
+import {
+  BALANCE_W,
+  browserStorage,
+  clampWidth,
+  layoutWidths,
+  MEMBER_KEY,
+  readWidths,
+  WIDTH_LIMITS,
+  WIDTH_STEP,
+  writeWidths,
+  type WidthKind,
+  type WidthPreset,
+  type Widths,
+} from "@/components/matrix/column-widths";
 import { MonthTile } from "@/components/matrix/month-tile";
 import { RestoreCollectionDialog } from "@/components/restore-collection-dialog";
 import { ChargeStatusChips, EmptyState, FilterPills, PageHeader, PageShell, SearchInput, StatusChip, Toolbar } from "@/components/shared";
@@ -25,6 +39,9 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
@@ -48,6 +65,7 @@ import {
   ExternalLink,
   EyeOff,
   LayoutGrid,
+  MoveHorizontal,
   Pencil,
   Plus,
   Rows3,
@@ -56,6 +74,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from "react";
+import { flushSync } from "react-dom";
 import { toast } from "sonner";
 
 // The Excel-like tracker: members are rows, collections (or months of a monthly
@@ -68,7 +87,9 @@ type MonthScope = "all" | "to_date";
 type Sort = "name" | "owing";
 type Active = { r: number; c: number };
 
-const MEMBER_COL_W = 224;
+/** Storage key of a resizable column: its period for a month, else its collection. */
+const widthKey = (column: MatrixColumn) => column.period?.id ?? column.collection.id;
+const widthKind = (column: MatrixColumn): WidthKind => (column.period ? "month" : "single");
 
 // Frozen-column edges. The scroller carries data-at-start / data-at-end (set from its scroll
 // position, not React state, so scrolling never re-renders the grid); each edge shadow shows
@@ -356,6 +377,100 @@ function Grid({
   // The month row sticks directly under the group row; measured so no body cell shows
   // through a gap when the group labels wrap or grow.
   const [groupRowH, setGroupRowH] = useState(41);
+  // Column widths: a per-browser display preference (see column-widths.ts), never part of the data.
+  const [widths, setWidths] = useState<Widths>(() => readWidths(browserStorage()));
+  const [available, setAvailable] = useState(0);
+  const [resizing, setResizing] = useState<string | null>(null);
+  const frame = useRef<HTMLDivElement>(null);
+  const guide = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    const measure = () => setAvailable(el.clientWidth);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  // Saved once a drag ends (not on every pointer move), and after every key, menu or fit change.
+  useEffect(() => {
+    if (!resizing) writeWidths(browserStorage(), widths);
+  }, [widths, resizing]);
+
+  // While dragging: the accent guide follows the column's right edge, and the whole page shows the
+  // resize cursor without selecting text.
+  useLayoutEffect(() => {
+    if (!resizing) return;
+    const th = scroller.current?.querySelector<HTMLElement>(`[data-resize="${resizing}"]`);
+    if (th && frame.current && guide.current && scroller.current) {
+      guide.current.style.height = `${scroller.current.clientHeight}px`;
+      guide.current.style.transform = `translateX(${th.getBoundingClientRect().right - frame.current.getBoundingClientRect().left - frame.current.clientLeft - 1}px)`;
+    }
+  }, [resizing, widths, available]);
+  useEffect(() => {
+    if (!resizing) return;
+    const { cursor, userSelect } = document.body.style;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    return () => {
+      document.body.style.cursor = cursor;
+      document.body.style.userSelect = userSelect;
+    };
+  }, [resizing]);
+
+  const memberW = clampWidth("member", widths[MEMBER_KEY] ?? WIDTH_LIMITS.member.normal);
+  const { columns: rendered, balance: balanceW } = useMemo(
+    () => layoutWidths(columns.map((column) => ({ kind: widthKind(column), size: widths[widthKey(column)] })), memberW + BALANCE_W, available),
+    [columns, widths, memberW, available],
+  );
+  const renderedByKey = useMemo(() => new Map(columns.map((column, i) => [column.key, rendered[i]])), [columns, rendered]);
+  const tableW = memberW + balanceW + rendered.reduce((sum, width) => sum + width, 0);
+
+  const setWidth = (key: string, kind: WidthKind, width: number) => setWidths((current) => ({ ...current, [key]: clampWidth(kind, width) }));
+
+  /**
+   * Auto-fit: widen the column to its maximum for one synchronous layout, read the natural width
+   * of every [data-fit] element in it (header, cells, footer), then settle on the widest plus the
+   * cell's own padding and border. Nothing paints in between.
+   */
+  const autoFit = (key: string, kind: WidthKind) => {
+    flushSync(() => setWidth(key, kind, WIDTH_LIMITS[kind].max));
+    let natural = 0;
+    scroller.current?.querySelectorAll<HTMLElement>(`[data-fit-col="${key}"] [data-fit]`).forEach((el) => {
+      const cell = el.closest("th, td");
+      if (!cell) return;
+      const style = getComputedStyle(cell);
+      const chrome = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight) + parseFloat(style.borderLeftWidth) + parseFloat(style.borderRightWidth);
+      natural = Math.max(natural, Math.max(el.scrollWidth, el.getBoundingClientRect().width) + (Number(el.dataset.fit) || 0) + chrome);
+    });
+    setWidth(key, kind, Math.ceil(natural) + 2);
+  };
+
+  /** The ⋮ menu's "Lebar lajur": applies to the collection's column, or to every month shown. */
+  const applyPreset = (collection: Collection, preset: WidthPreset | "reset") => {
+    const targets = columns.filter((column) => column.collection.id === collection.id);
+    setWidths((current) => {
+      const next = { ...current };
+      for (const column of targets) {
+        if (preset === "reset") delete next[widthKey(column)];
+        else next[widthKey(column)] = WIDTH_LIMITS[widthKind(column)][preset];
+      }
+      return next;
+    });
+  };
+
+  const handle = (key: string, kind: WidthKind, name: string, width: number) => (
+    <ResizeHandle
+      name={name}
+      kind={kind}
+      width={width}
+      onChange={(next) => setWidth(key, kind, next)}
+      onFit={() => autoFit(key, kind)}
+      onDrag={(active) => setResizing(active ? key : null)}
+    />
+  );
 
   useEffect(() => {
     const el = scroller.current;
@@ -486,7 +601,9 @@ function Grid({
   };
 
   return (
-    <div className="min-w-0 rounded-2xl border border-border bg-card shadow-[0_1px_2px_rgba(0,0,0,.03)]">
+    <div ref={frame} className="relative min-w-0 rounded-2xl border border-border bg-card shadow-[0_1px_2px_rgba(0,0,0,.03)]">
+      {/* Accent guide on the edge being dragged; its height is the scroller's, so it stops above the hints bar. */}
+      <div ref={guide} aria-hidden className={cn("pointer-events-none absolute top-0 left-0 z-40 w-0.5 bg-primary", !resizing && "hidden")} />
       <div ref={scroller} className="group/grid max-h-[calc(100svh-18rem)] min-h-64 overflow-auto overscroll-contain rounded-2xl">
         {/* All rows and columns are rendered, so the counts equal the DOM: header rows + members + footer. */}
         <table
@@ -495,10 +612,20 @@ function Grid({
           aria-rowcount={headerGroups.length + rows.length + 1}
           aria-colcount={columns.length + 2}
           onKeyDown={onKeyDown}
-          // min-w-full: with few columns the table still spans the card; the collection columns share
-          // the extra width (Ahli and Baki semasa have fixed widths), so Baki semasa stays at the right edge.
-          className="min-w-full border-separate border-spacing-0 text-[13px]"
+          // Fixed layout: the colgroup widths are the widths, and content truncates instead of
+          // stretching a column or wrapping a row. layoutWidths spreads any spare width over the
+          // columns, so with few columns the table still spans the card and Baki semasa stays at the
+          // right edge.
+          style={{ width: tableW, tableLayout: "fixed" }}
+          className="border-separate border-spacing-0 text-[13px]"
         >
+          <colgroup>
+            <col style={{ width: memberW }} />
+            {columns.map((column, i) => (
+              <col key={column.key} style={{ width: rendered[i] }} />
+            ))}
+            <col style={{ width: balanceW }} />
+          </colgroup>
           <thead>
             {headerGroups.map((group, gi) => (
               <tr key={group.id} ref={gi === 0 ? groupRow : undefined}>
@@ -506,10 +633,14 @@ function Grid({
                   <th
                     scope="col"
                     rowSpan={headerGroups.length}
-                    style={{ width: MEMBER_COL_W, minWidth: MEMBER_COL_W }}
+                    data-resize={MEMBER_KEY}
+                    data-fit-col={MEMBER_KEY}
                     className={cn("sticky top-0 left-0 z-30 border-r border-b border-border bg-primary-tint px-4 text-left align-bottom text-xs font-semibold text-muted-foreground", LEFT_EDGE)}
                   >
-                    <div className="py-3">Ahli ({rows.length})</div>
+                    <div data-fit className="w-max max-w-full truncate py-3">
+                      Ahli ({rows.length})
+                    </div>
+                    {handle(MEMBER_KEY, "member", "Ahli", memberW)}
                   </th>
                 )}
                 {group.headers.map((header) => {
@@ -522,27 +653,41 @@ function Grid({
                   if (gi === 1 && single) return null;
                   const collection = isGroup ? (meta as Collection) : (meta as MatrixColumn).collection;
                   const column = isGroup ? null : (meta as MatrixColumn);
+                  const key = column ? widthKey(column) : undefined;
+                  const width = isGroup
+                    ? header.getLeafHeaders().reduce((sum, leaf) => sum + (renderedByKey.get(leaf.column.id) ?? 0), 0)
+                    : (renderedByKey.get(header.column.id) ?? 0);
+                  const current = column?.period && column.period.month === monthOf(view.today);
                   return (
                     <th
                       key={header.id}
                       scope={isGroup ? "colgroup" : "col"}
                       colSpan={header.colSpan}
                       rowSpan={single && hasGroups ? 2 : 1}
+                      data-resize={key}
+                      data-fit-col={key}
                       className={cn(
                         "sticky z-20 border-b border-l border-border bg-primary-tint px-3 text-left align-bottom font-semibold",
                         gi === 0 && "top-0",
                         isGroup && "border-b-primary/30",
                       )}
-                      style={{ minWidth: column ? (column.period ? 104 : 156) : undefined, top: gi === 0 ? undefined : groupRowH }}
+                      style={{ top: gi === 0 ? undefined : groupRowH }}
                     >
                       {isGroup || single ? (
-                        <ColumnHeader collection={collection} onHide={() => onHide(collection.id)} onArchive={() => setArchiving(collection)} wide={!isGroup} pinned={isGroup} />
+                        <ColumnHeader
+                          collection={collection}
+                          onHide={() => onHide(collection.id)}
+                          onArchive={() => setArchiving(collection)}
+                          onWidth={(preset) => applyPreset(collection, preset)}
+                          pinned={isGroup ? { left: memberW + 12, maxWidth: width - 24 } : undefined}
+                        />
                       ) : (
-                        <div className={cn("py-2 text-xs", column?.period && column.period.month === monthOf(view.today) && "text-primary-strong")}>
+                        <div data-fit title={column?.label} className={cn("w-max max-w-full truncate py-2 text-xs", current && "text-primary-strong")}>
                           {column?.short}
-                          {column?.period && column.period.month === monthOf(view.today) && <span className="ml-1 text-[10px] font-medium">(kini)</span>}
+                          {current && <span className="ml-1 text-[10px] font-medium">(kini)</span>}
                         </div>
                       )}
+                      {column && key && handle(key, widthKind(column), column.label, width)}
                     </th>
                   );
                 })}
@@ -550,7 +695,6 @@ function Grid({
                   <th
                     scope="col"
                     rowSpan={headerGroups.length}
-                    style={{ width: 120 }}
                     className={cn("sticky top-0 right-0 z-30 min-w-[120px] border-b border-l border-border bg-primary-tint px-3 text-right align-bottom text-xs font-semibold text-muted-foreground", RIGHT_EDGE)}
                   >
                     <div className="py-3">Baki semasa</div>
@@ -573,7 +717,7 @@ function Grid({
                 <tr key={member.id} className="group/row">
                   <th
                     scope="row"
-                    style={{ width: MEMBER_COL_W, minWidth: MEMBER_COL_W, maxWidth: MEMBER_COL_W }}
+                    data-fit-col={MEMBER_KEY}
                     className={cn(
                       "sticky left-0 z-10 border-r border-b border-border bg-grid-frozen px-4 py-2 text-left font-medium group-hover/row:shadow-[inset_3px_0_0_var(--primary)]",
                       LEFT_EDGE,
@@ -582,16 +726,16 @@ function Grid({
                       activeRow && (editing ? "shadow-[inset_3px_0_0_var(--primary)]" : "group-focus-within/grid:shadow-[inset_3px_0_0_var(--primary)]"),
                     )}
                   >
-                    <div className="flex min-w-0 items-center gap-2.5">
+                    <div data-fit className="flex w-max max-w-full min-w-0 items-center gap-2.5">
                       <Avatar className="size-7 after:hidden" aria-hidden>
                         <AvatarFallback className="bg-primary-light text-[11px] font-semibold text-primary-strong">{initials(member.name)}</AvatarFallback>
                       </Avatar>
                       <div className="min-w-0">
-                        <Link href={`/ahli/${member.id}/`} className="block truncate hover:text-primary-strong hover:underline" tabIndex={-1}>
+                        <Link href={`/ahli/${member.id}/`} title={member.name} className="block truncate hover:text-primary-strong hover:underline" tabIndex={-1}>
                           {member.name}
                         </Link>
                         {/* foreground/70, not muted: muted grey drops under 4.5:1 on the highlighted row. */}
-                        {!member.active && <span className="block text-[11px] font-normal text-foreground/70">Tidak aktif</span>}
+                        {!member.active && <span className="block truncate text-[11px] font-normal text-foreground/70">Tidak aktif</span>}
                       </div>
                     </div>
                   </th>
@@ -605,6 +749,7 @@ function Grid({
                       <td
                         key={column.key}
                         data-cell={`${ri}:${ci}`}
+                        data-fit-col={widthKey(column)}
                         role="gridcell"
                         tabIndex={isActive ? 0 : -1}
                         aria-label={`${member.name}, ${column.label}: ${describeCell(cell)}`}
@@ -674,15 +819,26 @@ function Grid({
           </tbody>
           <tfoot>
             <tr>
-              <th scope="row" className={cn("sticky bottom-0 left-0 z-30 border-t border-r border-border bg-primary-light px-4 py-2.5 text-left text-xs font-semibold", LEFT_EDGE)}>
-                Jumlah diterima
+              <th
+                scope="row"
+                data-fit-col={MEMBER_KEY}
+                className={cn("sticky bottom-0 left-0 z-30 border-t border-r border-border bg-primary-light px-4 py-2.5 text-left text-xs font-semibold", LEFT_EDGE)}
+              >
+                <div data-fit className="w-max max-w-full truncate">
+                  Jumlah diterima
+                </div>
               </th>
               {columns.map((column) => {
                 const total = columnTotal(column);
+                const text = total.voluntary ? formatMoneyShort(total.received) : `${formatMoneyShort(total.received)} / ${formatMoneyShort(total.expected)}`;
+                // One line at any width: a narrow month truncates (full figure in the title) instead
+                // of wrapping the footer row taller.
                 return (
-                  <td key={column.key} className="sticky bottom-0 z-10 border-t border-l border-border bg-primary-light px-2.5 py-2 text-xs tabular-nums">
-                    <span className="font-semibold">{formatMoneyShort(total.received)}</span>
-                    {!total.voluntary && <span className="text-muted-foreground"> / {formatMoneyShort(total.expected)}</span>}
+                  <td key={column.key} data-fit-col={widthKey(column)} className="sticky bottom-0 z-10 border-t border-l border-border bg-primary-light px-2.5 py-2 text-xs tabular-nums">
+                    <div data-fit title={text} className="w-max max-w-full truncate">
+                      <span className="font-semibold">{formatMoneyShort(total.received)}</span>
+                      {!total.voluntary && <span className="text-muted-foreground"> / {formatMoneyShort(total.expected)}</span>}
+                    </div>
                   </td>
                 );
               })}
@@ -835,41 +991,142 @@ function describeCell(cell: MatrixCell) {
   return parts.join(", ");
 }
 
-/** What one grid cell shows: paid / required on top, derived status below. */
+/**
+ * What one grid cell shows: paid / required on top, derived status below. Never wraps: every
+ * line truncates (full text in its title), so every body row keeps the same height at any column
+ * width. The root is [data-fit] at its natural width, which is what auto-fit measures.
+ */
 function CellView({ cell }: { cell: MatrixCell }) {
-  if (cell.kind === "na") return <span className="text-xs text-muted-foreground" title="Tidak Berkaitan">—</span>;
-  if (cell.kind === "voluntary")
+  if (cell.kind === "na")
     return (
-      <div className="grid gap-0.5">
-        <span className={cn("text-[12.5px] font-semibold tabular-nums", cell.received === 0 && "font-normal text-muted-foreground")}>
+      <span data-fit className="text-xs text-muted-foreground" title="Tidak Berkaitan">
+        —
+      </span>
+    );
+  if (cell.kind === "voluntary") {
+    const sub = cell.count > 0 ? `${cell.count} sumbangan` : "Sukarela";
+    return (
+      <div data-fit className="grid w-max max-w-full gap-0.5">
+        <span
+          title={cell.received > 0 ? formatMoneyShort(cell.received) : undefined}
+          className={cn("truncate text-[12.5px] font-semibold tabular-nums", cell.received === 0 && "font-normal text-muted-foreground")}
+        >
           {cell.received > 0 ? formatMoneyShort(cell.received) : "—"}
         </span>
         {cell.pending > 0 ? (
-          <StatusChip label="Menunggu" tone="pending" compact />
+          <span title="Menunggu" className="flex min-w-0">
+            <StatusChip label="Menunggu" tone="pending" compact className="min-w-0 shrink" />
+          </span>
         ) : (
-          <span className="text-[11px] text-muted-foreground">{cell.count > 0 ? `${cell.count} sumbangan` : "Sukarela"}</span>
+          <span title={sub} className="truncate text-[11px] text-muted-foreground">
+            {sub}
+          </span>
         )}
       </div>
     );
+  }
   const { ledger, status } = cell;
-  if (status === "exempt") return <StatusChip label="Dikecualikan" tone="exempt" compact />;
+  if (status === "exempt")
+    return (
+      <span data-fit title="Dikecualikan" className="flex w-max max-w-full">
+        <StatusChip label="Dikecualikan" tone="exempt" compact className="min-w-0 shrink" />
+      </span>
+    );
+  const amounts = `${formatMoneyShort(ledger.confirmed)} / ${formatMoneyShort(ledger.required)}`;
+  const chip =
+    status === "future"
+      ? (["Akan Datang", "future"] as const)
+      : ledger.overdue
+        ? ([status === "partial" ? "Lewat · Sebahagian" : "Lewat", "overdue"] as const)
+        : ledger.pending > 0 && status !== "paid"
+          ? (["Menunggu", "pending"] as const)
+          : cellStatusLabels[status];
   return (
-    <div className="grid gap-0.5">
-      <span className="text-[12.5px] whitespace-nowrap tabular-nums">
+    <div data-fit className="grid w-max max-w-full gap-0.5">
+      <span title={amounts} className="truncate text-[12.5px] tabular-nums">
         <b className={cn("font-semibold", ledger.confirmed === 0 && "font-normal text-muted-foreground")}>{formatMoneyShort(ledger.confirmed)}</b>
         <span className="text-muted-foreground"> / {formatMoneyShort(ledger.required)}</span>
       </span>
-      <span className="flex gap-1">
-        {status === "future" ? (
-          <StatusChip label="Akan Datang" tone="future" compact />
-        ) : ledger.overdue ? (
-          <StatusChip label={status === "partial" ? "Lewat · Sebahagian" : "Lewat"} tone="overdue" compact />
-        ) : ledger.pending > 0 && status !== "paid" ? (
-          <StatusChip label="Menunggu" tone="pending" compact />
-        ) : (
-          <StatusChip label={cellStatusLabels[status][0]} tone={cellStatusLabels[status][1]} compact />
-        )}
+      <span title={chip[0]} className="flex min-w-0">
+        <StatusChip label={chip[0]} tone={chip[1]} compact className="min-w-0 shrink" />
       </span>
+    </div>
+  );
+}
+
+/**
+ * Drag handle on a header's right edge. Pointer: drag to resize, double-click to fit the content.
+ * Keyboard: a focusable separator (← → by 16px, Home / End to the limits, Enter to fit). It handles
+ * its own keys and stops them there, so it never moves the grid's active cell; the grid's arrow
+ * keys only act on cells.
+ */
+function ResizeHandle({
+  name,
+  kind,
+  width,
+  onChange,
+  onFit,
+  onDrag,
+}: {
+  name: string;
+  kind: WidthKind;
+  /** The column's rendered width, which can exceed its saved size while the grid fills its card. */
+  width: number;
+  onChange: (width: number) => void;
+  onFit: () => void;
+  onDrag: (active: boolean) => void;
+}) {
+  const start = useRef<{ x: number; width: number } | null>(null);
+  const { min, max } = WIDTH_LIMITS[kind];
+  const now = clampWidth(kind, width);
+  const end = () => {
+    if (!start.current) return;
+    start.current = null;
+    onDrag(false);
+  };
+  return (
+    <div
+      role="separator"
+      aria-orientation="vertical"
+      aria-label={`Ubah lebar lajur ${name}`}
+      aria-valuenow={now}
+      aria-valuemin={min}
+      aria-valuemax={max}
+      tabIndex={0}
+      onPointerDown={(event) => {
+        if (event.button !== 0) return;
+        event.preventDefault();
+        event.stopPropagation();
+        event.currentTarget.setPointerCapture(event.pointerId);
+        event.currentTarget.focus({ preventScroll: true });
+        start.current = { x: event.clientX, width };
+        onDrag(true);
+      }}
+      onPointerMove={(event) => start.current && onChange(start.current.width + event.clientX - start.current.x)}
+      onPointerUp={end}
+      onPointerCancel={end}
+      onLostPointerCapture={end}
+      onClick={(event) => event.stopPropagation()}
+      onDoubleClick={(event) => {
+        event.stopPropagation();
+        onFit();
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "ArrowLeft") onChange(now - WIDTH_STEP);
+        else if (event.key === "ArrowRight") onChange(now + WIDTH_STEP);
+        else if (event.key === "Home") onChange(min);
+        else if (event.key === "End") onChange(max);
+        else if (event.key === "Enter") onFit();
+        else return;
+        event.preventDefault();
+        event.stopPropagation();
+      }}
+      className="group/handle absolute inset-y-0 right-0 z-10 w-2 cursor-col-resize touch-none outline-none"
+    >
+      <span
+        aria-hidden
+        className="absolute inset-y-1.5 right-0 w-0.5 rounded-full bg-primary opacity-0 transition-opacity duration-100 group-hover/handle:opacity-60 group-focus-visible/handle:opacity-100 group-active/handle:opacity-100"
+      />
     </div>
   );
 }
@@ -879,14 +1136,16 @@ function ColumnHeader({
   collection,
   onHide,
   onArchive,
-  wide,
+  onWidth,
   pinned,
 }: {
   collection: Collection;
   onHide: () => void;
   onArchive: () => void;
-  wide: boolean;
-  pinned?: boolean;
+  /** "Lebar lajur": the menu path to resizing, for touch and for anyone not dragging. */
+  onWidth: (preset: WidthPreset | "reset") => void;
+  /** Set for a monthly group's label: where it pins, and the group's width it must stay inside. */
+  pinned?: { left: number; maxWidth: number };
 }) {
   const { run } = useKelab();
   const { view } = useSnapshot();
@@ -928,13 +1187,17 @@ function ColumnHeader({
     collection.type === "voluntary" ? "Sukarela" : collection.type === "monthly" ? `${formatMoneyShort(collection.defaultAmount ?? 0)}/bln` : formatMoneyShort(collection.defaultAmount ?? 0);
 
   return (
-    // A monthly group's label pins beside the frozen Ahli column (its th's px-3 included) while
-    // the group's months scroll under it, until the group itself scrolls out.
+    // A one-off or voluntary header uses its column's full width; the name truncates only when the
+    // column really is narrower. A monthly group's label pins beside the frozen Ahli column (its
+    // th's px-3 included) while the group's months scroll under it, until the group scrolls out.
     <div
-      className={cn("flex items-start justify-between gap-1 py-2", wide && "max-w-[220px]", pinned && "sticky w-max max-w-[260px] gap-3")}
-      style={pinned ? { left: MEMBER_COL_W + 12 } : undefined}
+      className={cn("flex items-start justify-between gap-1 py-2", pinned && "sticky w-max gap-3")}
+      // Renaming a pinned label: take the label's full allowance so the input is not content-sized.
+      style={pinned ? { left: pinned.left, maxWidth: Math.min(260, pinned.maxWidth), width: renaming ? Math.min(260, pinned.maxWidth) : undefined } : undefined}
     >
-      <div className="min-w-0">
+      {/* data-fit: auto-fit measures this block, plus the menu button and gap beside it. While
+          renaming it grows to every pixel left of the ⋮ button, so the input fills the header. */}
+      <div className={cn("min-w-0", renaming && "flex-1")} data-fit={pinned ? undefined : 28}>
         {renaming ? (
           <input
             ref={renameInput}
@@ -943,6 +1206,8 @@ function ColumnHeader({
             value={name}
             disabled={busy}
             onChange={(event) => setName(event.target.value)}
+            // Select the whole name on open: it shows from its first letter and typing replaces it.
+            onFocus={(event) => event.currentTarget.select()}
             onBlur={() => void commit()}
             onKeyDown={(event) => {
               if (event.key === "Enter") void commit();
@@ -953,7 +1218,8 @@ function ColumnHeader({
               event.stopPropagation();
             }}
             aria-label="Nama kutipan"
-            className="h-7 w-full min-w-32 rounded-md border border-primary bg-card px-1.5 text-[13px] font-semibold outline-none"
+            // w-full min-w-0: exactly the header's width beside the ⋮ button, never wider, even in a 120px column.
+            className="h-7 w-full min-w-0 rounded-md border border-primary bg-card px-1.5 text-[13px] font-semibold outline-none"
           />
         ) : (
           // Plain text, not a button: renaming is a menu action (keyboard and touch). Double-click
@@ -962,7 +1228,7 @@ function ColumnHeader({
             {collection.name}
           </span>
         )}
-        <span className="block text-[11px] font-normal text-muted-foreground">
+        <span className="block truncate text-[11px] font-normal text-muted-foreground">
           {amount}
           {collection.status === "draft" && " · Draf"}
           {collection.status === "completed" && " · Selesai"}
@@ -999,6 +1265,18 @@ function ColumnHeader({
               <ExternalLink /> Butiran & tetapan kutipan
             </Link>
           </DropdownMenuItem>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>
+              <MoveHorizontal /> Lebar lajur
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent className="w-40">
+              <DropdownMenuItem onSelect={() => onWidth("narrow")}>Sempit</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => onWidth("normal")}>Biasa</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => onWidth("wide")}>Lebar</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => onWidth("reset")}>Set semula</DropdownMenuItem>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
           <DropdownMenuItem onSelect={onHide}>
             <EyeOff /> Sembunyikan lajur
           </DropdownMenuItem>

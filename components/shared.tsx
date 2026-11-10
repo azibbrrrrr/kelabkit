@@ -238,6 +238,7 @@ export function StatusChip({ label, tone, className, compact }: { label: string;
   const Icon = toneIcon[tone];
   return (
     <span
+      // The label truncates only when a caller lets the chip shrink (min-w-0 shrink), e.g. a narrow matrix column.
       className={cn(
         "inline-flex h-6 shrink-0 items-center gap-1 rounded-full px-2.5 text-[11.5px] font-medium whitespace-nowrap",
         compact && "h-5 px-2 text-[11px]",
@@ -245,8 +246,8 @@ export function StatusChip({ label, tone, className, compact }: { label: string;
         className,
       )}
     >
-      {Icon && <Icon className={cn("size-3.5", compact && "size-3")} aria-hidden strokeWidth={2} />}
-      {label}
+      {Icon && <Icon className={cn("size-3.5 shrink-0", compact && "size-3")} aria-hidden strokeWidth={2} />}
+      <span className="truncate">{label}</span>
     </span>
   );
 }
