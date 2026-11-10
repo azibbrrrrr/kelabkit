@@ -45,6 +45,7 @@ Phase 2 database and auth: `db/schema.ts`, `db/migrations/`, `docs/design/phase-
 
 - Only `lib/db/with-club.ts` may touch Postgres (`tests/db-boundary.test.ts`). Server code uses `withClub`/`withUser`; money tables are written only by `kk_*` SQL functions, never by direct SQL.
 - Every server action goes through `act()` (`lib/server/act.ts`): session and club come from the server, never from arguments. Actions return a `Result`; `lib/backend/neon.ts` turns it back into a `KelabError`.
+- Signed-in mode needs `DATABASE_URL`, `NEON_AUTH_BASE_URL`, `NEON_AUTH_COOKIE_SECRET` (`lib/server/env.ts`). Auth is created lazily (`getAuth()`), so `next build` and CI need no secrets; without them `/api/auth` answers 503 and `/masuk` says sign-in is not configured while the demo still works.
 - Signed-out visitors are redirected to `/masuk` by `proxy.ts`. Browser probes need the `kk_mode=demo` cookie to reach the app without an account.
 
 Commits: Conventional Commits.
