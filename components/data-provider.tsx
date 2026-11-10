@@ -1,6 +1,7 @@
 "use client";
 
 import { demoBackend } from "@/lib/backend/demo";
+import { neonBackend } from "@/lib/backend/neon";
 import type { KelabBackend } from "@/lib/backend/types";
 import { today } from "@/lib/format";
 import type { Snapshot } from "@/lib/types";
@@ -22,9 +23,9 @@ type DataState = {
 
 const DataContext = createContext<DataState | null>(null);
 
-export function KelabDataProvider({ children }: { children: ReactNode }) {
-  // Phase 2 swaps in the Neon backend here, behind the same interface.
-  const backend: KelabBackend = demoBackend;
+export function KelabDataProvider({ mode, children }: { mode: "demo" | "neon"; children: ReactNode }) {
+  // The server decides the mode per request (kk_mode cookie, then the Neon Auth session).
+  const backend: KelabBackend = mode === "neon" ? neonBackend : demoBackend;
   const [data, setData] = useState<Snapshot | null>(null);
   const [error, setError] = useState<Error | null>(null);
 

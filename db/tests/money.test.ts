@@ -12,6 +12,7 @@ import { createPool } from "../client";
 let pool: Pool;
 let clubA: string;
 let clubB: string;
+let testUser: string; // owner of clubs A and B: the session user for every kk_* call below
 let memberA1: string;
 let memberA2: string;
 let memberB1: string;
@@ -107,12 +108,18 @@ const ledger = (charge: string) => one<{ required: string; confirmed: string; pe
 const count = async (sql: string, params: unknown[]) => Number((await one<{ n: string }>(sql, params)).n);
 
 beforeAll(async () => {
+  testUser = randomUUID();
   pool = createPool();
+  // Every connection acts as testUser; the kk_* functions refuse anyone who is not a club member.
+  pool.on("connect", (client: PoolClient) => {
+    void client.query("select set_config('app.user_id', $1, false)", [testUser]);
+  });
   // Clean up clubs left by an interrupted earlier run.
   const stale = await pool.query("select id from clubs where name like 'kk-test-%'");
   for (const { id } of stale.rows) await dropClub(id);
   clubA = await newClub("a");
   clubB = await newClub("b");
+  for (const club of [clubA, clubB]) await pool.query("insert into club_members (club_id, user_id, role) values ($1, $2, 'owner')", [club, testUser]);
   memberA1 = await newMember(clubA, "Ahli A1");
   memberA2 = await newMember(clubA, "Ahli A2");
   memberB1 = await newMember(clubB, "Ahli B1");

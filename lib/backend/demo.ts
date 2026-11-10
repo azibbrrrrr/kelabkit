@@ -21,13 +21,13 @@ import { checkAttachmentBatch } from "@/lib/attachments";
 import { sha256Hex } from "@/lib/attachments-client";
 import { clearFiles, deleteFile, getFile, putFile } from "@/lib/backend/file-store";
 import { upgradeSnapshot } from "@/lib/backend/upgrade";
+import { checkAmount, checkReason, cleanName } from "@/lib/backend/rules";
 import { KelabError } from "@/lib/errors";
 import { normaliseName } from "@/lib/names";
 import { formatMoney, today } from "@/lib/format";
-import { MAX_AMOUNT_SEN } from "@/lib/money/amount";
 import { chargeLedger, indexLedger } from "@/lib/money/ledger";
 import { dueDateFor, isMonth, monthsBetween } from "@/lib/money/months";
-import type { AuditAction, Charge, Collection, CollectionStatus, Sen, Snapshot } from "@/lib/types";
+import type { AuditAction, Charge, Collection, CollectionStatus, Snapshot } from "@/lib/types";
 
 const STORAGE_KEY = "kelabkit-demo-v1";
 const LATENCY_MS = 220;
@@ -63,25 +63,6 @@ const wait = () => new Promise((resolve) => setTimeout(resolve, LATENCY_MS));
 const uid = (prefix: string) => `${prefix}-${crypto.randomUUID().slice(0, 8)}`;
 const now = () => new Date().toISOString();
 const clone = (state: Snapshot) => structuredClone(state);
-
-function cleanName(name: string) {
-  const value = name.replace(/\s+/g, " ").trim();
-  if (!value) throw new KelabError("NAME_REQUIRED");
-  if (value.length > 120) throw new KelabError("NAME_TOO_LONG");
-  return value;
-}
-
-function checkAmount(amount: Sen, allowZero = false) {
-  if (!Number.isInteger(amount)) throw new KelabError("AMOUNT_INVALID");
-  if (amount < 0) throw new KelabError("AMOUNT_NEGATIVE");
-  if (amount === 0 && !allowZero) throw new KelabError("AMOUNT_ZERO");
-  if (amount > MAX_AMOUNT_SEN) throw new KelabError("AMOUNT_TOO_LARGE");
-}
-
-function checkReason(reason: string | null | undefined) {
-  if (!reason || !reason.trim()) throw new KelabError("REASON_REQUIRED");
-  return reason.trim();
-}
 
 function audit(state: Snapshot, action: AuditAction, entityId: string, summary: string, reason: string | null = null) {
   state.audit.unshift({ id: uid("a"), at: now(), actor: state.club.treasurerName, action, summary, entityId, reason });

@@ -22,6 +22,13 @@
       "when": 1794345469655,
       "tag": "0002_money_functions",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794346052193,
+      "tag": "0003_security_hardening",
+      "breakpoints": true
     }
   ]
 }

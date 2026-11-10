@@ -26,6 +26,7 @@ type Step = 1 | 2 | 3 | 4 | 5;
 
 export function OnboardingPage() {
   const { data } = useSnapshot();
+  const { demo } = useKelab();
   const [step, setStep] = useState<Step>(1);
 
   const checks = [
@@ -53,15 +54,17 @@ export function OnboardingPage() {
             </p>
           </div>
         </div>
-        <div className="relative mt-4">
-          <DemoNote>
-            Ini prototaip yang menggunakan data demo. Langkah di sini menambah kepada data sedia ada dan tidak memadamnya. Untuk bermula semula, gunakan{" "}
-            <Link href="/tetapan/" className="font-medium text-primary-strong underline-offset-2 hover:underline">
-              Set semula data demo
-            </Link>{" "}
-            di Tetapan.
-          </DemoNote>
-        </div>
+        {demo && (
+          <div className="relative mt-4">
+            <DemoNote>
+              Ini prototaip yang menggunakan data demo. Langkah di sini menambah kepada data sedia ada dan tidak memadamnya. Untuk bermula semula, gunakan{" "}
+              <Link href="/tetapan/" className="font-medium text-primary-strong underline-offset-2 hover:underline">
+                Set semula data demo
+              </Link>{" "}
+              di Tetapan.
+            </DemoNote>
+          </div>
+        )}
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
