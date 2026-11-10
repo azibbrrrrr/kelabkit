@@ -418,7 +418,7 @@ function StatusActions({ collection, dueNow, onAddParticipants }: { collection: 
               <SheetIcon /> Buka dalam Matriks
             </Link>
           </Button>
-          <Button variant="ghost" className="text-muted-foreground" onClick={() => setConfirming(archive)} disabled={busy}>
+          <Button variant="danger-outline" onClick={() => setConfirming(archive)} disabled={busy}>
             <Archive /> Arkibkan
           </Button>
         </>
@@ -581,11 +581,11 @@ function DueDateEditor({ collection }: { collection: Collection }) {
           {busy && <Spinner className="size-3.5" />} Simpan
         </Button>
         {collection.dueDate && (
-          <Button size="sm" variant="outline" onClick={() => void save(null)} disabled={busy}>
+          <Button size="sm" variant="danger-outline" onClick={() => void save(null)} disabled={busy}>
             Buang tarikh
           </Button>
         )}
-        <Button size="sm" variant="ghost" onClick={() => setEditing(false)} disabled={busy}>
+        <Button size="sm" variant="outline" onClick={() => setEditing(false)} disabled={busy}>
           Batal
         </Button>
       </span>

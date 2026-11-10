@@ -3,7 +3,7 @@
 import { useKelab, useSnapshot } from "@/components/data-provider";
 import { MoneyInput, parseMoney } from "@/components/money-input";
 import { PaymentList } from "@/components/payments";
-import { ChargeStatusChips, Money } from "@/components/shared";
+import { ChargeStatusChips, Money, TextAction } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -17,6 +17,7 @@ import type { ChargeLedger } from "@/lib/money/ledger";
 import type { PaymentMethod, Sen } from "@/lib/types";
 import { cellStatus, type MatrixCell } from "@/lib/view";
 import { cn } from "@/lib/utils";
+import { Undo2, UserMinus } from "lucide-react";
 import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { toast } from "sonner";
 
@@ -379,16 +380,14 @@ function PayForm({
           <Label htmlFor="pay-amount" className="text-xs text-muted-foreground">
             Amaun diterima
           </Label>
-          <button
-            type="button"
+          <TextAction
             onClick={() => {
               form.setAmount(senToInput(ledger.payable));
               form.setError(null);
             }}
-            className="rounded-lg px-1.5 py-0.5 text-xs font-medium text-primary-strong hover:bg-primary-tint"
           >
             Baki penuh {formatMoney(ledger.payable)}
-          </button>
+          </TextAction>
         </div>
         <MoneyInput
           id="pay-amount"
@@ -523,13 +522,7 @@ function AmountForm({
               Amaun perlu dibayar
             </Label>
             {defaultAmount !== null && ledger.charge.amount !== defaultAmount && (
-              <button
-                type="button"
-                onClick={() => setAmount(senToInput(defaultAmount))}
-                className="rounded-lg px-1.5 py-0.5 text-xs font-medium text-primary-strong hover:bg-primary-tint"
-              >
-                Set semula ke asal
-              </button>
+              <TextAction onClick={() => setAmount(senToInput(defaultAmount))}>Set semula ke asal</TextAction>
             )}
           </div>
           <MoneyInput
@@ -587,19 +580,19 @@ function AmountForm({
       )}
       <div className="border-t border-dashed border-border pt-2.5">
         {ledger.charge.exempt ? (
-          <Button type="button" variant="brand" className="w-full" onClick={() => void toggleExempt()} disabled={busy}>
-            Tarik balik pengecualian
+          <Button type="button" variant="danger-outline" className="w-full" onClick={() => void toggleExempt()} disabled={busy}>
+            <Undo2 /> Tarik balik pengecualian
           </Button>
         ) : paidSoFar > 0 ? (
           <p className="text-xs text-muted-foreground">Pengecualian hanya untuk ahli yang belum membayar.</p>
         ) : exemptOpen ? (
-          <Button type="button" variant="brand" className="w-full" onClick={() => void toggleExempt()} disabled={busy}>
-            Sahkan pengecualian
+          <Button type="button" variant="destructive" className="w-full" onClick={() => void toggleExempt()} disabled={busy}>
+            <UserMinus /> Sahkan pengecualian
           </Button>
         ) : (
-          <button type="button" onClick={() => setExemptOpen(true)} className="text-xs font-medium text-st-exempt hover:underline">
-            Kecualikan ahli ini daripada caj ini…
-          </button>
+          <Button type="button" variant="danger-outline" size="sm" onClick={() => setExemptOpen(true)}>
+            <UserMinus /> Kecualikan ahli ini daripada caj ini…
+          </Button>
         )}
       </div>
     </form>

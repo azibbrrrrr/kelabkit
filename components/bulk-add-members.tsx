@@ -336,11 +336,11 @@ export function BulkAddMembersDialog({
                         />
                         <Button
                           type="button"
-                          variant="ghost"
+                          variant="danger-outline"
                           size="icon"
                           onClick={() => remove(row.key)}
                           aria-label={`Buang baris ${index + 1}`}
-                          className="shrink-0 text-muted-foreground"
+                          className="size-10 shrink-0 rounded-xl"
                         >
                           <X />
                         </Button>

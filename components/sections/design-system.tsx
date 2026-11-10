@@ -87,6 +87,7 @@ export function DesignSystemPage() {
             <Button variant="brand">Garis</Button>
             <Button variant="outline">Neutral</Button>
             <Button variant="ghost">Hantu</Button>
+            <Button variant="danger-outline">Batalkan…</Button>
             <Button>
               <Plus /> Ikon
             </Button>

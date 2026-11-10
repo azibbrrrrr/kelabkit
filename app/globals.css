@@ -34,6 +34,7 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-border: var(--destructive-border);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -109,6 +110,9 @@
   --accent-foreground: #b0234f;
   /* Used as text (destructive buttons, field errors) and tinted fills: 5.5:1 on its 10% tint. */
   --destructive: #b91c1c;
+  /* Outline of reverse/remove actions (Button variant danger-outline). Fixed across themes:
+     3.4:1 or better against white, the page and every tint in all five themes. */
+  --destructive-border: #e05252;
   --border: #f5d6df;
   /* Control boundaries (inputs, checkboxes) need 3:1; --border stays decorative. */
   --input: #b97e99;

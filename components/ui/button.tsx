@@ -18,6 +18,10 @@ const buttonVariants = cva(
           "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
         destructive:
           "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:ring-destructive dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
+        /* Reverse, remove or destructive actions (Batalkan bayaran, Arkibkan, Nyahaktifkan…):
+           visible as a button, red so it never reads as the primary path. */
+        "danger-outline":
+          "border-destructive-border bg-card text-destructive hover:bg-destructive/10 hover:text-destructive aria-expanded:bg-destructive/10 focus-visible:ring-destructive",
         brand:
           "border-primary/70 bg-card text-primary-strong hover:bg-primary-tint aria-expanded:bg-primary-tint",
         link: "text-primary-strong underline-offset-4 hover:underline",

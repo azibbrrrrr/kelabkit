@@ -12,7 +12,7 @@ import { cellStatusLabels, overdueLabel, pendingLabel, type CellStatus, type Ton
 import { cn } from "@/lib/utils";
 import { Check, Circle, Clock, Hourglass, Minus, Search, TriangleAlert, type LucideIcon } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useRef, type ComponentType, type KeyboardEvent, type ReactNode, type SVGProps } from "react";
+import { useEffect, useRef, type ComponentProps, type ComponentType, type KeyboardEvent, type ReactNode, type SVGProps } from "react";
 
 // Layout ---------------------------------------------------------------------------------
 
@@ -117,6 +117,23 @@ export function DetailList({ items }: { items: { label: string; value?: ReactNod
 
 export function Money({ sen, className }: { sen: number; className?: string }) {
   return <span className={cn("tabular-nums", className)}>{formatMoney(sen)}</span>;
+}
+
+/**
+ * An inline helper that fills a field ("Baki penuh RM 10.00", "Set semula ke asal"). It stays
+ * text, not a button, but is underlined at rest so it reads as clickable, and keeps a 24px target.
+ */
+export function TextAction({ className, ...props }: Omit<ComponentProps<"button">, "type">) {
+  return (
+    <button
+      type="button"
+      className={cn(
+        "inline-flex min-h-6 items-center rounded-md px-1 text-xs font-medium text-primary-strong underline decoration-primary-strong/40 underline-offset-2 transition-colors outline-none hover:bg-primary-tint hover:decoration-current focus-visible:ring-2 focus-visible:ring-ring",
+        className,
+      )}
+      {...props}
+    />
+  );
 }
 
 const statTone = {

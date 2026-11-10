@@ -100,15 +100,15 @@ export function PaymentList({
                 <LabelChip entry={paymentStateLabels[payment.state]} compact />
               </div>
               {payment.state !== "reversed" && (
-                <div className="mt-2 flex flex-wrap gap-1.5">
+                <div className="mt-2.5 flex flex-wrap gap-2 border-t border-border pt-2.5">
                   {payment.state === "pending" && (
-                    <Button size="xs" onClick={() => void confirm(payment)} disabled={confirming === payment.id}>
-                      {confirming === payment.id ? <Spinner className="size-3" /> : <BadgeCheck />}
+                    <Button size="sm" onClick={() => void confirm(payment)} disabled={confirming === payment.id}>
+                      {confirming === payment.id ? <Spinner className="size-3.5" /> : <BadgeCheck />}
                       Sahkan wang diterima
                     </Button>
                   )}
-                  <Button size="xs" variant="ghost" className="text-muted-foreground" onClick={() => setReversing(payment)}>
-                    <Undo2 /> Batalkan…
+                  <Button size="sm" variant="danger-outline" onClick={() => setReversing(payment)}>
+                    <Undo2 /> Batalkan bayaran…
                   </Button>
                 </div>
               )}

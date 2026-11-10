@@ -302,7 +302,7 @@ function MembersStep({ count, onDone }: { count: number; onDone: () => void }) {
               {busy && <Spinner className="size-4" />}
               Tambah ahli
             </Button>
-            <Button variant="ghost" onClick={() => setOpen(false)} disabled={busy}>
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={busy}>
               Batal
             </Button>
           </div>
