@@ -36,6 +36,11 @@ describe("database access boundary", () => {
     expect(users.filter((file) => !file.startsWith("lib/server/"))).toEqual([]);
   });
 
+  it("withBackupSnapshot (reads every club) is imported only by lib/server/backup.ts", () => {
+    const users = files.filter((f) => !ALLOWED(f.file) && /withBackupSnapshot/.test(f.text)).map((f) => f.file);
+    expect(users).toEqual(["lib/server/backup.ts"]);
+  });
+
   it("every file in app/actions is a 'use server' module and goes through act(), actMutation() or guard()", () => {
     const actions = files.filter((f) => f.file.startsWith("app/actions/"));
     expect(actions.length).toBeGreaterThan(3);
