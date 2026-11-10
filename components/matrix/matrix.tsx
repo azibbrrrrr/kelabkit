@@ -58,7 +58,8 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { messageFor } from "@/lib/errors";
 import { formatMoney, formatMoneyShort, formatMonth, initials } from "@/lib/format";
-import { cellStatusLabels } from "@/lib/labels";
+import { useT, type TFunction } from "@/lib/i18n/react";
+import { cellStatusLabels, collectionStatusLabels, overdueLabel, pendingLabel } from "@/lib/labels";
 import { monthOf } from "@/lib/money/months";
 import type { Collection, CollectionStatus, Member } from "@/lib/types";
 import { sortCollections, type MatrixCell, type MatrixColumn } from "@/lib/view";
@@ -114,6 +115,7 @@ const ROW_FADE = "transition-[background-color] duration-100";
 const PAGE_ROWS = 10;
 
 export function MatrixPage() {
+  const t = useT();
   const { data, view } = useSnapshot();
   const isMobile = useIsMobile();
   const [query, setQuery] = useState("");
@@ -211,32 +213,32 @@ export function MatrixPage() {
           keyboard hints in its footer bar. */}
       <PageHeader
         compact
-        title="Matriks Kutipan"
+        title={t("matrix.title")}
         actions={
           <>
             <Button variant="brand" onClick={openAddMember}>
-              <UserPlus /> Tambah ahli
+              <UserPlus /> {t("matrix.addMember")}
             </Button>
             <Button onClick={openAddColumn}>
-              <Plus /> Tambah kutipan
+              <Plus /> {t("matrix.addCollection")}
             </Button>
           </>
         }
       />
 
       <Toolbar
-        search={<SearchInput id="matrix-search" value={query} onChange={setQuery} placeholder="Cari ahli…" />}
+        search={<SearchInput id="matrix-search" value={query} onChange={setQuery} placeholder={t("matrix.searchMembers")} />}
         tabs={
           <FilterPills
-            label="Tapis baris"
+            label={t("matrix.filterRows")}
             value={rowFilter}
             onChange={setRowFilter}
             options={[
-              { value: "all", label: "Semua" },
-              { value: "owing", label: "Ada baki" },
-              { value: "overdue", label: "Lewat" },
-              { value: "pending", label: "Menunggu" },
-              { value: "settled", label: "Selesai" },
+              { value: "all", label: t("matrix.filterAll") },
+              { value: "owing", label: t("matrix.filterOwing") },
+              { value: "overdue", label: overdueLabel[0] },
+              { value: "pending", label: pendingLabel[0] },
+              { value: "settled", label: t("matrix.filterSettled") },
             ]}
           />
         }
@@ -245,12 +247,12 @@ export function MatrixPage() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button ref={columnsButton} variant="outline" size="sm">
-                  <Columns3 /> Lajur
+                  <Columns3 /> {t("matrix.columns")}
                   {Object.values(hidden).some(Boolean) && <span className="text-primary-strong">•</span>}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="max-h-[min(70svh,var(--radix-dropdown-menu-content-available-height))] w-64 overflow-y-auto">
-                <DropdownMenuLabel>Tunjuk kutipan</DropdownMenuLabel>
+                <DropdownMenuLabel>{t("matrix.showCollections")}</DropdownMenuLabel>
                 {collections.map((collection) => (
                   <DropdownMenuCheckboxItem
                     key={collection.id}
@@ -263,23 +265,23 @@ export function MatrixPage() {
                 ))}
                 <DropdownMenuSeparator />
                 <DropdownMenuCheckboxItem checked={monthScope === "to_date"} onSelect={(e) => e.preventDefault()} onCheckedChange={(v) => setMonthScope(v ? "to_date" : "all")}>
-                  Sembunyi bulan akan datang
+                  {t("matrix.hideUpcoming")}
                 </DropdownMenuCheckboxItem>
                 <DropdownMenuCheckboxItem checked={showCompleted} onSelect={(e) => e.preventDefault()} onCheckedChange={(v) => setShowCompleted(v === true)}>
-                  Tunjuk kutipan selesai
+                  {t("matrix.showCompleted")}
                 </DropdownMenuCheckboxItem>
                 <DropdownMenuCheckboxItem checked={showInactive} onSelect={(e) => e.preventDefault()} onCheckedChange={(v) => setShowInactive(v === true)}>
-                  Tunjuk ahli tidak aktif
+                  {t("matrix.showInactive")}
                 </DropdownMenuCheckboxItem>
                 {archived.length > 0 && (
                   <>
                     <DropdownMenuSeparator />
-                    <DropdownMenuLabel>Diarkib</DropdownMenuLabel>
+                    <DropdownMenuLabel>{t("matrix.archivedHeading")}</DropdownMenuLabel>
                     {archived.map((collection) => (
                       <DropdownMenuItem key={collection.id} onSelect={() => setRestoring(collection)}>
                         <span className="min-w-0 flex-1 truncate text-muted-foreground">{collection.name}</span>
                         <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-primary-strong">
-                          <ArchiveRestore className="size-3.5" /> Pulihkan
+                          <ArchiveRestore className="size-3.5" /> {t("matrix.restore")}
                         </span>
                       </DropdownMenuItem>
                     ))}
@@ -289,22 +291,22 @@ export function MatrixPage() {
             </DropdownMenu>
             {/* Accessible name leads with the visible text (label in name). */}
             <Button variant="outline" size="sm" onClick={() => setSort(sort === "name" ? "owing" : "name")}>
-              <ArrowDownUp /> {sort === "name" ? "Nama A–Z" : "Baki tertinggi"}
-              <span className="sr-only">, tukar susunan</span>
+              <ArrowDownUp /> {sort === "name" ? t("matrix.sortName") : t("matrix.sortBalance")}
+              <span className="sr-only">{t("matrix.sortChange")}</span>
             </Button>
             <ToggleGroup
               type="single"
               value={showGrid ? "grid" : "cards"}
               onValueChange={(next) => next && chooseLayout(next as MatrixLayout)}
-              aria-label="Paparan"
+              aria-label={t("matrix.viewLabel")}
               spacing={0}
               className="gap-0 rounded-[10px] border border-border bg-card p-0.5"
             >
               <ToggleGroupItem value="cards" className="h-8 gap-1 rounded-[7px]! px-2.5 text-xs font-normal hover:bg-primary-tint data-[state=on]:bg-primary-light data-[state=on]:font-semibold data-[state=on]:text-primary-strong">
-                <Rows3 className="size-3.5" /> Kad
+                <Rows3 className="size-3.5" /> {t("matrix.viewCards")}
               </ToggleGroupItem>
               <ToggleGroupItem value="grid" className="h-8 gap-1 rounded-[7px]! px-2.5 text-xs font-normal hover:bg-primary-tint data-[state=on]:bg-primary-light data-[state=on]:font-semibold data-[state=on]:text-primary-strong">
-                <LayoutGrid className="size-3.5" /> Jadual
+                <LayoutGrid className="size-3.5" /> {t("matrix.viewGrid")}
               </ToggleGroupItem>
             </ToggleGroup>
           </>
@@ -314,22 +316,22 @@ export function MatrixPage() {
       {data.members.length === 0 ? (
         <EmptyState
           icon={UserPlus}
-          title="Belum ada ahli"
-          description="Tambah guru dan kakitangan dahulu. Setiap ahli menjadi satu baris."
-          action={<Button onClick={openAddMember}>Tambah ahli pertama</Button>}
+          title={t("matrix.noMembersTitle")}
+          description={t("matrix.noMembersDescription")}
+          action={<Button onClick={openAddMember}>{t("matrix.addFirstMember")}</Button>}
         />
       ) : columns.length === 0 ? (
         <EmptyState
           icon={SheetIcon}
-          title="Tiada kutipan untuk dipaparkan"
-          description="Tambah kutipan untuk mula menjejak bayaran, atau tunjuk semula lajur yang disembunyikan."
-          action={<Button onClick={openAddColumn}>Tambah kutipan</Button>}
+          title={t("matrix.noColumnsTitle")}
+          description={t("matrix.noColumnsDescription")}
+          action={<Button onClick={openAddColumn}>{t("matrix.addCollection")}</Button>}
         />
       ) : members.length === 0 ? (
         <EmptyState
           icon={Rows3}
-          title="Tiada ahli sepadan"
-          description={rowFilter === "owing" || rowFilter === "overdue" ? "Semua ahli dalam paparan ini sudah menjelaskan bayaran." : "Cuba carian atau penapis lain."}
+          title={t("matrix.noMatchTitle")}
+          description={rowFilter === "owing" || rowFilter === "overdue" ? t("matrix.allSettledDescription") : t("matrix.tryOtherDescription")}
         />
       ) : showGrid ? (
         <Grid rows={memberRows} columns={columns} collections={visibleCollections} onHide={hideColumn} />
@@ -361,6 +363,7 @@ const Grid = memo(function Grid({
   collections: Collection[];
   onHide: (collectionId: string) => void;
 }) {
+  const t = useT();
   const { view } = useSnapshot();
   const ghostFor = useGhost();
   const [active, setActive] = useState<Active>({ r: 0, c: 0 });
@@ -543,7 +546,7 @@ const Grid = memo(function Grid({
     requestAnimationFrame(() => focusCell(r, c));
   };
 
-  const editorLabel = (member: Member, column: MatrixColumn) => `Ubah sel: ${member.name}, ${column.label}`;
+  const editorLabel = (member: Member, column: MatrixColumn) => t("editor.cellLabel", { member: member.name, column: column.label });
 
   const table = useReactTable({
     data: rows,
@@ -606,7 +609,7 @@ const Grid = memo(function Grid({
         {/* All rows and columns are rendered, so the counts equal the DOM: header rows + members + footer. */}
         <table
           role="grid"
-          aria-label="Matriks kutipan"
+          aria-label={t("matrix.gridLabel")}
           aria-rowcount={headerGroups.length + rows.length + 1}
           aria-colcount={columns.length + 2}
           onKeyDown={onKeyDown}
@@ -636,9 +639,9 @@ const Grid = memo(function Grid({
                     className={cn("sticky top-0 left-0 z-30 border-r border-b border-border bg-primary-tint px-4 text-left align-bottom text-xs font-semibold text-muted-foreground", LEFT_EDGE)}
                   >
                     <div data-fit className="w-max max-w-full truncate py-3">
-                      Ahli ({rows.length})
+                      {t("matrix.memberColumn", { count: rows.length })}
                     </div>
-                    {handle(MEMBER_KEY, "member", "Ahli", memberW)}
+                    {handle(MEMBER_KEY, "member", t("matrix.memberName"), memberW)}
                   </th>
                 )}
                 {group.headers.map((header) => {
@@ -682,7 +685,7 @@ const Grid = memo(function Grid({
                       ) : (
                         <div data-fit title={column?.label} className={cn("w-max max-w-full truncate py-2 text-xs", current && "text-primary-strong")}>
                           {column?.short}
-                          {current && <span className="ml-1 text-[10px] font-medium">(kini)</span>}
+                          {current && <span className="ml-1 text-[10px] font-medium">{t("matrix.current")}</span>}
                         </div>
                       )}
                       {column && key && handle(key, widthKind(column), column.label, width)}
@@ -695,7 +698,7 @@ const Grid = memo(function Grid({
                     rowSpan={headerGroups.length}
                     className={cn("sticky top-0 right-0 z-30 min-w-[120px] border-b border-l border-border bg-primary-tint px-3 text-right align-bottom text-xs font-semibold text-muted-foreground", RIGHT_EDGE)}
                   >
-                    <div className="py-3">Baki semasa</div>
+                    <div className="py-3">{t("matrix.balanceColumn")}</div>
                   </th>
                 )}
               </tr>
@@ -733,7 +736,7 @@ const Grid = memo(function Grid({
                           {member.name}
                         </Link>
                         {/* foreground/70, not muted: muted grey drops under 4.5:1 on the highlighted row. */}
-                        {!member.active && <span className="block truncate text-[11px] font-normal text-foreground/70">Tidak aktif</span>}
+                        {!member.active && <span className="block truncate text-[11px] font-normal text-foreground/70">{t("matrix.inactive")}</span>}
                       </div>
                     </div>
                   </th>
@@ -752,7 +755,7 @@ const Grid = memo(function Grid({
                         data-fit-col={widthKey(column)}
                         role="gridcell"
                         tabIndex={isActive ? 0 : -1}
-                        aria-label={`${member.name}, ${column.label}: ${describeCell(cell)}${ghost ? `. ${describeGhost(ghost)}` : ""}`}
+                        aria-label={`${member.name}, ${column.label}: ${describeCell(t, cell)}${ghost ? `. ${describeGhost(ghost)}` : ""}`}
                         onClick={(event) => own(event) && setActive({ r: ri, c: ci })}
                         onDoubleClick={(event) => {
                           if (!own(event)) return;
@@ -826,7 +829,7 @@ const Grid = memo(function Grid({
                 className={cn("sticky bottom-0 left-0 z-30 border-t border-r border-border bg-primary-light px-4 py-2.5 text-left text-xs font-semibold", LEFT_EDGE)}
               >
                 <div data-fit className="w-max max-w-full truncate">
-                  Jumlah diterima
+                  {t("matrix.totalReceived")}
                 </div>
               </th>
               {columns.map((column) => {
@@ -850,11 +853,11 @@ const Grid = memo(function Grid({
       </div>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-border px-4 py-2.5 text-[11px] text-muted-foreground">
         <span>
-          <kbd className="rounded border border-border px-1">↵</kbd> edit · <kbd className="rounded border border-border px-1">0–9</kbd> terus taip amaun ·{" "}
-          <kbd className="rounded border border-border px-1">Esc</kbd> batal · <kbd className="rounded border border-border px-1">← ↑ → ↓</kbd> /{" "}
-          <kbd className="rounded border border-border px-1">Home</kbd> / <kbd className="rounded border border-border px-1">End</kbd> gerak
+          <kbd className="rounded border border-border px-1">↵</kbd> {t("matrix.hintEdit")} · <kbd className="rounded border border-border px-1">0–9</kbd> {t("matrix.hintType")} ·{" "}
+          <kbd className="rounded border border-border px-1">Esc</kbd> {t("matrix.hintCancel")} · <kbd className="rounded border border-border px-1">← ↑ → ↓</kbd> /{" "}
+          <kbd className="rounded border border-border px-1">Home</kbd> / <kbd className="rounded border border-border px-1">End</kbd> {t("matrix.hintMove")}
         </span>
-        <span className="ml-auto">Sel = dibayar / perlu bayar. Status dikira daripada rekod bayaran.</span>
+        <span className="ml-auto">{t("matrix.legend")}</span>
       </div>
       <DiscardDialog open={guard} onKeep={() => setGuard(false)} onDiscard={close} restoreFocus={lastFocus.restore} />
       <ArchiveDialog
@@ -871,6 +874,7 @@ const Grid = memo(function Grid({
  * status the collection had before (active, draft or completed), read before the change.
  */
 function ArchiveDialog({ collection, onClose, onArchived }: { collection: Collection | null; onClose: () => void; onArchived: () => void }) {
+  const t = useT();
   const { run } = useKelab();
   const [busy, setBusy] = useState(false);
   const archived = useRef(false);
@@ -884,12 +888,12 @@ function ArchiveDialog({ collection, onClose, onArchived }: { collection: Collec
       await run((backend) => backend.setCollectionStatus(id, "archived"));
       archived.current = true;
       onClose();
-      toast.success(`"${name}" diarkib. Semua rekod dikekalkan.`, {
+      toast.success(t("matrix.archivedToast", { name }), {
         action: {
-          label: "Buat asal",
+          label: t("matrix.undo"),
           onClick: () =>
             void run((backend) => backend.setCollectionStatus(id, previous))
-              .then(() => toast.success(`"${name}" dipulihkan.`))
+              .then(() => toast.success(t("matrix.restoredToast", { name })))
               .catch((error) => toast.error(messageFor(error))),
         },
       });
@@ -914,17 +918,17 @@ function ArchiveDialog({ collection, onClose, onArchived }: { collection: Collec
         }}
       >
         <AlertDialogHeader>
-          <AlertDialogTitle>Arkibkan &quot;{collection?.name}&quot;?</AlertDialogTitle>
+          <AlertDialogTitle>{t("matrix.archiveTitle", { name: collection?.name ?? "" })}</AlertDialogTitle>
           <AlertDialogDescription>
-            Semua caj, bayaran dan log audit dikekalkan. Lajur ini disembunyikan daripada Matriks dan tidak menerima bayaran baharu. Pulihkan bila-bila masa dari menu Lajur atau halaman Kutipan.
+            {t("matrix.archiveDescription")}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={busy}>Batal</AlertDialogCancel>
+          <AlertDialogCancel disabled={busy}>{t("common.cancel")}</AlertDialogCancel>
           {/* A plain button, not AlertDialogAction, so the dialog stays open until the change succeeds. */}
           <Button onClick={() => void archive()} disabled={busy}>
             {busy && <Spinner className="size-4" />}
-            Arkibkan
+            {t("matrix.archiveConfirm")}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -932,12 +936,12 @@ function ArchiveDialog({ collection, onClose, onArchived }: { collection: Collec
   );
 }
 
-function describeCell(cell: MatrixCell) {
-  if (cell.kind === "na") return "Tidak Berkaitan";
-  if (cell.kind === "voluntary") return `sumbangan ${formatMoney(cell.received)}`;
-  const parts = [`${formatMoney(cell.ledger.confirmed)} daripada ${formatMoney(cell.ledger.required)}`, cellStatusLabels[cell.status][0]];
-  if (cell.ledger.overdue) parts.push("Lewat");
-  if (cell.ledger.pending > 0) parts.push("Menunggu Semakan");
+function describeCell(t: TFunction, cell: MatrixCell) {
+  if (cell.kind === "na") return cellStatusLabels.na[0];
+  if (cell.kind === "voluntary") return t("matrix.contributionLower", { amount: formatMoney(cell.received) });
+  const parts = [t("matrix.paidOfRequired", { paid: formatMoney(cell.ledger.confirmed), required: formatMoney(cell.ledger.required) }), cellStatusLabels[cell.status][0]];
+  if (cell.ledger.overdue) parts.push(overdueLabel[0]);
+  if (cell.ledger.pending > 0) parts.push(pendingLabel[0]);
   return parts.join(", ");
 }
 
@@ -947,14 +951,15 @@ function describeCell(cell: MatrixCell) {
  * width. The root is [data-fit] at its natural width, which is what auto-fit measures.
  */
 function CellView({ cell }: { cell: MatrixCell }) {
+  const t = useT();
   if (cell.kind === "na")
     return (
-      <span data-fit className="text-xs text-muted-foreground" title="Tidak Berkaitan">
+      <span data-fit className="text-xs text-muted-foreground" title={cellStatusLabels.na[0]}>
         —
       </span>
     );
   if (cell.kind === "voluntary") {
-    const sub = cell.count > 0 ? `${cell.count} sumbangan` : "Sukarela";
+    const sub = cell.count > 0 ? t(cell.count === 1 ? "matrix.contributionsOne" : "matrix.contributionsMany", { count: cell.count }) : t("matrix.voluntary");
     return (
       <div data-fit className="grid w-max max-w-full gap-0.5">
         <span
@@ -964,8 +969,8 @@ function CellView({ cell }: { cell: MatrixCell }) {
           {cell.received > 0 ? formatMoneyShort(cell.received) : "—"}
         </span>
         {cell.pending > 0 ? (
-          <span title="Menunggu" className="flex min-w-0">
-            <StatusChip label="Menunggu" tone="pending" compact className="min-w-0 shrink" />
+          <span title={pendingLabel[0]} className="flex min-w-0">
+            <StatusChip label={pendingLabel[0]} tone="pending" compact className="min-w-0 shrink" />
           </span>
         ) : (
           <span title={sub} className="truncate text-[11px] text-muted-foreground">
@@ -978,18 +983,18 @@ function CellView({ cell }: { cell: MatrixCell }) {
   const { ledger, status } = cell;
   if (status === "exempt")
     return (
-      <span data-fit title="Dikecualikan" className="flex w-max max-w-full">
-        <StatusChip label="Dikecualikan" tone="exempt" compact className="min-w-0 shrink" />
+      <span data-fit title={cellStatusLabels.exempt[0]} className="flex w-max max-w-full">
+        <StatusChip label={cellStatusLabels.exempt[0]} tone="exempt" compact className="min-w-0 shrink" />
       </span>
     );
   const amounts = `${formatMoneyShort(ledger.confirmed)} / ${formatMoneyShort(ledger.required)}`;
   const chip =
     status === "future"
-      ? (["Akan Datang", "future"] as const)
+      ? cellStatusLabels.future
       : ledger.overdue
-        ? ([status === "partial" ? "Lewat · Sebahagian" : "Lewat", "overdue"] as const)
+        ? ([status === "partial" ? `${overdueLabel[0]} · ${cellStatusLabels.partial[0]}` : overdueLabel[0], "overdue"] as const)
         : ledger.pending > 0 && status !== "paid"
-          ? (["Menunggu", "pending"] as const)
+          ? pendingLabel
           : cellStatusLabels[status];
   return (
     <div data-fit className="grid w-max max-w-full gap-0.5">
@@ -1026,6 +1031,7 @@ function ResizeHandle({
   onFit: () => void;
   onDrag: (active: boolean) => void;
 }) {
+  const t = useT();
   const start = useRef<{ x: number; width: number } | null>(null);
   const { min, max } = WIDTH_LIMITS[kind];
   const now = clampWidth(kind, width);
@@ -1038,7 +1044,7 @@ function ResizeHandle({
     <div
       role="separator"
       aria-orientation="vertical"
-      aria-label={`Ubah lebar lajur ${name}`}
+      aria-label={t("matrix.resizeColumn", { name })}
       aria-valuenow={now}
       aria-valuemin={min}
       aria-valuemax={max}
@@ -1097,6 +1103,7 @@ function ColumnHeader({
   /** Set for a monthly group's label: where it pins, and the group's width it must stay inside. */
   pinned?: { left: number; maxWidth: number };
 }) {
+  const t = useT();
   const { run } = useKelab();
   const { view } = useSnapshot();
   const [renaming, setRenaming] = useState(false);
@@ -1128,7 +1135,7 @@ function ColumnHeader({
     setBusy(true);
     try {
       await run((backend) => backend.updateCollection(collection.id, { name }));
-      toast.success("Nama kutipan dikemas kini.");
+      toast.success(t("matrix.renamed"));
       finish();
     } catch (error) {
       toast.error(messageFor(error));
@@ -1138,7 +1145,11 @@ function ColumnHeader({
   };
 
   const amount =
-    collection.type === "voluntary" ? "Sukarela" : collection.type === "monthly" ? `${formatMoneyShort(collection.defaultAmount ?? 0)}/bln` : formatMoneyShort(collection.defaultAmount ?? 0);
+    collection.type === "voluntary"
+      ? t("matrix.voluntary")
+      : collection.type === "monthly"
+        ? t("matrix.perMonth", { amount: formatMoneyShort(collection.defaultAmount ?? 0) })
+        : formatMoneyShort(collection.defaultAmount ?? 0);
 
   return (
     // A one-off or voluntary header uses its column's full width; the name truncates only when the
@@ -1183,7 +1194,7 @@ function ColumnHeader({
                 }
                 event.stopPropagation();
               }}
-              aria-label="Nama kutipan"
+              aria-label={t("matrix.nameLabel")}
               // w-full min-w-0: exactly the header's width beside the ⋮ button, never wider, even in a 120px column.
               className="h-7 rounded-md border-primary bg-card px-1.5 py-0 text-[13px] font-semibold md:text-[13px]"
             />
@@ -1198,14 +1209,14 @@ function ColumnHeader({
           )}
           <span className="block truncate text-[11px] font-normal text-muted-foreground">
             {amount}
-            {collection.status === "draft" && " · Draf"}
-            {collection.status === "completed" && " · Selesai"}
-            {collection.type !== "voluntary" && ` · ${progress.settled}/${progress.total} selesai`}
+            {collection.status === "draft" && ` · ${collectionStatusLabels.draft[0]}`}
+            {collection.status === "completed" && ` · ${collectionStatusLabels.completed[0]}`}
+            {collection.type !== "voluntary" && ` · ${t("matrix.settledProgress", { settled: progress.settled, total: progress.total })}`}
           </span>
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button ref={menuButton} variant="ghost" size="icon-xs" aria-label={`Tindakan untuk ${collection.name}`} className="-mr-1 rounded-md text-muted-foreground hover:bg-primary-light aria-expanded:bg-primary-light">
+            <Button ref={menuButton} variant="ghost" size="icon-xs" aria-label={t("matrix.actionsFor", { name: collection.name })} className="-mr-1 rounded-md text-muted-foreground hover:bg-primary-light aria-expanded:bg-primary-light">
               <EllipsisVertical className="size-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -1232,38 +1243,38 @@ function ColumnHeader({
                 setRenaming(true);
               }}
             >
-              <Pencil /> Namakan semula
+              <Pencil /> {t("matrix.rename")}
             </DropdownMenuItem>
             <DropdownMenuItem
               onSelect={() => {
                 toIcon.current = true;
               }}
             >
-              <Smile /> Tukar ikon
+              <Smile /> {t("matrix.changeIcon")}
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link href={`/kutipan/${collection.id}/`}>
-                <ExternalLink /> Butiran & tetapan kutipan
+                <ExternalLink /> {t("matrix.details")}
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
-                <MoveHorizontal /> Lebar lajur
+                <MoveHorizontal /> {t("matrix.columnWidth")}
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent className="w-40">
-                <DropdownMenuItem onSelect={() => onWidth("narrow")}>Sempit</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => onWidth("normal")}>Biasa</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => onWidth("wide")}>Lebar</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => onWidth("narrow")}>{t("matrix.widthNarrow")}</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => onWidth("normal")}>{t("matrix.widthNormal")}</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => onWidth("wide")}>{t("matrix.widthWide")}</DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={() => onWidth("reset")}>Set semula</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => onWidth("reset")}>{t("matrix.widthReset")}</DropdownMenuItem>
               </DropdownMenuSubContent>
             </DropdownMenuSub>
             <DropdownMenuItem onSelect={onHide}>
-              <EyeOff /> Sembunyikan lajur
+              <EyeOff /> {t("matrix.hideColumn")}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={onArchive} className="text-muted-foreground">
-              <Archive /> Arkibkan kutipan
+              <Archive /> {t("matrix.archiveCollection")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -1276,6 +1287,7 @@ function ColumnHeader({
 
 /** One card per member; each collection is a tappable line, months a row of tiles. */
 const MemberCards = memo(function MemberCards({ rows, columns }: { rows: Member[]; columns: MatrixColumn[] }) {
+  const t = useT();
   const { view } = useSnapshot();
   const [open, setOpen] = useState<MatrixCell | null>(null);
   const [dirty, setDirty] = useState(false);
@@ -1320,7 +1332,7 @@ const MemberCards = memo(function MemberCards({ rows, columns }: { rows: Member[
                   {member.name}
                 </Link>
                 <span className={cn("shrink-0 text-sm font-semibold tabular-nums", due > 0 ? "text-st-unpaid" : "text-st-paid")}>
-                  {due > 0 ? `Baki ${formatMoney(due)}` : "Selesai"}
+                  {due > 0 ? t("matrix.balance", { amount: formatMoney(due) }) : t("matrix.settled")}
                 </span>
               </div>
               <div className="grid grid-cols-1 gap-1.5">
@@ -1357,9 +1369,9 @@ const MemberCards = memo(function MemberCards({ rows, columns }: { rows: Member[
                         <span className="block truncate text-[13px] font-medium">{collection.name}</span>
                         <span className="block text-xs text-muted-foreground tabular-nums">
                           {cell.kind === "voluntary"
-                            ? `Sumbangan ${formatMoney(cell.received)}`
+                            ? t("matrix.contribution", { amount: formatMoney(cell.received) })
                             : cell.status === "exempt"
-                              ? "Tiada caj"
+                              ? t("matrix.noCharge")
                               : `${formatMoney(cell.ledger.confirmed)} / ${formatMoney(cell.ledger.required)}`}
                         </span>
                       </span>
@@ -1376,7 +1388,7 @@ const MemberCards = memo(function MemberCards({ rows, columns }: { rows: Member[
       </ul>
       {rows.length > limit && (
         <Button variant="outline" onClick={() => setLimit(limit + 20)}>
-          Tunjuk lagi ({rows.length - limit})
+          {t("matrix.showMore", { count: rows.length - limit })}
         </Button>
       )}
       {/* Same rules as the desktop editor: Esc and the close button discard (explicit cancel); a tap
@@ -1401,8 +1413,8 @@ const MemberCards = memo(function MemberCards({ rows, columns }: { rows: Member[
         >
           <div className="mx-auto mb-1 h-1.5 w-10 rounded-full bg-border" aria-hidden />
           <SheetHeader className="sr-only">
-            <SheetTitle>{current ? `Ubah sel: ${current.member.name}, ${current.column.label}` : "Ubah sel"}</SheetTitle>
-            <SheetDescription>Rekod bayaran, ubah amaun atau lihat sejarah</SheetDescription>
+            <SheetTitle>{current ? t("editor.cellLabel", { member: current.member.name, column: current.column.label }) : t("editor.cellTitle")}</SheetTitle>
+            <SheetDescription>{t("editor.cellDescription")}</SheetDescription>
           </SheetHeader>
           {current && <CellEditor cell={current} onDone={dismiss} onDirtyChange={setDirty} />}
         </SheetContent>

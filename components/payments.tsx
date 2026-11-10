@@ -11,6 +11,7 @@ import { formatDateTime, formatDay, formatMoney } from "@/lib/format";
 import { methodLabels, paymentStateLabels } from "@/lib/labels";
 import type { Payment } from "@/lib/types";
 import { allocationsOf, collectionPeriodLabel } from "@/lib/view";
+import { useT } from "@/lib/i18n/react";
 import { cn } from "@/lib/utils";
 import { BadgeCheck, Undo2 } from "lucide-react";
 import { useState } from "react";
@@ -25,7 +26,7 @@ export function PaymentList({
   payments,
   highlightChargeIds,
   showMember,
-  empty = "Belum ada bayaran.",
+  empty,
   className,
 }: {
   payments: Payment[];
@@ -35,18 +36,19 @@ export function PaymentList({
   empty?: string;
   className?: string;
 }) {
+  const t = useT();
   const { data, view } = useSnapshot();
   const { run } = useKelab();
   const [reversing, setReversing] = useState<Payment | null>(null);
   const [confirming, setConfirming] = useState<string | null>(null);
 
-  if (!payments.length) return <p className="py-4 text-center text-sm text-muted-foreground">{empty}</p>;
+  if (!payments.length) return <p className="py-4 text-center text-sm text-muted-foreground">{empty ?? t("payments.empty")}</p>;
 
   const confirm = async (payment: Payment) => {
     setConfirming(payment.id);
     try {
       await run((backend) => backend.confirmPayment(payment.id));
-      toast.success(`Penerimaan ${formatMoney(payment.amount)} disahkan.`);
+      toast.success(t("payments.confirmedToast", { amount: formatMoney(payment.amount) }));
     } catch (error) {
       toast.error(messageFor(error));
     } finally {
@@ -62,10 +64,10 @@ export function PaymentList({
           const relevant = highlightChargeIds ? allocations.filter((a) => highlightChargeIds.includes(a.chargeId)) : allocations;
           const shown = highlightChargeIds && payment.collectionId === null ? relevant.reduce((t, a) => t + a.amount, 0) : payment.amount;
           const targets = payment.collectionId
-            ? [view.collectionsById.get(payment.collectionId)?.name ?? "Sumbangan"]
+            ? [view.collectionsById.get(payment.collectionId)?.name ?? t("payments.contributionFallback")]
             : allocations.map((allocation) => {
                 const charge = data.charges.find((row) => row.id === allocation.chargeId);
-                if (!charge) return "Caj";
+                if (!charge) return t("payments.chargeFallback");
                 const collection = view.collectionsById.get(charge.collectionId)!;
                 const period = charge.periodId ? data.periods.find((p) => p.id === charge.periodId) ?? null : null;
                 return `${collectionPeriodLabel(collection, period)} (${formatMoney(allocation.amount)})`;
@@ -83,7 +85,7 @@ export function PaymentList({
                   <p className={cn("text-sm font-semibold tabular-nums", payment.state === "reversed" && "text-muted-foreground line-through")}>
                     {formatMoney(shown)}
                     {shown !== payment.amount && (
-                      <span className="ml-1 text-xs font-normal text-muted-foreground">daripada {formatMoney(payment.amount)}</span>
+                      <span className="ml-1 text-xs font-normal text-muted-foreground">{t("payments.ofTotal", { amount: formatMoney(payment.amount) })}</span>
                     )}
                   </p>
                   <p className="text-xs text-muted-foreground">
@@ -94,7 +96,7 @@ export function PaymentList({
                   <p className="mt-0.5 text-xs break-words text-muted-foreground">{targets.join(", ")}</p>
                   {payment.state === "reversed" && (
                     <p className="mt-1 text-xs text-st-unpaid">
-                      Dibatalkan {formatDateTime(payment.reversedAt)}: {payment.reversalReason}
+                      {t("payments.reversedOn", { when: formatDateTime(payment.reversedAt), reason: payment.reversalReason ?? "" })}
                     </p>
                   )}
                 </div>
@@ -109,12 +111,12 @@ export function PaymentList({
                   {payment.state === "pending" && (
                     <Button size="sm" onClick={() => void confirm(payment)} disabled={confirming === payment.id}>
                       {confirming === payment.id ? <Spinner className="size-3.5" /> : <BadgeCheck />}
-                      Sahkan wang diterima
+                      {t("payments.confirmReceived")}
                     </Button>
                   )}
                   <AttachProofButton payment={payment} />
                   <Button size="sm" variant="danger-outline" onClick={() => setReversing(payment)}>
-                    <Undo2 /> Batalkan bayaran…
+                    <Undo2 /> {t("payments.reverse")}
                   </Button>
                 </div>
               )}
@@ -125,18 +127,19 @@ export function PaymentList({
       <ReasonDialog
         open={reversing !== null}
         onOpenChange={(open) => !open && setReversing(null)}
-        title="Batalkan bayaran"
+        title={t("payments.reverseTitle")}
         description={
           reversing && (
             <>
-              Bayaran {formatMoney(reversing.amount)} pada {formatDay(reversing.paidOn)} akan ditanda <b>Dibatalkan</b>. Rekod asal kekal
-              dalam sejarah dan baki dikira semula.
+              {t("payments.reverseDescriptionBefore", { amount: formatMoney(reversing.amount), date: formatDay(reversing.paidOn) })}{" "}
+              <b>{paymentStateLabels.reversed[0]}</b>
+              {t("payments.reverseDescriptionAfter")}
             </>
           )
         }
-        confirmLabel="Batalkan bayaran"
+        confirmLabel={t("payments.reverseConfirm")}
         destructive
-        success="Bayaran dibatalkan. Baki dikira semula."
+        success={t("payments.reverseSuccess")}
         onConfirm={(reason) => run((backend) => backend.reversePayment(reversing!.id, reason))}
       />
     </>

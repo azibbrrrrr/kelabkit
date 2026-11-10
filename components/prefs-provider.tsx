@@ -1,5 +1,6 @@
 "use client";
 
+import { isLocale, setCurrentLocale } from "@/lib/i18n";
 import { defaultPreferences, isThemeId, PREFS_KEY, type Preferences } from "@/lib/themes";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
@@ -16,6 +17,7 @@ function readPrefs(): Preferences {
     return {
       theme: isThemeId(parsed.theme) ? parsed.theme : defaultPreferences.theme,
       floral: typeof parsed.floral === "boolean" ? parsed.floral : defaultPreferences.floral,
+      locale: isLocale(parsed.locale) ? parsed.locale : defaultPreferences.locale,
     };
   } catch {
     return defaultPreferences;
@@ -30,15 +32,18 @@ function apply(prefs: Preferences) {
   document.head.appendChild(freeze);
   root.dataset.accent = prefs.theme;
   root.dataset.floral = prefs.floral ? "on" : "off";
+  root.lang = prefs.locale;
   void window.getComputedStyle(root).opacity;
   requestAnimationFrame(() => freeze.remove());
 }
 
 /** Runs before paint (inlined in the root layout) so the saved theme and a collapsed sidebar never flash. */
-export const prefsBootScript = `(function(){try{var p=JSON.parse(localStorage.getItem(${JSON.stringify(PREFS_KEY)})||"{}");var r=document.documentElement;if(p.theme)r.dataset.accent=p.theme;if(p.floral===false)r.dataset.floral="off";}catch(e){}if(/(?:^|; )sidebar_state=false(?:;|$)/.test(document.cookie))document.documentElement.dataset.sidebarBoot="collapsed";})();`;
+export const prefsBootScript = `(function(){try{var p=JSON.parse(localStorage.getItem(${JSON.stringify(PREFS_KEY)})||"{}");var r=document.documentElement;if(p.theme)r.dataset.accent=p.theme;if(p.floral===false)r.dataset.floral="off";if(p.locale==="en"||p.locale==="ms")r.lang=p.locale;}catch(e){}if(/(?:^|; )sidebar_state=false(?:;|$)/.test(document.cookie))document.documentElement.dataset.sidebarBoot="collapsed";})();`;
 
 export function PrefsProvider({ children }: { children: ReactNode }) {
   const [prefs, setState] = useState<Preferences>(defaultPreferences);
+  // Keep the non-React locale (labels, errors, formatters) in step before children render.
+  setCurrentLocale(prefs.locale);
 
   useEffect(() => {
     const stored = readPrefs();
@@ -67,4 +72,9 @@ export function usePrefs() {
   const context = useContext(PrefsContext);
   if (!context) throw new Error("usePrefs must be used inside PrefsProvider.");
   return context;
+}
+
+/** Like usePrefs, but returns null outside the provider (shared UI that must also render in tests). */
+export function useOptionalPrefs() {
+  return useContext(PrefsContext);
 }

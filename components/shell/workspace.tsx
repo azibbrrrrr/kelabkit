@@ -6,6 +6,7 @@ import { IsiPantasProvider } from "@/components/isi-pantas/provider";
 import { IsiPantasButton, IsiPantasPill, IsiPantasSheet } from "@/components/isi-pantas/sheet";
 import { AppSidebar } from "@/components/shell/app-sidebar";
 import { GlobalSearch } from "@/components/shell/global-search";
+import { LanguagePill } from "@/components/language-pill";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,6 +22,7 @@ import { Separator } from "@/components/ui/separator";
 import { SidebarInset, SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { Spinner } from "@/components/ui/spinner";
 import { formatDay, formatMoney, initials } from "@/lib/format";
+import { useLocale, useT } from "@/lib/i18n/react";
 import { isActive } from "@/lib/nav";
 import { cn } from "@/lib/utils";
 import { Bell, ChevronDown, House, Menu, Plus, Settings, Sheet, TriangleAlert, UsersRound } from "lucide-react";
@@ -71,10 +73,11 @@ function RestoreCollapsedSidebar() {
 }
 
 function TopBar() {
+  const t = useT();
   const { demo, data } = useKelab();
   const { isMobile, state } = useSidebar();
-  const treasurer = data?.club.treasurerName ?? "Bendahari";
-  const toggleLabel = isMobile ? "Buka menu" : state === "collapsed" ? "Kembangkan menu sisi" : "Kecilkan menu sisi";
+  const treasurer = data?.club.treasurerName ?? t("shell.treasurer");
+  const toggleLabel = isMobile ? t("shell.openMenu") : state === "collapsed" ? t("shell.expandSidebar") : t("shell.collapseSidebar");
   return (
     <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b border-border/70 bg-background/80 px-3 backdrop-blur-xl md:rounded-t-2xl md:px-6 print:hidden">
       <SidebarTrigger className="-ml-1 size-9 rounded-xl [&_svg]:size-[18px]" aria-label={toggleLabel} title={isMobile ? undefined : `${toggleLabel} (Ctrl/⌘ B)`} />
@@ -85,11 +88,12 @@ function TopBar() {
       </div>
       {demo && (
         <span className="hidden shrink-0 rounded-full border border-dashed border-primary/50 bg-card px-2.5 py-0.5 text-[11px] font-medium text-primary-strong lg:inline-flex">
-          Data demo
+          {t("shell.demoData")}
         </span>
       )}
       <div className="ml-auto flex items-center gap-1.5">
         <IsiPantasButton />
+        <LanguagePill placement="topbar" className="hidden md:flex" />
         <PendingBell />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -99,7 +103,7 @@ function TopBar() {
               </Avatar>
               <span className="hidden text-left leading-tight md:block">
                 <span className="block text-[13px] font-semibold">{treasurer}</span>
-                <span className="block text-[11px] text-muted-foreground">Bendahari</span>
+                <span className="block text-[11px] text-muted-foreground">{t("shell.treasurer")}</span>
               </span>
               <ChevronDown className="hidden size-4 text-muted-foreground md:block" />
             </Button>
@@ -112,7 +116,7 @@ function TopBar() {
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
               <Link href="/tetapan/">
-                <Settings /> Tetapan & tema
+                <Settings /> {t("shell.settingsAndTheme")}
               </Link>
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -124,13 +128,14 @@ function TopBar() {
 
 /** Payments recorded but not yet confirmed: the treasurer's only real notification. */
 function PendingBell() {
+  const t = useT();
   const { data } = useKelab();
   const pending = (data?.payments ?? []).filter((payment) => payment.state === "pending");
   const names = new Map(data?.members.map((member) => [member.id, member.name]));
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative rounded-xl" aria-label={`${pending.length} bayaran menunggu semakan`}>
+        <Button variant="ghost" size="icon" className="relative rounded-xl" aria-label={t("shell.pendingBadge", { count: pending.length })}>
           <Bell className="size-5" />
           {pending.length > 0 && (
             <span className="absolute top-1.5 right-1.5 grid size-4 place-items-center rounded-full bg-primary-fill text-[10px] font-semibold text-primary-foreground">
@@ -141,11 +146,11 @@ function PendingBell() {
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80 p-0">
         <div className="border-b px-4 py-3">
-          <p className="text-sm font-semibold">Menunggu semakan</p>
-          <p className="text-xs text-muted-foreground">Sahkan setelah wang diterima. Belum dikira sebagai kutipan.</p>
+          <p className="text-sm font-semibold">{t("shell.bellTitle")}</p>
+          <p className="text-xs text-muted-foreground">{t("shell.bellHint")}</p>
         </div>
         {pending.length === 0 ? (
-          <p className="px-4 py-6 text-center text-sm text-muted-foreground">Tiada bayaran menunggu semakan.</p>
+          <p className="px-4 py-6 text-center text-sm text-muted-foreground">{t("shell.bellEmpty")}</p>
         ) : (
           <ul className="max-h-72 overflow-y-auto overscroll-contain p-1.5">
             {pending.map((payment) => (
@@ -171,6 +176,7 @@ function PendingBell() {
 
 /** Phone navigation: the four daily destinations and a central record-payment action. */
 function MobileNav() {
+  const t = useT();
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
   const item = (href: string, label: string, Icon: typeof House) => (
@@ -187,28 +193,28 @@ function MobileNav() {
   );
   return (
     <nav
-      aria-label="Navigasi utama"
+      aria-label={t("shell.mainNav")}
       className="fixed inset-x-0 bottom-0 z-40 flex items-stretch border-t border-border bg-card/95 px-1 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden print:hidden"
     >
-      {item("/", "Utama", House)}
-      {item("/matriks/", "Matriks", Sheet)}
+      {item("/", t("shell.home"), House)}
+      {item("/matriks/", t("nav.matrix"), Sheet)}
       <div className="flex flex-1 items-center justify-center">
         <Link
           href="/bayaran/baru/"
-          aria-label="Rekod bayaran"
+          aria-label={t("shell.recordPayment")}
           className="brand-gradient -mt-6 grid size-14 place-items-center rounded-2xl text-white shadow-[0_12px_24px_-10px_var(--primary)]"
         >
           <Plus className="size-6" />
         </Link>
       </div>
-      {item("/ahli/", "Ahli", UsersRound)}
+      {item("/ahli/", t("nav.members"), UsersRound)}
       <button
         type="button"
         onClick={() => setOpenMobile(true)}
         className="flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-medium text-muted-foreground"
       >
         <Menu className="size-5" />
-        Menu
+        {t("shell.menu")}
       </button>
     </nav>
   );
@@ -216,16 +222,18 @@ function MobileNav() {
 
 /** Waits for the first load so screens never render half-empty totals. */
 function DataGate({ children }: { children: ReactNode }) {
+  const t = useT();
+  const locale = useLocale();
   const { loading, error, refresh } = useKelab();
   if (error && loading)
     return (
       <div className="grid flex-1 place-items-center p-6">
         <div className="max-w-md text-center">
           <TriangleAlert className="mx-auto mb-3 size-6 text-destructive" />
-          <h1 className="text-lg font-semibold">Data KelabKit tidak dapat dimuatkan</h1>
+          <h1 className="text-lg font-semibold">{t("shell.loadFailed")}</h1>
           <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
           <Button variant="brand" className="mt-4" onClick={() => void refresh()}>
-            Cuba lagi
+            {t("common.retry")}
           </Button>
         </div>
       </div>
@@ -236,5 +244,11 @@ function DataGate({ children }: { children: ReactNode }) {
         <Spinner className="size-6 text-primary" />
       </div>
     );
-  return <div className="flex flex-1 flex-col">{children}</div>;
+  // Keyed by locale: screens that have not been moved onto useT() still read the current locale at
+  // render time, so re-mounting the page is what makes them follow a language switch. Data stays loaded.
+  return (
+    <div key={locale} className="flex flex-1 flex-col">
+      {children}
+    </div>
+  );
 }

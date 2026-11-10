@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { formatMonthLong, monthNamesShort, today } from "@/lib/format";
 import type { Month } from "@/lib/types";
+import { useT } from "@/lib/i18n/react";
 import { cn } from "@/lib/utils";
 import { CalendarRange, ChevronLeft, ChevronRight } from "lucide-react";
 import { useId, useRef, useState, type KeyboardEvent } from "react";
@@ -12,7 +13,7 @@ import { useId, useRef, useState, type KeyboardEvent } from "react";
 const monthKey = (year: number, index: number): Month => `${year}-${String(index + 1).padStart(2, "0")}`;
 
 /**
- * A `YYYY-MM` field: year navigation and a 12-month grid in Malay. Arrow keys move between
+ * A `YYYY-MM` field: year navigation and a 12-month grid in the current language. Arrow keys move between
  * months (up/down by a row of three), Enter picks, Escape closes and returns focus.
  */
 export function MonthPicker({
@@ -36,6 +37,8 @@ export function MonthPicker({
   className?: string;
   "aria-describedby"?: string;
 }) {
+  const t = useT();
+  const monthNames = monthNamesShort();
   const [open, setOpen] = useState(false);
   const [year, setYear] = useState(() => Number((value || today()).slice(0, 4)));
   const grid = useRef<HTMLDivElement>(null);
@@ -78,7 +81,7 @@ export function MonthPicker({
   const currentIndex = Number(current.slice(0, 4)) === year ? Number(current.slice(5, 7)) - 1 : -1;
   // Roving tab stop: the chosen month in view, else this month, else the first selectable one.
   const enabled = (index: number) => index >= 0 && allowed(monthKey(year, index));
-  const firstEnabled = Math.max(0, monthNamesShort.findIndex((_, index) => enabled(index)));
+  const firstEnabled = Math.max(0, monthNames.findIndex((_, index) => enabled(index)));
   const tabStop = enabled(selectedIndex) ? selectedIndex : enabled(currentIndex) ? currentIndex : firstEnabled;
 
   return (
@@ -94,7 +97,7 @@ export function MonthPicker({
         >
           <CalendarRange className="text-muted-foreground" aria-hidden />
           <span id={valueId} className={cn("truncate", !value && "text-muted-foreground")}>
-            {value ? formatMonthLong(value) : "Pilih bulan"}
+            {value ? formatMonthLong(value) : t("picker.pickMonth")}
           </span>
         </Button>
       </PopoverTrigger>
@@ -107,18 +110,18 @@ export function MonthPicker({
         }}
       >
         <div className="flex items-center justify-between">
-          <Button type="button" variant="ghost" size="icon-sm" aria-label="Tahun sebelumnya" onClick={() => setYear((y) => y - 1)} disabled={Boolean(min) && year <= Number(min!.slice(0, 4))}>
+          <Button type="button" variant="ghost" size="icon-sm" aria-label={t("picker.previousYear")} onClick={() => setYear((y) => y - 1)} disabled={Boolean(min) && year <= Number(min!.slice(0, 4))}>
             <ChevronLeft />
           </Button>
           <span className="text-sm font-semibold tabular-nums" aria-live="polite">
             {year}
           </span>
-          <Button type="button" variant="ghost" size="icon-sm" aria-label="Tahun seterusnya" onClick={() => setYear((y) => y + 1)} disabled={Boolean(max) && year >= Number(max!.slice(0, 4))}>
+          <Button type="button" variant="ghost" size="icon-sm" aria-label={t("picker.nextYear")} onClick={() => setYear((y) => y + 1)} disabled={Boolean(max) && year >= Number(max!.slice(0, 4))}>
             <ChevronRight />
           </Button>
         </div>
-        <div ref={grid} role="group" aria-label={`Bulan ${year}`} className="grid grid-cols-3 gap-1" onKeyDown={onKeyDown}>
-          {monthNamesShort.map((name, index) => {
+        <div ref={grid} role="group" aria-label={t("picker.monthsOf", { year })} className="grid grid-cols-3 gap-1" onKeyDown={onKeyDown}>
+          {monthNames.map((name, index) => {
             const month = monthKey(year, index);
             const selected = index === selectedIndex;
             return (

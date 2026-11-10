@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatMoney } from "@/lib/format";
 import { cellStatusLabels, overdueLabel, pendingLabel, type CellStatus, type Tone } from "@/lib/labels";
+import { useT } from "@/lib/i18n/react";
 import { cn } from "@/lib/utils";
 import { Check, Circle, Clock, Hourglass, Minus, Search, TriangleAlert, X, type LucideIcon } from "lucide-react";
 import Link from "next/link";
@@ -343,8 +344,9 @@ export function ErrorState({ title, description, action }: { title: string; desc
 }
 
 export function TableSkeleton({ rows = 5 }: { rows?: number }) {
+  const t = useT();
   return (
-    <div className="grid gap-2" aria-busy="true" aria-label="Memuatkan">
+    <div className="grid gap-2" aria-busy="true" aria-label={t("common.loading")}>
       {Array.from({ length: rows }, (_, i) => (
         <Skeleton key={i} className="h-11 rounded-xl bg-primary-light/60" />
       ))}
@@ -492,7 +494,7 @@ export function SearchInput({
   id,
   value,
   onChange,
-  placeholder = "Cari…",
+  placeholder,
   className,
 }: {
   id: string;
@@ -502,6 +504,8 @@ export function SearchInput({
   className?: string;
 }) {
   const input = useRef<HTMLInputElement>(null);
+  const t = useT();
+  const hint = placeholder ?? t("common.search");
   return (
     <div className={cn("relative w-full sm:max-w-xs", className)}>
       <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
@@ -511,8 +515,8 @@ export function SearchInput({
         type="search"
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-        aria-label={placeholder}
+        placeholder={hint}
+        aria-label={hint}
         className={cn("pl-9", value && "pr-9")}
       />
       {value && (
@@ -660,9 +664,10 @@ export function Toolbar({ search, tabs, actions, className }: { search?: ReactNo
 
 /** Small "DEMO" marker for figures that come from sample data. */
 export function DemoNote({ children }: { children?: ReactNode }) {
+  const t = useT();
   return (
     <p className="rounded-xl border border-dashed border-primary/40 bg-card/70 px-3 py-2 text-xs text-muted-foreground">
-      <span className="font-semibold text-primary-strong">Data demo.</span> {children ?? "Nama dan angka adalah contoh, disimpan dalam pelayar ini sahaja."}
+      <span className="font-semibold text-primary-strong">{t("shared.demoLabel")}</span> {children ?? t("shared.demoNote")}
     </p>
   );
 }

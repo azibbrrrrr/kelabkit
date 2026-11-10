@@ -15,6 +15,8 @@ import { Spinner } from "@/components/ui/spinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { messageFor } from "@/lib/errors";
+import { useT } from "@/lib/i18n/react";
+import { cellStatusLabels, methodLabels, pendingLabel } from "@/lib/labels";
 import { formatDay, formatMoney, formatMonthLong, today } from "@/lib/format";
 import { senToInput } from "@/lib/money/amount";
 import type { ChargeLedger } from "@/lib/money/ledger";
@@ -45,6 +47,7 @@ export function CellEditor({
   onDone: () => void;
   onDirtyChange?: (dirty: boolean) => void;
 }) {
+  const t = useT();
   const title = cell.column.period ? `${cell.column.collection.name} · ${formatMonthLong(cell.column.period.month)}` : cell.column.collection.name;
   const archived = cell.column.collection.status === "archived";
 
@@ -57,7 +60,7 @@ export function CellEditor({
         </div>
       )}
       {archived ? (
-        <p className="rounded-xl bg-muted px-3 py-2 text-sm text-muted-foreground">Kutipan ini telah diarkib. Rekod hanya boleh dilihat.</p>
+        <p className="rounded-xl bg-muted px-3 py-2 text-sm text-muted-foreground">{t("editor.archivedNote")}</p>
       ) : cell.kind === "na" ? (
         <IncludeMember cell={cell} onDone={onDone} />
       ) : cell.kind === "voluntary" ? (
@@ -87,9 +90,10 @@ export function focusEditorStart(root: HTMLElement) {
 
 /** The editor's tab strip: Radix tabs (arrow keys, tabpanel wiring) in the editor's segmented look. */
 function EditorTabs({ tabs }: { tabs: [EditorTab, string][] }) {
+  const t = useT();
   return (
     <TabsList
-      aria-label="Tindakan sel"
+      aria-label={t("editor.actionsLabel")}
       className="grid h-auto! w-full gap-1 rounded-xl bg-primary-tint p-1"
       style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
     >
@@ -119,11 +123,7 @@ function Figures({ items }: { items: [string, ReactNode][] }) {
   );
 }
 
-const methods: { value: PaymentMethod; label: string }[] = [
-  { value: "cash", label: "Tunai" },
-  { value: "transfer", label: "Pindahan" },
-  { value: "other", label: "Lain-lain" },
-];
+const methodValues: PaymentMethod[] = ["cash", "transfer", "other"];
 
 /** Method, date, received flag and reference: the parts every payment form shares. */
 function PaymentDetails({
@@ -149,13 +149,14 @@ function PaymentDetails({
   staged: StagedFile[];
   setStaged: (files: StagedFile[]) => void;
 }) {
+  const t = useT();
   const id = useId();
   return (
     <>
       <SegmentedChoice
-        label="Kaedah bayaran"
+        label={t("editor.methodLabel")}
         value={method}
-        options={methods}
+        options={methodValues.map((value) => ({ value, label: methodLabels[value] }))}
         onChange={(value) => {
           setMethod(value);
           setReceived(value === "cash");
@@ -164,19 +165,19 @@ function PaymentDetails({
       <div className="grid grid-cols-2 gap-2">
         <div className="grid gap-1">
           <Label htmlFor={`${id}-date`} className="text-xs text-muted-foreground">
-            Tarikh bayar
+            {t("editor.paidOn")}
           </Label>
           <DatePicker id={`${id}-date`} value={paidOn} max={today()} onChange={(day) => day && setPaidOn(day)} className="h-10 px-2.5" />
         </div>
         <div className="grid gap-1">
           <Label htmlFor={`${id}-ref`} className="text-xs text-muted-foreground">
-            Rujukan (pilihan)
+            {t("editor.reference")}
           </Label>
           <Input
             id={`${id}-ref`}
             value={reference}
             onChange={(event) => setReference(event.target.value)}
-            placeholder="cth. DuitNow 1234"
+            placeholder={t("editor.referencePlaceholder")}
           />
         </div>
       </div>
@@ -184,9 +185,9 @@ function PaymentDetails({
       <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-border bg-card px-3 py-2.5">
         <Checkbox checked={received} onCheckedChange={(value) => setReceived(value === true)} className="mt-0.5" />
         <span className="text-xs leading-snug">
-          <span className="block font-medium text-foreground">Wang sudah diterima</span>
+          <span className="block font-medium text-foreground">{t("editor.received")}</span>
           <span className="text-muted-foreground">
-            {received ? "Dikira sebagai kutipan serta-merta." : "Disimpan sebagai Menunggu Semakan; tidak dikira sehingga anda sahkan."}
+            {received ? t("editor.receivedYes") : t("editor.receivedNo", { pending: pendingLabel[0] })}
           </span>
         </span>
       </label>
@@ -239,6 +240,7 @@ function ChargeEditor({
   onDone: () => void;
   onDirtyChange?: (dirty: boolean) => void;
 }) {
+  const t = useT();
   const { view } = useSnapshot();
   const [tab, setTab] = useState<EditorTab>(ledger.payable > 0 || initialInput ? "pay" : "history");
   // Both forms stay mounted (hidden when inactive), so input typed on one tab survives a trip
@@ -254,26 +256,26 @@ function ChargeEditor({
     <>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <ChargeStatusChips status={cellStatus(ledger)} overdue={ledger.overdue} pending={ledger.pending > 0} compact />
-        {ledger.charge.dueDate && <span className="text-xs text-muted-foreground">Tarikh akhir {formatDay(ledger.charge.dueDate)}</span>}
+        {ledger.charge.dueDate && <span className="text-xs text-muted-foreground">{t("editor.dueDate", { date: formatDay(ledger.charge.dueDate) })}</span>}
       </div>
       <Figures
         items={[
-          ["Perlu bayar", ledger.charge.exempt ? "Dikecualikan" : formatMoney(ledger.required)],
-          ["Diterima", formatMoney(ledger.confirmed)],
-          ["Baki", formatMoney(ledger.remaining)],
+          [t("editor.figureRequired"), ledger.charge.exempt ? cellStatusLabels.exempt[0] : formatMoney(ledger.required)],
+          [t("editor.figureReceived"), formatMoney(ledger.confirmed)],
+          [t("editor.figureBalance"), formatMoney(ledger.remaining)],
         ]}
       />
       {ledger.pending > 0 && (
         <p className="rounded-xl bg-st-pending-bg px-3 py-2 text-xs text-st-pending">
-          {formatMoney(ledger.pending)} menunggu semakan. Belum dikira dalam &quot;Diterima&quot;.
+          {t("editor.pendingNotice", { amount: formatMoney(ledger.pending), received: t("editor.figureReceived") })}
         </p>
       )}
       <Tabs value={tab} onValueChange={(value) => setTab(value as EditorTab)} className="gap-3">
         <EditorTabs
           tabs={[
-            ["pay", "Rekod bayaran"],
-            ["amount", "Ubah amaun"],
-            ["history", `Sejarah (${count})`],
+            ["pay", t("editor.tabPay")],
+            ["amount", t("editor.tabAmount")],
+            ["history", t("editor.tabHistory", { count })],
           ]}
         />
         <TabsContent value="pay" forceMount hidden={tab !== "pay"}>
@@ -283,7 +285,7 @@ function ChargeEditor({
           <AmountForm ledger={ledger} cell={cell} onDone={onDone} onDirtyChange={setAmountDirty} onHistory={history} />
         </TabsContent>
         <TabsContent value="history">
-          <PaymentList payments={payments} highlightChargeIds={[ledger.charge.id]} empty="Belum ada bayaran untuk caj ini." />
+          <PaymentList payments={payments} highlightChargeIds={[ledger.charge.id]} empty={t("editor.historyEmpty")} />
         </TabsContent>
       </Tabs>
     </>
@@ -305,6 +307,7 @@ function PayForm({
   onDirtyChange?: (dirty: boolean) => void;
   onHistory: () => void;
 }) {
+  const t = useT();
   const { run } = useKelab();
   const form = usePaymentForm(initialInput);
   const input = useRef<HTMLInputElement>(null);
@@ -313,15 +316,15 @@ function PayForm({
   useEffect(() => onDirtyChange?.(form.amount.trim() !== "" || form.staged.length > 0), [form.amount, form.staged.length, onDirtyChange]);
 
   if (ledger.charge.exempt)
-    return <p className="rounded-xl bg-st-exempt-bg px-3 py-2.5 text-sm text-st-exempt">Ahli ini dikecualikan: {ledger.charge.exemptReason ?? "tiada sebab dicatat"}. Buka &quot;Ubah amaun&quot; untuk menarik balik.</p>;
+    return <p className="rounded-xl bg-st-exempt-bg px-3 py-2.5 text-sm text-st-exempt">{t("editor.exemptNotice", { reason: ledger.charge.exemptReason ?? t("editor.noReason"), tab: t("editor.tabAmount") })}</p>;
   if (ledger.payable === 0)
     return (
       <div className="rounded-xl bg-st-paid-bg px-3 py-2.5 text-sm text-st-paid">
-        Tiada baki untuk dibayar.{" "}
+        {t("editor.nothingDue")}{" "}
         <Button variant="link" onClick={onHistory} className="h-auto p-0 align-baseline font-semibold text-inherit underline">
-          Lihat sejarah
+          {t("editor.viewHistory")}
         </Button>{" "}
-        untuk membetulkan bayaran.
+        {t("editor.toCorrect")}
       </div>
     );
 
@@ -343,8 +346,8 @@ function PayForm({
     if (form.busy) return;
     const result = parseMoney(form.amount);
     if (result.error !== null) return fail(result.error);
-    if (result.sen === 0) return fail("Amaun mesti lebih daripada RM0.");
-    if (result.sen > ledger.payable) return fail(`Melebihi baki. Maksimum ${formatMoney(ledger.payable)}.`);
+    if (result.sen === 0) return fail(t("editor.zeroAmount"));
+    if (result.sen > ledger.payable) return fail(t("editor.overBalance", { max: formatMoney(ledger.payable) }));
     form.setBusy(true);
     form.setError(null);
     try {
@@ -360,7 +363,7 @@ function PayForm({
           allocations: [{ chargeId: ledger.charge.id, amount: result.sen }],
         }),
       );
-      toast.success(`${formatMoney(result.sen)} direkod untuk ${cell.member.name}.`);
+      toast.success(t("editor.recordedFor", { amount: formatMoney(result.sen), name: cell.member.name }));
       const warning = await attachStaged(run, [paymentId], form.staged);
       if (warning) toast.warning(warning, { duration: 10000 });
       onDirtyChange?.(false);
@@ -377,7 +380,7 @@ function PayForm({
       <div className="grid gap-1">
         <div className="flex items-center justify-between">
           <Label htmlFor="pay-amount" className="text-xs text-muted-foreground">
-            Amaun diterima
+            {t("editor.amountReceived")}
           </Label>
           <TextAction
             onClick={() => {
@@ -385,7 +388,7 @@ function PayForm({
               form.setError(null);
             }}
           >
-            Baki penuh {formatMoney(ledger.payable)}
+            {t("editor.fullBalance", { amount: formatMoney(ledger.payable) })}
           </TextAction>
         </div>
         <MoneyInput
@@ -407,24 +410,24 @@ function PayForm({
           </p>
         ) : tooMuch ? (
           <p id={messageId} className="text-xs font-medium text-st-unpaid">
-            Melebihi baki. Maksimum {formatMoney(ledger.payable)}.
+            {t("editor.overBalance", { max: formatMoney(ledger.payable) })}
           </p>
         ) : after !== null ? (
           <p id={messageId} className="text-xs text-muted-foreground">
-            Selepas simpan: baki <b className="text-foreground">{formatMoney(after)}</b>
-            {after === 0 ? " · Dibayar" : form.received ? " · Sebahagian" : " · menunggu semakan"}
+            {t("editor.afterSave")} <b className="text-foreground">{formatMoney(after)}</b>
+            {after === 0 ? ` · ${cellStatusLabels.paid[0]}` : form.received ? ` · ${cellStatusLabels.partial[0]}` : ` · ${pendingLabel[0]}`}
           </p>
         ) : null}
       </div>
       <PaymentDetails {...form} />
       <div className="grid grid-cols-2 gap-2 pt-1">
         <Button type="button" variant="outline" onClick={onDone} disabled={form.busy}>
-          Batal <kbd className="hidden text-[10px] text-muted-foreground sm:inline">Esc</kbd>
+          {t("editor.cancel")} <kbd className="hidden text-[10px] text-muted-foreground sm:inline">Esc</kbd>
         </Button>
         {/* Disabled only while saving: the double-submit guard. Bad input is reported on submit. */}
         <Button type="submit" disabled={form.busy}>
           {form.busy && <Spinner className="size-4" />}
-          {form.busy ? "Menyimpan…" : "Simpan"} <kbd className="hidden text-[10px] opacity-80 sm:inline">↵</kbd>
+          {form.busy ? t("common.saving") : t("common.save")} <kbd className="hidden text-[10px] opacity-80 sm:inline">↵</kbd>
         </Button>
       </div>
     </form>
@@ -444,10 +447,11 @@ function AmountForm({
   onDirtyChange?: (dirty: boolean) => void;
   onHistory: () => void;
 }) {
+  const t = useT();
   const { run } = useKelab();
   const [amount, setAmount] = useState(senToInput(ledger.charge.amount));
   const [reason, setReason] = useState("");
-  const [error, setErrorState] = useState<{ message: string; field: "amount" | "reason" | null } | null>(null);
+  const [error, setErrorState] = useState<{ message: string; field: "amount" | "reason" | null; history?: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
   const [exemptOpen, setExemptOpen] = useState(false);
   const amountInput = useRef<HTMLInputElement>(null);
@@ -460,8 +464,8 @@ function AmountForm({
   useEffect(() => onDirtyChange?.(changed || reason.trim() !== ""), [changed, reason, onDirtyChange]);
 
   // A field error moves focus to that field, whose aria-describedby carries the message.
-  const setError = (message: string | null, field: "amount" | "reason" | null = null) => {
-    setErrorState(message === null ? null : { message, field });
+  const setError = (message: string | null, field: "amount" | "reason" | null = null, history = false) => {
+    setErrorState(message === null ? null : { message, field, history });
     if (field === "amount") amountInput.current?.focus();
     if (field === "reason") reasonInput.current?.focus();
   };
@@ -473,14 +477,14 @@ function AmountForm({
     if (busy) return;
     const result = parseMoney(amount);
     if (result.error !== null) return setError(result.error, "amount");
-    if (result.sen === 0) return setError("RM0 tidak dibenarkan. Gunakan Kecualikan di bawah.", "amount");
-    if (result.sen < paidSoFar) return setError(`Tidak boleh kurang daripada ${formatMoney(paidSoFar)} yang telah dibayar. Batalkan bayaran dahulu.`, "amount");
-    if (needsReason && !reason.trim()) return setError("Ahli ini sudah membayar. Nyatakan sebab perubahan.", "reason");
+    if (result.sen === 0) return setError(t("editor.zeroUseExempt"), "amount");
+    if (result.sen < paidSoFar) return setError(t("editor.belowPaid", { paid: formatMoney(paidSoFar) }), "amount", true);
+    if (needsReason && !reason.trim()) return setError(t("editor.needReason"), "reason");
     setBusy(true);
     setError(null);
     try {
       await run((backend) => backend.setChargeAmount(ledger.charge.id, result.sen as Sen, reason || null));
-      toast.success(`Amaun ${cell.member.name} kini ${formatMoney(result.sen)}.`);
+      toast.success(t("editor.amountNow", { name: cell.member.name, amount: formatMoney(result.sen) }));
       onDirtyChange?.(false);
       onDone();
     } catch (cause) {
@@ -491,12 +495,12 @@ function AmountForm({
   };
 
   const toggleExempt = async () => {
-    if (!reason.trim()) return setError("Nyatakan sebab pengecualian.", "reason");
+    if (!reason.trim()) return setError(t("editor.exemptReason"), "reason");
     setBusy(true);
     setError(null);
     try {
       await run((backend) => backend.setChargeExempt(ledger.charge.id, !ledger.charge.exempt, reason));
-      toast.success(ledger.charge.exempt ? "Pengecualian ditarik balik." : `${cell.member.name} dikecualikan.`);
+      toast.success(ledger.charge.exempt ? t("editor.exemptionWithdrawn") : t("editor.nowExempt", { name: cell.member.name }));
       onDirtyChange?.(false);
       onDone();
     } catch (cause) {
@@ -511,17 +515,18 @@ function AmountForm({
   return (
     <form onSubmit={saveAmount} className="grid gap-2.5" noValidate>
       <p className="text-xs text-muted-foreground">
-        Ini menukar <b className="text-foreground">amaun yang perlu dibayar</b>, bukan merekod bayaran.
-        {defaultAmount !== null && <> Amaun asal kutipan: {formatMoney(defaultAmount)}.</>}
+        {t("editor.amountIntroBefore")} <b className="text-foreground">{t("editor.amountIntroBold")}</b>
+        {t("editor.amountIntroAfter")}
+        {defaultAmount !== null && <> {t("editor.defaultAmountNote", { amount: formatMoney(defaultAmount) })}</>}
       </p>
       {!ledger.charge.exempt && (
         <div className="grid gap-1">
           <div className="flex items-center justify-between">
             <Label htmlFor="charge-amount" className="text-xs text-muted-foreground">
-              Amaun perlu dibayar
+              {t("editor.amountDue")}
             </Label>
             {defaultAmount !== null && ledger.charge.amount !== defaultAmount && (
-              <TextAction onClick={() => setAmount(senToInput(defaultAmount))}>Set semula ke asal</TextAction>
+              <TextAction onClick={() => setAmount(senToInput(defaultAmount))}>{t("editor.resetDefault")}</TextAction>
             )}
           </div>
           <MoneyInput
@@ -540,7 +545,7 @@ function AmountForm({
       {(needsReason || exemptOpen || ledger.charge.exempt) && (
         <div className="grid gap-1">
           <Label htmlFor="charge-reason" className="text-xs text-muted-foreground">
-            Sebab {needsReason || exemptOpen || ledger.charge.exempt ? "(wajib)" : ""}
+            {t("editor.reasonLabel")} {needsReason || exemptOpen || ledger.charge.exempt ? t("editor.reasonRequired") : ""}
           </Label>
           <Textarea
             id="charge-reason"
@@ -551,7 +556,7 @@ function AmountForm({
               setReason(event.target.value);
               if (error?.field === "reason") setError(null);
             }}
-            placeholder="Disimpan dalam log audit"
+            placeholder={t("editor.reasonPlaceholder")}
             {...fieldProps("reason")}
           />
         </div>
@@ -559,9 +564,9 @@ function AmountForm({
       {error && (
         <p id={errorId} role="alert" className="text-xs font-medium text-st-unpaid">
           {error.message}{" "}
-          {error.message.includes("Batalkan") && (
+          {error.history && (
             <Button variant="link" onClick={onHistory} className="h-auto p-0 align-baseline text-xs text-inherit underline">
-              Buka sejarah
+              {t("editor.openHistory")}
             </Button>
           )}
         </p>
@@ -569,28 +574,28 @@ function AmountForm({
       {!ledger.charge.exempt && (
         <div className="grid grid-cols-2 gap-2">
           <Button type="button" variant="outline" onClick={onDone} disabled={busy}>
-            Batal
+            {t("editor.cancel")}
           </Button>
           <Button type="submit" disabled={busy || !changed}>
             {busy && <Spinner className="size-4" />}
-            Simpan amaun
+            {t("editor.saveAmount")}
           </Button>
         </div>
       )}
       <div className="border-t border-dashed border-border pt-2.5">
         {ledger.charge.exempt ? (
           <Button type="button" variant="danger-outline" className="w-full" onClick={() => void toggleExempt()} disabled={busy}>
-            <Undo2 /> Tarik balik pengecualian
+            <Undo2 /> {t("editor.withdrawExemption")}
           </Button>
         ) : paidSoFar > 0 ? (
-          <p className="text-xs text-muted-foreground">Pengecualian hanya untuk ahli yang belum membayar.</p>
+          <p className="text-xs text-muted-foreground">{t("editor.exemptOnlyUnpaid")}</p>
         ) : exemptOpen ? (
           <Button type="button" variant="destructive" className="w-full" onClick={() => void toggleExempt()} disabled={busy}>
-            <UserMinus /> Sahkan pengecualian
+            <UserMinus /> {t("editor.confirmExemption")}
           </Button>
         ) : (
           <Button type="button" variant="danger-outline" size="sm" onClick={() => setExemptOpen(true)}>
-            <UserMinus /> Kecualikan ahli ini daripada caj ini…
+            <UserMinus /> {t("editor.exemptMember")}
           </Button>
         )}
       </div>
@@ -609,6 +614,7 @@ function VoluntaryEditor({
   onDone: () => void;
   onDirtyChange?: (dirty: boolean) => void;
 }) {
+  const t = useT();
   const { run } = useKelab();
   const { view } = useSnapshot();
   const [tab, setTab] = useState<EditorTab>("pay");
@@ -629,7 +635,7 @@ function VoluntaryEditor({
     if (form.busy) return;
     const result = parseMoney(form.amount);
     if (result.error !== null) return fail(result.error);
-    if (result.sen === 0) return fail("Amaun mesti lebih daripada RM0.");
+    if (result.sen === 0) return fail(t("editor.zeroAmount"));
     form.setBusy(true);
     form.setError(null);
     try {
@@ -646,7 +652,7 @@ function VoluntaryEditor({
           confirmed: form.received,
         }),
       );
-      toast.success(`Sumbangan ${formatMoney(result.sen)} direkod.`);
+      toast.success(t("editor.contributionRecorded", { amount: formatMoney(result.sen) }));
       const warning = await attachStaged(run, [paymentId], form.staged);
       if (warning) toast.warning(warning, { duration: 10000 });
       onDirtyChange?.(false);
@@ -661,14 +667,14 @@ function VoluntaryEditor({
   return (
     <>
       <p className="text-xs text-muted-foreground">
-        Sumbangan sukarela: tiada amaun wajib dan tiada baki tertunggak. Jumlah setakat ini <Money sen={cell.received} className="font-semibold text-foreground" />.
+        {t("editor.voluntaryIntro")} <Money sen={cell.received} className="font-semibold text-foreground" />.
       </p>
       {/* The form's state lives in this component, so it survives switching tabs. */}
       <Tabs value={tab} onValueChange={(value) => setTab(value as EditorTab)} className="gap-3">
         <EditorTabs
           tabs={[
-            ["pay", "Rekod sumbangan"],
-            ["history", `Sejarah (${payments.length})`],
+            ["pay", t("editor.tabContribution")],
+            ["history", t("editor.tabHistory", { count: payments.length })],
           ]}
         />
         <TabsContent value="pay">
@@ -676,7 +682,7 @@ function VoluntaryEditor({
             <MoneyInput
               ref={input}
               data-autofocus
-              aria-label="Amaun sumbangan"
+              aria-label={t("editor.contributionAmount")}
               value={form.amount}
               onChange={(event) => {
                 form.setAmount(event.target.value);
@@ -694,17 +700,17 @@ function VoluntaryEditor({
             <PaymentDetails {...form} />
             <div className="grid grid-cols-2 gap-2">
               <Button type="button" variant="outline" onClick={onDone} disabled={form.busy}>
-                Batal
+                {t("editor.cancel")}
               </Button>
               <Button type="submit" disabled={form.busy}>
                 {form.busy && <Spinner className="size-4" />}
-                Simpan
+                {t("common.save")}
               </Button>
             </div>
           </form>
         </TabsContent>
         <TabsContent value="history">
-          <PaymentList payments={payments} empty="Belum ada sumbangan." />
+          <PaymentList payments={payments} empty={t("editor.contributionsEmpty")} />
         </TabsContent>
       </Tabs>
     </>
@@ -712,6 +718,7 @@ function VoluntaryEditor({
 }
 
 function IncludeMember({ cell, onDone }: { cell: Extract<MatrixCell, { kind: "na" }>; onDone: () => void }) {
+  const t = useT();
   const { run } = useKelab();
   const collection = cell.column.collection;
   const [amount, setAmount] = useState(collection.defaultAmount !== null ? senToInput(collection.defaultAmount) : "");
@@ -724,14 +731,14 @@ function IncludeMember({ cell, onDone }: { cell: Extract<MatrixCell, { kind: "na
     if (collection.type !== "voluntary") {
       const result = parseMoney(amount);
       if (result.error !== null) return setError(result.error);
-      if (result.sen === 0) return setError("RM0 tidak dibenarkan. Sertakan dan kecualikan jika perlu.");
+      if (result.sen === 0) return setError(t("editor.zeroInclude"));
       override = result.sen === collection.defaultAmount ? null : result.sen;
     }
     setBusy(true);
     setError(null);
     try {
       await run((backend) => backend.addParticipants(collection.id, [{ memberId: cell.member.id, amountOverride: override, exempt: false, note: null }]));
-      toast.success(`${cell.member.name} disertakan dalam ${collection.name}.`);
+      toast.success(t("editor.included", { name: cell.member.name, collection: collection.name }));
       onDone();
     } catch (cause) {
       setError(messageFor(cause));
@@ -743,12 +750,12 @@ function IncludeMember({ cell, onDone }: { cell: Extract<MatrixCell, { kind: "na
   return (
     <div className="grid gap-2.5">
       <p className="rounded-xl bg-st-na-bg px-3 py-2.5 text-sm text-st-na">
-        <b>Tidak Berkaitan.</b> Ahli ini tidak termasuk dalam kutipan ini dan tidak berhutang apa-apa.
+        <b>{cellStatusLabels.na[0]}.</b> {t("editor.notRelatedNote")}
       </p>
       {collection.type !== "voluntary" && (
         <div className="grid gap-1">
           <Label htmlFor="include-amount" className="text-xs text-muted-foreground">
-            Amaun {collection.type === "monthly" ? "sebulan" : "perlu dibayar"} jika disertakan
+            {collection.type === "monthly" ? t("editor.includeAmountMonthly") : t("editor.includeAmountOnce")}
           </Label>
           <MoneyInput
             id="include-amount"
@@ -758,7 +765,7 @@ function IncludeMember({ cell, onDone }: { cell: Extract<MatrixCell, { kind: "na
             invalid={Boolean(error)}
             aria-describedby={error ? errorId : undefined}
           />
-          {collection.type === "monthly" && <p className="text-xs text-muted-foreground">Caj dicipta untuk setiap bulan dalam tempoh kutipan.</p>}
+          {collection.type === "monthly" && <p className="text-xs text-muted-foreground">{t("editor.includeMonthlyNote")}</p>}
         </div>
       )}
       {error && (
@@ -768,11 +775,11 @@ function IncludeMember({ cell, onDone }: { cell: Extract<MatrixCell, { kind: "na
       )}
       <div className="grid grid-cols-2 gap-2">
         <Button type="button" variant="outline" onClick={onDone} disabled={busy}>
-          Tutup
+          {t("common.close")}
         </Button>
         <Button type="button" onClick={() => void include()} disabled={busy}>
           {busy && <Spinner className="size-4" />}
-          Sertakan ahli
+          {t("editor.includeMember")}
         </Button>
       </div>
     </div>

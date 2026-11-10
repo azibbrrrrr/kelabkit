@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { messageFor } from "@/lib/errors";
+import { useT } from "@/lib/i18n/react";
 import { cn } from "@/lib/utils";
 import { useId, useState, type ReactNode } from "react";
 import { toast } from "sonner";
@@ -22,7 +23,7 @@ export function ReasonDialog({
   confirmLabel,
   destructive,
   reasonRequired = true,
-  placeholder = "Contoh: direkod pada ahli yang salah",
+  placeholder,
   onConfirm,
   success,
   children,
@@ -39,6 +40,7 @@ export function ReasonDialog({
   success: string;
   children?: ReactNode;
 }) {
+  const t = useT();
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +48,7 @@ export function ReasonDialog({
 
   const submit = async () => {
     if (reasonRequired && !reason.trim()) {
-      setError("Nyatakan sebab. Ia disimpan dalam log audit.");
+      setError(t("reason.required"));
       return;
     }
     setBusy(true);
@@ -72,12 +74,15 @@ export function ReasonDialog({
         </DialogHeader>
         {children}
         <div className="grid gap-1.5">
-          <Label htmlFor={id}>Sebab{reasonRequired ? "" : " (pilihan)"}</Label>
+          <Label htmlFor={id}>
+            {t("reason.label")}
+            {reasonRequired ? "" : t("reason.optional")}
+          </Label>
           <Textarea
             id={id}
             value={reason}
             onChange={(event) => setReason(event.target.value)}
-            placeholder={placeholder}
+            placeholder={placeholder ?? t("reason.placeholder")}
             rows={3}
             aria-invalid={Boolean(error)}
           />
@@ -85,7 +90,7 @@ export function ReasonDialog({
         </div>
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
-            Batal
+            {t("common.back")}
           </Button>
           <Button
             onClick={() => void submit()}

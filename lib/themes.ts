@@ -1,3 +1,5 @@
+import { defaultLocale, type Locale } from "@/lib/i18n";
+
 // Accent themes. Each only changes the brand palette (primary, tints, borders, sidebar);
 // status colours stay fixed so a payment status reads the same in every theme. The CSS
 // for each lives in app/globals.css under [data-accent="<id>"]. `swatch` is the reference
@@ -13,9 +15,9 @@ export const themes: { id: ThemeId; label: string; mood: string; swatch: string;
   { id: "sage", label: "Sage", mood: "Damai & semula jadi", swatch: "#6E9E78", fill: "#52815D", tint: "#E2EEE2" },
 ];
 
-export type Preferences = { theme: ThemeId; floral: boolean };
+export type Preferences = { theme: ThemeId; floral: boolean; locale: Locale };
 
-export const defaultPreferences: Preferences = { theme: "rose", floral: true };
+export const defaultPreferences: Preferences = { theme: "rose", floral: true, locale: defaultLocale };
 
 export const PREFS_KEY = "kelabkit-prefs-v1";
 
