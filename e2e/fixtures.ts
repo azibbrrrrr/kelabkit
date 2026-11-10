@@ -18,10 +18,3 @@ export const test = base.extend({
 });
 
 export { expect };
-
-/** Integer sen from text such as "RM 1,234.50" or "RM25.00". */
-export function sen(text: string): number {
-  const match = text.replace(/\s/g, "").match(/RM(-?[\d,]+(?:\.\d{1,2})?)/);
-  if (!match) throw new Error(`No money amount in "${text}"`);
-  return Math.round(Number(match[1].replace(/,/g, "")) * 100);
-}
