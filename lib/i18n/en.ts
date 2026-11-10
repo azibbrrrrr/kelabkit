@@ -208,7 +208,6 @@ export const en: Messages = {
     homeLink: "KelabKit, go to Dashboard",
     pendingTooltip: "{title} · {count} pending review",
     pendingBadge: "Payments pending review: {count}",
-    quickFill: "Quick fill",
     clubFallback: "KGK club",
     session: "Session {session}",
     treasurer: "Treasurer",
