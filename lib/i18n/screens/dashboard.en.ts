@@ -6,6 +6,7 @@ export const dashboardEn: DeepStringify<typeof dashboardMs> = {
   hero: {
     welcome: "Welcome, {name}!",
     subtitle: "KGK collections dashboard. Keep track of payments, members and reminders with ease.",
+    session: "Session {session}",
     findMember: "Find member",
     addCollection: "Add collection",
     recordPayment: "Record payment",
