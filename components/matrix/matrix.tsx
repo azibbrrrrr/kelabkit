@@ -3,9 +3,18 @@
 import { AddCollectionDialog } from "@/components/add-collection-dialog";
 import { AddMemberDialog } from "@/components/add-member-dialog";
 import { useKelab, useSnapshot } from "@/components/data-provider";
-import { CellEditor } from "@/components/matrix/cell-editor";
+import { CellEditor, focusEditorStart } from "@/components/matrix/cell-editor";
 import { MonthTile } from "@/components/matrix/month-tile";
 import { ChargeStatusChips, EmptyState, FilterPills, Money, PageHeader, PageShell, SearchInput, StatusChip } from "@/components/shared";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,12 +28,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Spinner } from "@/components/ui/spinner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { messageFor } from "@/lib/errors";
 import { formatMoney, formatMoneyShort, formatMonth, initials } from "@/lib/format";
 import { cellStatusLabels } from "@/lib/labels";
 import { monthOf } from "@/lib/money/months";
-import type { Collection, Member, Sen } from "@/lib/types";
+import type { Collection, CollectionStatus, Member, Sen } from "@/lib/types";
 import { sortCollections, type MatrixCell, type MatrixColumn } from "@/lib/view";
 import { cn } from "@/lib/utils";
 import { getCoreRowModel, useReactTable, type ColumnDef } from "@tanstack/react-table";
@@ -43,7 +53,7 @@ import {
   UserPlus,
 } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from "react";
 import { toast } from "sonner";
 
 // The Excel-like tracker: members are rows, collections (or months of a monthly
@@ -68,6 +78,32 @@ const RIGHT_EDGE =
 // Row highlight on hover, and for the active cell's row while the grid has focus or the editor
 // is open. Background colour only, 100ms.
 const ROW_FADE = "transition-[background-color] duration-100";
+// PageUp / PageDown step, in rows.
+const PAGE_ROWS = 10;
+
+/** Remembers the element that opened a controlled overlay (no Radix Trigger) to hand focus back on close. */
+function useOpener() {
+  const ref = useRef<HTMLElement | null>(null);
+  const remember = () => {
+    ref.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  };
+  const restore = (event: Event) => {
+    if (!ref.current?.isConnected) return; // opener gone (e.g. an empty state replaced): keep Radix's default
+    event.preventDefault();
+    ref.current.focus();
+  };
+  return { ref, remember, restore };
+}
+
+/** Tracks the last focused control inside an editor, so "Teruskan edit" can put focus back there. */
+function useLastFocus() {
+  const ref = useRef<HTMLElement | null>(null);
+  const onFocusCapture = (event: { target: EventTarget }) => {
+    if (event.target instanceof HTMLElement) ref.current = event.target;
+  };
+  const restore = () => requestAnimationFrame(() => ref.current?.isConnected && ref.current.focus());
+  return { onFocusCapture, restore };
+}
 
 export function MatrixPage() {
   const { data, view } = useSnapshot();
@@ -82,6 +118,16 @@ export function MatrixPage() {
   const [layout, setLayout] = useState<"auto" | "grid" | "cards">("auto");
   const [addMember, setAddMember] = useState(false);
   const [addColumn, setAddColumn] = useState(false);
+  const memberOpener = useOpener();
+  const columnOpener = useOpener();
+  const openAddMember = () => {
+    memberOpener.remember();
+    setAddMember(true);
+  };
+  const openAddColumn = () => {
+    columnOpener.remember();
+    setAddColumn(true);
+  };
 
   const collections = useMemo(
     () =>
@@ -165,10 +211,10 @@ export function MatrixPage() {
         description="Setiap baris seorang ahli, setiap lajur satu kutipan atau bulan. Klik sel untuk rekod bayaran; Enter untuk edit, anak panah untuk bergerak."
         actions={
           <>
-            <Button variant="brand" onClick={() => setAddMember(true)}>
+            <Button variant="brand" onClick={openAddMember}>
               <UserPlus /> Tambah ahli
             </Button>
-            <Button onClick={() => setAddColumn(true)}>
+            <Button onClick={openAddColumn}>
               <Plus /> Tambah kutipan
             </Button>
           </>
@@ -230,8 +276,10 @@ export function MatrixPage() {
               </DropdownMenuCheckboxItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button variant="outline" size="sm" onClick={() => setSort(sort === "name" ? "owing" : "name")} aria-label="Tukar susunan">
+          {/* Accessible name leads with the visible text (label in name). */}
+          <Button variant="outline" size="sm" onClick={() => setSort(sort === "name" ? "owing" : "name")}>
             <ArrowDownUp /> {sort === "name" ? "Nama A–Z" : "Baki tertinggi"}
+            <span className="sr-only">, tukar susunan</span>
           </Button>
           <div className="flex rounded-[10px] border border-border bg-card p-0.5 md:hidden" role="group" aria-label="Paparan">
             <button
@@ -259,14 +307,14 @@ export function MatrixPage() {
           icon={UserPlus}
           title="Belum ada ahli"
           description="Tambah guru dan kakitangan dahulu. Setiap ahli menjadi satu baris."
-          action={<Button onClick={() => setAddMember(true)}>Tambah ahli pertama</Button>}
+          action={<Button onClick={openAddMember}>Tambah ahli pertama</Button>}
         />
       ) : columns.length === 0 ? (
         <EmptyState
           icon={SheetIcon}
           title="Tiada kutipan untuk dipaparkan"
           description="Tambah kutipan untuk mula menjejak bayaran, atau tunjuk semula lajur yang disembunyikan."
-          action={<Button onClick={() => setAddColumn(true)}>Tambah kutipan</Button>}
+          action={<Button onClick={openAddColumn}>Tambah kutipan</Button>}
         />
       ) : members.length === 0 ? (
         <EmptyState
@@ -280,8 +328,8 @@ export function MatrixPage() {
         <MemberCards rows={members.map((row) => row.member)} columns={columns} />
       )}
 
-      <AddMemberDialog open={addMember} onOpenChange={setAddMember} />
-      <AddCollectionDialog open={addColumn} onOpenChange={setAddColumn} />
+      <AddMemberDialog open={addMember} onOpenChange={setAddMember} onCloseAutoFocus={memberOpener.restore} />
+      <AddCollectionDialog open={addColumn} onOpenChange={setAddColumn} onCloseAutoFocus={columnOpener.restore} />
     </PageShell>
   );
 }
@@ -321,7 +369,10 @@ function Grid({
   const [active, setActive] = useState<Active>({ r: 0, c: 0 });
   const [editing, setEditing] = useState<{ initial?: string } | null>(null);
   const [dirty, setDirty] = useState(false);
+  // Outside click with unsaved input asks first; Esc and Batal are explicit cancels and discard.
   const [guard, setGuard] = useState(false);
+  const [archiving, setArchiving] = useState<Collection | null>(null);
+  const lastFocus = useLastFocus();
   const scroller = useRef<HTMLDivElement>(null);
   const groupRow = useRef<HTMLTableRowElement>(null);
   // The month row sticks directly under the group row; measured so no body cell shows
@@ -363,38 +414,31 @@ function Grid({
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
 
-  const move = (dr: number, dc: number) => {
-    let nr = r + dr;
-    let nc = c + dc;
-    if (nc >= columns.length) {
-      nc = 0;
-      nr += 1;
-    } else if (nc < 0) {
-      nc = columns.length - 1;
-      nr -= 1;
-    }
-    nr = Math.max(0, Math.min(rows.length - 1, nr));
-    nc = Math.max(0, Math.min(columns.length - 1, nc));
+  // Targets are absolute and clamped: movement never wraps into the next or previous row.
+  const go = (row: number, col: number) => {
+    const nr = Math.max(0, Math.min(rows.length - 1, row));
+    const nc = Math.max(0, Math.min(columns.length - 1, col));
     setActive({ r: nr, c: nc });
     requestAnimationFrame(() => focusCell(nr, nc));
   };
 
-  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+  // APG grid keys. Tab is not handled: the grid is one tab stop (roving tabindex) and Tab leaves it.
+  const onKeyDown = (event: KeyboardEvent<HTMLTableElement>) => {
     if (editing) return;
     const target = event.target as HTMLElement;
     if (!target.dataset.cell) return;
     const key = event.key;
-    if (key === "ArrowDown") move(1, 0);
-    else if (key === "ArrowUp") move(-1, 0);
-    else if (key === "ArrowRight") move(0, 1);
-    else if (key === "ArrowLeft") move(0, -1);
-    else if (key === "Tab") {
-      const atEnd = !event.shiftKey && r === rows.length - 1 && c === columns.length - 1;
-      const atStart = event.shiftKey && r === 0 && c === 0;
-      if (atEnd || atStart) return; // let focus leave the grid
-      move(0, event.shiftKey ? -1 : 1);
-    } else if (key === "Home") move(0, event.ctrlKey || event.metaKey ? -rows.length : -columns.length);
-    else if (key === "End") move(0, columns.length);
+    const mod = event.ctrlKey || event.metaKey;
+    const lastRow = rows.length - 1;
+    const lastCol = columns.length - 1;
+    if (key === "ArrowDown") go(r + 1, c);
+    else if (key === "ArrowUp") go(r - 1, c);
+    else if (key === "ArrowRight") go(r, c + 1);
+    else if (key === "ArrowLeft") go(r, c - 1);
+    else if (key === "PageDown") go(r + PAGE_ROWS, c);
+    else if (key === "PageUp") go(r - PAGE_ROWS, c);
+    else if (key === "Home") go(mod ? 0 : r, 0);
+    else if (key === "End") go(mod ? lastRow : r, lastCol);
     else if (key === "Enter" || key === "F2") setEditing({});
     else if (/^[0-9.]$/.test(key) && !event.ctrlKey && !event.metaKey) setEditing({ initial: key });
     else return;
@@ -407,6 +451,8 @@ function Grid({
     setGuard(false);
     requestAnimationFrame(() => focusCell(r, c));
   };
+
+  const editorLabel = (member: Member, column: MatrixColumn) => `Ubah sel: ${member.name}, ${column.label}`;
 
   const table = useReactTable({
     data: rows,
@@ -463,20 +509,22 @@ function Grid({
 
   return (
     <div className="min-w-0 rounded-2xl border border-border bg-card shadow-[0_1px_2px_rgba(0,0,0,.03)]">
-      <div
-        ref={scroller}
-        role="grid"
-        aria-label="Matriks kutipan"
-        aria-rowcount={rows.length + (hasGroups ? 3 : 2)}
-        onKeyDown={onKeyDown}
-        className="group/grid max-h-[calc(100svh-15rem)] min-h-64 overflow-auto overscroll-contain rounded-2xl"
-      >
-        <table className="border-separate border-spacing-0 text-[13px]">
+      <div ref={scroller} className="group/grid max-h-[calc(100svh-15rem)] min-h-64 overflow-auto overscroll-contain rounded-2xl">
+        {/* All rows and columns are rendered, so the counts equal the DOM: header rows + members + footer. */}
+        <table
+          role="grid"
+          aria-label="Matriks kutipan"
+          aria-rowcount={headerGroups.length + rows.length + 1}
+          aria-colcount={columns.length + 2}
+          onKeyDown={onKeyDown}
+          className="border-separate border-spacing-0 text-[13px]"
+        >
           <thead>
             {headerGroups.map((group, gi) => (
               <tr key={group.id} ref={gi === 0 ? groupRow : undefined}>
                 {gi === 0 && (
                   <th
+                    scope="col"
                     rowSpan={headerGroups.length}
                     style={{ width: MEMBER_COL_W, minWidth: MEMBER_COL_W }}
                     className={cn("sticky top-0 left-0 z-30 border-r border-b border-border bg-primary-tint px-4 text-left align-bottom text-xs font-semibold text-muted-foreground", LEFT_EDGE)}
@@ -497,6 +545,7 @@ function Grid({
                   return (
                     <th
                       key={header.id}
+                      scope={isGroup ? "colgroup" : "col"}
                       colSpan={header.colSpan}
                       rowSpan={single && hasGroups ? 2 : 1}
                       className={cn(
@@ -507,7 +556,7 @@ function Grid({
                       style={{ minWidth: column ? (column.period ? 104 : 156) : undefined, top: gi === 0 ? undefined : groupRowH }}
                     >
                       {isGroup || single ? (
-                        <ColumnHeader collection={collection} onHide={() => onHide(collection.id)} wide={!isGroup} pinned={isGroup} />
+                        <ColumnHeader collection={collection} onHide={() => onHide(collection.id)} onArchive={() => setArchiving(collection)} wide={!isGroup} pinned={isGroup} />
                       ) : (
                         <div className={cn("py-2 text-xs", column?.period && column.period.month === monthOf(view.today) && "text-primary-strong")}>
                           {column?.short}
@@ -519,6 +568,7 @@ function Grid({
                 })}
                 {gi === 0 && (
                   <th
+                    scope="col"
                     rowSpan={headerGroups.length}
                     className={cn("sticky top-0 right-0 z-30 min-w-[120px] border-b border-l border-border bg-primary-tint px-3 text-right align-bottom text-xs font-semibold text-muted-foreground", RIGHT_EDGE)}
                   >
@@ -576,7 +626,6 @@ function Grid({
                         data-cell={`${ri}:${ci}`}
                         role="gridcell"
                         tabIndex={isActive ? 0 : -1}
-                        aria-selected={isActive}
                         aria-label={`${member.name}, ${column.label}: ${describeCell(cell)}`}
                         onClick={(event) => own(event) && setActive({ r: ri, c: ci })}
                         onDoubleClick={(event) => {
@@ -588,11 +637,14 @@ function Grid({
                         className={cn(
                           "relative h-[58px] cursor-cell border-b border-l border-border px-2.5 align-middle outline-none",
                           ROW_FADE,
-                          isActive
-                            ? "z-[5] bg-primary-tint ring-2 ring-ring ring-inset"
-                            : column.period && column.period.month === monthOf(view.today)
+                          // The active cell is only marked while it has focus or its editor is open, so an
+                          // untouched grid shows no ring at 0:0.
+                          isActive && editing && "z-[5] bg-primary-tint ring-2 ring-ring ring-inset",
+                          isActive && !editing && "focus:z-[5] focus:bg-primary-tint focus:ring-2 focus:ring-ring focus:ring-inset",
+                          !(isActive && editing) &&
+                            (column.period && column.period.month === monthOf(view.today)
                               ? "bg-primary-tint/30"
-                              : ri % 2 === 1 && "bg-grid-zebra",
+                              : ri % 2 === 1 && "bg-grid-zebra"),
                           highlight,
                         )}
                       >
@@ -608,9 +660,17 @@ function Grid({
                               sideOffset={8}
                               collisionPadding={12}
                               className="max-h-[calc(100svh-24px)] w-[360px] overflow-y-auto rounded-2xl border-border p-4 shadow-[0_24px_48px_-20px_color-mix(in_srgb,var(--primary)_35%,transparent)]"
-                              onOpenAutoFocus={(event) => event.preventDefault()}
+                              aria-label={editorLabel(member, column)}
+                              // Focus moves into the editor (amount on the pay tab, else the selected
+                              // tab); close() hands it back to the cell.
+                              onOpenAutoFocus={(event) => {
+                                event.preventDefault();
+                                focusEditorStart(event.currentTarget as HTMLElement);
+                              }}
                               onCloseAutoFocus={(event) => event.preventDefault()}
+                              onFocusCapture={lastFocus.onFocusCapture}
                               onInteractOutside={(event) => {
+                                if (guard) return event.preventDefault(); // the discard dialog took focus
                                 if (dirty) {
                                   event.preventDefault();
                                   setGuard(true);
@@ -618,11 +678,6 @@ function Grid({
                               }}
                             >
                               <CellEditor cell={cell} initialInput={editing?.initial} onDone={close} onDirtyChange={setDirty} />
-                              {guard && (
-                                <p className="mt-2 rounded-lg bg-st-partial-bg px-2.5 py-1.5 text-xs text-st-partial">
-                                  Ada perubahan belum disimpan. Simpan, atau tekan Esc / Batal untuk buang.
-                                </p>
-                              )}
                             </PopoverContent>
                           </Popover>
                         )}
@@ -638,7 +693,7 @@ function Grid({
           </tbody>
           <tfoot>
             <tr>
-              <th className={cn("sticky bottom-0 left-0 z-30 border-t border-r border-border bg-primary-light px-4 py-2.5 text-left text-xs font-semibold", LEFT_EDGE)}>
+              <th scope="row" className={cn("sticky bottom-0 left-0 z-30 border-t border-r border-border bg-primary-light px-4 py-2.5 text-left text-xs font-semibold", LEFT_EDGE)}>
                 Jumlah diterima
               </th>
               {columns.map((column) => {
@@ -658,12 +713,135 @@ function Grid({
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-border px-4 py-2.5 text-[11px] text-muted-foreground">
         <span>
           <kbd className="rounded border border-border px-1">↵</kbd> edit · <kbd className="rounded border border-border px-1">0–9</kbd> terus taip amaun ·{" "}
-          <kbd className="rounded border border-border px-1">Esc</kbd> batal · <kbd className="rounded border border-border px-1">Tab</kbd> /{" "}
-          <kbd className="rounded border border-border px-1">← ↑ → ↓</kbd> gerak
+          <kbd className="rounded border border-border px-1">Esc</kbd> batal · <kbd className="rounded border border-border px-1">← ↑ → ↓</kbd> /{" "}
+          <kbd className="rounded border border-border px-1">Home</kbd> / <kbd className="rounded border border-border px-1">End</kbd> gerak
         </span>
         <span className="ml-auto">Sel = dibayar / perlu bayar. Status dikira daripada rekod bayaran.</span>
       </div>
+      <DiscardDialog open={guard} onKeep={() => setGuard(false)} onDiscard={close} restoreFocus={lastFocus.restore} />
+      <ArchiveDialog
+        collection={archiving}
+        onClose={() => setArchiving(null)}
+        onArchived={() => requestAnimationFrame(() => focusCell(r, c))}
+      />
     </div>
+  );
+}
+
+/**
+ * Asked when a click lands outside an editor holding unsaved input. Esc and Batal never ask:
+ * they are explicit cancels. Shared by the desktop popover and the phone sheet.
+ */
+function DiscardDialog({
+  open,
+  onKeep,
+  onDiscard,
+  restoreFocus,
+}: {
+  open: boolean;
+  onKeep: () => void;
+  onDiscard: () => void;
+  /** Puts focus back on the field being edited; the outside click that opened this moved it away. */
+  restoreFocus: () => void;
+}) {
+  const discarded = useRef(false);
+  return (
+    <AlertDialog open={open} onOpenChange={(next) => !next && onKeep()}>
+      <AlertDialogContent
+        size="sm"
+        className="rounded-2xl"
+        onOpenAutoFocus={() => (discarded.current = false)}
+        // Keep: focus returns to the field being edited. Discard: the editor's own close hands
+        // focus back to its cell or tile.
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          if (!discarded.current) restoreFocus();
+        }}
+      >
+        <AlertDialogHeader>
+          <AlertDialogTitle>Buang perubahan?</AlertDialogTitle>
+          <AlertDialogDescription>Perubahan yang belum disimpan dalam editor ini akan hilang.</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Teruskan edit</AlertDialogCancel>
+          <Button
+            variant="destructive"
+            onClick={() => {
+              discarded.current = true;
+              onDiscard();
+            }}
+          >
+            Buang
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+/**
+ * Confirms archiving a collection from its column menu, then offers to undo. Undo restores the
+ * status the collection had before (active, draft or completed), read before the change.
+ */
+function ArchiveDialog({ collection, onClose, onArchived }: { collection: Collection | null; onClose: () => void; onArchived: () => void }) {
+  const { run } = useKelab();
+  const [busy, setBusy] = useState(false);
+  const archived = useRef(false);
+
+  const archive = async () => {
+    if (!collection || busy) return;
+    const { id, name } = collection;
+    const previous: CollectionStatus = collection.status;
+    setBusy(true);
+    try {
+      await run((backend) => backend.setCollectionStatus(id, "archived"));
+      archived.current = true;
+      onClose();
+      toast.success(`"${name}" diarkib. Semua rekod dikekalkan.`, {
+        action: {
+          label: "Buat asal",
+          onClick: () =>
+            void run((backend) => backend.setCollectionStatus(id, previous))
+              .then(() => toast.success(`"${name}" dipulihkan.`))
+              .catch((error) => toast.error(messageFor(error))),
+        },
+      });
+    } catch (error) {
+      toast.error(messageFor(error));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <AlertDialog open={collection !== null} onOpenChange={(open) => !open && !busy && onClose()}>
+      <AlertDialogContent
+        className="rounded-2xl"
+        onOpenAutoFocus={() => (archived.current = false)}
+        // Cancel returns focus to the column menu button (Radix default). After archiving that
+        // column is gone, so focus goes to the grid's active cell instead.
+        onCloseAutoFocus={(event) => {
+          if (!archived.current) return;
+          event.preventDefault();
+          onArchived();
+        }}
+      >
+        <AlertDialogHeader>
+          <AlertDialogTitle>Arkibkan &quot;{collection?.name}&quot;?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Semua caj, bayaran dan log audit dikekalkan. Lajur ini disembunyikan daripada Matriks dan tidak menerima bayaran baharu. Anda boleh memulihkannya dari halaman Kutipan.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={busy}>Batal</AlertDialogCancel>
+          {/* A plain button, not AlertDialogAction, so the dialog stays open until the change succeeds. */}
+          <Button onClick={() => void archive()} disabled={busy}>
+            {busy && <Spinner className="size-4" />}
+            Arkibkan
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 
@@ -715,39 +893,53 @@ function CellView({ cell }: { cell: MatrixCell }) {
   );
 }
 
-/** Header for a collection: name (double-click or menu to rename), amount, actions. */
-function ColumnHeader({ collection, onHide, wide, pinned }: { collection: Collection; onHide: () => void; wide: boolean; pinned?: boolean }) {
+/** Header for a collection: name (renamed from its menu), amount, actions. */
+function ColumnHeader({
+  collection,
+  onHide,
+  onArchive,
+  wide,
+  pinned,
+}: {
+  collection: Collection;
+  onHide: () => void;
+  onArchive: () => void;
+  wide: boolean;
+  pinned?: boolean;
+}) {
   const { run } = useKelab();
   const { view } = useSnapshot();
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState(collection.name);
   const [busy, setBusy] = useState(false);
+  const menuButton = useRef<HTMLButtonElement>(null);
+  // Set when "Namakan semula" is chosen, so the menu does not pull focus back to its button
+  // and blur (commit) the rename field the moment it appears.
+  const toRename = useRef(false);
+  const renameInput = useRef<HTMLInputElement>(null);
   const progress = view.collectionProgress(collection.id);
 
+  const finish = () => {
+    setRenaming(false);
+    requestAnimationFrame(() => menuButton.current?.focus());
+  };
+
   const commit = async () => {
+    if (busy) return;
     if (!name.trim() || name.trim() === collection.name) {
-      setRenaming(false);
       setName(collection.name);
+      finish();
       return;
     }
     setBusy(true);
     try {
       await run((backend) => backend.updateCollection(collection.id, { name }));
       toast.success("Nama kutipan dikemas kini.");
-      setRenaming(false);
+      finish();
     } catch (error) {
       toast.error(messageFor(error));
     } finally {
       setBusy(false);
-    }
-  };
-
-  const archive = async () => {
-    try {
-      await run((backend) => backend.setCollectionStatus(collection.id, "archived"));
-      toast.success(`"${collection.name}" diarkib. Rekod bayaran kekal.`);
-    } catch (error) {
-      toast.error(messageFor(error));
     }
   };
 
@@ -764,7 +956,9 @@ function ColumnHeader({ collection, onHide, wide, pinned }: { collection: Collec
       <div className="min-w-0">
         {renaming ? (
           <input
-            autoFocus
+            ref={renameInput}
+            // Double-click path; the menu path focuses it once the menu has let go of focus.
+            autoFocus={!toRename.current}
             value={name}
             disabled={busy}
             onChange={(event) => setName(event.target.value)}
@@ -773,7 +967,7 @@ function ColumnHeader({ collection, onHide, wide, pinned }: { collection: Collec
               if (event.key === "Enter") void commit();
               if (event.key === "Escape") {
                 setName(collection.name);
-                setRenaming(false);
+                finish();
               }
               event.stopPropagation();
             }}
@@ -781,14 +975,11 @@ function ColumnHeader({ collection, onHide, wide, pinned }: { collection: Collec
             className="h-7 w-full min-w-32 rounded-md border border-primary bg-card px-1.5 text-[13px] font-semibold outline-none"
           />
         ) : (
-          <button
-            type="button"
-            onDoubleClick={() => setRenaming(true)}
-            title="Klik dua kali untuk namakan semula"
-            className="block max-w-full truncate text-left text-[13px] font-semibold"
-          >
+          // Plain text, not a button: renaming is a menu action (keyboard and touch). Double-click
+          // stays as a mouse shortcut; title shows the full name when truncated.
+          <span onDoubleClick={() => setRenaming(true)} title={collection.name} className="block max-w-full truncate text-left text-[13px] font-semibold">
             {collection.name}
-          </button>
+          </span>
         )}
         <span className="block text-[11px] font-normal text-muted-foreground">
           {amount}
@@ -799,12 +990,27 @@ function ColumnHeader({ collection, onHide, wide, pinned }: { collection: Collec
       </div>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button type="button" aria-label={`Tindakan untuk ${collection.name}`} className="-mr-1 grid size-6 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-primary-light">
+          <button ref={menuButton} type="button" aria-label={`Tindakan untuk ${collection.name}`} className="-mr-1 grid size-6 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-primary-light">
             <EllipsisVertical className="size-4" />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
-          <DropdownMenuItem onSelect={() => setRenaming(true)}>
+        <DropdownMenuContent
+          align="end"
+          className="w-56"
+          onCloseAutoFocus={(event) => {
+            if (!toRename.current) return;
+            toRename.current = false;
+            event.preventDefault();
+            renameInput.current?.focus();
+          }}
+        >
+          <DropdownMenuItem
+            onSelect={() => {
+              toRename.current = true;
+              setName(collection.name);
+              setRenaming(true);
+            }}
+          >
             <Pencil /> Namakan semula
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
@@ -816,7 +1022,7 @@ function ColumnHeader({ collection, onHide, wide, pinned }: { collection: Collec
             <EyeOff /> Sembunyikan lajur
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={() => void archive()} className="text-muted-foreground">
+          <DropdownMenuItem onSelect={onArchive} className="text-muted-foreground">
             <Archive /> Arkibkan kutipan
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -832,7 +1038,19 @@ function MemberCards({ rows, columns }: { rows: Member[]; columns: MatrixColumn[
   const { view } = useSnapshot();
   const [open, setOpen] = useState<MatrixCell | null>(null);
   const [dirty, setDirty] = useState(false);
+  const [guard, setGuard] = useState(false);
   const [limit, setLimit] = useState(20);
+  const opener = useOpener();
+  const lastFocus = useLastFocus();
+  const show = (cell: MatrixCell) => {
+    opener.remember();
+    setOpen(cell);
+  };
+  const dismiss = () => {
+    setOpen(null);
+    setDirty(false);
+    setGuard(false);
+  };
   const groups = useMemo(() => {
     const map = new Map<string, MatrixColumn[]>();
     for (const column of columns) {
@@ -875,7 +1093,7 @@ function MemberCards({ rows, columns }: { rows: Member[]; columns: MatrixColumn[
                         <p className="mb-1.5 text-xs font-medium">{collection.name}</p>
                         <div className="grid grid-cols-6 gap-1">
                           {cells.map((cell) => (
-                            <MonthTile key={cell.column.key} cell={cell} onOpen={() => setOpen(cell)} />
+                            <MonthTile key={cell.column.key} cell={cell} onOpen={() => show(cell)} />
                           ))}
                         </div>
                       </div>
@@ -887,7 +1105,7 @@ function MemberCards({ rows, columns }: { rows: Member[]; columns: MatrixColumn[
                     <button
                       key={collection.id}
                       type="button"
-                      onClick={() => setOpen(cell)}
+                      onClick={() => show(cell)}
                       className="flex min-h-12 items-center justify-between gap-2 rounded-xl border border-border px-3 py-2 text-left active:bg-primary-tint"
                     >
                       <span className="min-w-0">
@@ -916,34 +1134,35 @@ function MemberCards({ rows, columns }: { rows: Member[]; columns: MatrixColumn[
           Tunjuk lagi ({rows.length - limit})
         </Button>
       )}
-      <Sheet
-        open={open !== null}
-        onOpenChange={(next) => {
-          if (!next && dirty && !window.confirm("Buang perubahan yang belum disimpan?")) return;
-          if (!next) {
-            setOpen(null);
-            setDirty(false);
-          }
-        }}
-      >
-        <SheetContent side="bottom" className="max-h-[90svh] overflow-y-auto rounded-t-3xl px-4 pt-2 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+      {/* Same rules as the desktop editor: Esc and the close button discard (explicit cancel); a tap
+          outside with unsaved input asks in DiscardDialog. */}
+      <Sheet open={open !== null} onOpenChange={(next) => !next && dismiss()}>
+        <SheetContent
+          side="bottom"
+          className="max-h-[90svh] overflow-y-auto rounded-t-3xl px-4 pt-2 pb-[calc(1rem+env(safe-area-inset-bottom))]"
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            focusEditorStart(event.currentTarget as HTMLElement);
+          }}
+          onCloseAutoFocus={opener.restore}
+          onFocusCapture={lastFocus.onFocusCapture}
+          onInteractOutside={(event) => {
+            if (guard) return event.preventDefault();
+            if (dirty) {
+              event.preventDefault();
+              setGuard(true);
+            }
+          }}
+        >
           <div className="mx-auto mb-1 h-1.5 w-10 rounded-full bg-border" aria-hidden />
           <SheetHeader className="sr-only">
-            <SheetTitle>Edit sel</SheetTitle>
+            <SheetTitle>{current ? `Ubah sel: ${current.member.name}, ${current.column.label}` : "Ubah sel"}</SheetTitle>
             <SheetDescription>Rekod bayaran, ubah amaun atau lihat sejarah</SheetDescription>
           </SheetHeader>
-          {current && (
-            <CellEditor
-              cell={current}
-              onDone={() => {
-                setOpen(null);
-                setDirty(false);
-              }}
-              onDirtyChange={setDirty}
-            />
-          )}
+          {current && <CellEditor cell={current} onDone={dismiss} onDirtyChange={setDirty} />}
         </SheetContent>
       </Sheet>
+      <DiscardDialog open={guard} onKeep={() => setGuard(false)} onDiscard={dismiss} restoreFocus={lastFocus.restore} />
     </>
   );
 }
