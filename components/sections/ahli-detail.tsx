@@ -1,5 +1,6 @@
 "use client";
 
+import { SegmentedChoice } from "@/components/choice";
 import { useKelab, useSnapshot } from "@/components/data-provider";
 import { CellEditor } from "@/components/matrix/cell-editor";
 import { MonthTile } from "@/components/matrix/month-tile";
@@ -468,22 +469,13 @@ function EditMemberForm({ member, onClose }: { member: Member; onClose: () => vo
       </div>
       <div className="grid gap-1.5">
         <Label>Kategori</Label>
-        <div className="grid grid-cols-3 gap-1.5">
-          {(Object.keys(categoryLabels) as MemberCategory[]).map((value) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => setCategory(category === value ? null : value)}
-              aria-pressed={category === value}
-              className={cn(
-                "min-h-10 rounded-xl border text-xs font-medium",
-                category === value ? "border-primary bg-primary-tint text-primary-strong" : "border-border text-muted-foreground",
-              )}
-            >
-              {categoryLabels[value]}
-            </button>
-          ))}
-        </div>
+        <SegmentedChoice<MemberCategory | "">
+          label="Kategori"
+          optional
+          value={category ?? ""}
+          onChange={(value) => setCategory(value || null)}
+          options={(Object.keys(categoryLabels) as MemberCategory[]).map((value) => ({ value, label: categoryLabels[value] }))}
+        />
       </div>
       <div className="grid gap-1.5">
         <Label htmlFor="edit-phone">No. telefon (pilihan)</Label>

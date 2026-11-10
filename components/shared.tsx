@@ -3,8 +3,10 @@
 // Page building blocks shared by every screen. Restyled from Growlink Admin's
 // components/shared.tsx to Concept 04: rounded-2xl cards, tinted icon tiles, rose accents.
 
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatMoney } from "@/lib/format";
@@ -125,10 +127,12 @@ export function Money({ sen, className }: { sen: number; className?: string }) {
  */
 export function TextAction({ className, ...props }: Omit<ComponentProps<"button">, "type">) {
   return (
-    <button
+    <Button
       type="button"
+      variant="link"
+      size="xs"
       className={cn(
-        "inline-flex min-h-6 items-center rounded-md px-1 text-xs font-medium text-primary-strong underline decoration-primary-strong/40 underline-offset-2 transition-colors outline-none hover:bg-primary-tint hover:decoration-current focus-visible:ring-2 focus-visible:ring-ring",
+        "h-auto min-h-6 rounded-md px-1 underline decoration-primary-strong/40 underline-offset-2 hover:bg-primary-tint hover:decoration-current",
         className,
       )}
       {...props}
@@ -499,15 +503,15 @@ export function SearchInput({
 }) {
   return (
     <div className={cn("relative w-full sm:max-w-xs", className)}>
-      <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-      <input
+      <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+      <Input
         id={id}
         type="search"
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         aria-label={placeholder}
-        className="h-10 w-full rounded-xl border border-border bg-card pr-3 pl-9 text-sm outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-1 focus:ring-ring"
+        className="h-10 rounded-xl bg-card pr-3 pl-9 md:text-sm"
       />
     </div>
   );

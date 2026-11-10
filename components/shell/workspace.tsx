@@ -86,10 +86,7 @@ function TopBar() {
         <PendingBell />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              className="flex items-center gap-2.5 rounded-xl px-1.5 py-1 outline-none hover:bg-primary-tint focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            >
+            <Button variant="ghost" className="h-auto gap-2.5 rounded-xl px-1.5 py-1 font-normal hover:bg-primary-tint aria-expanded:bg-primary-tint">
               <Avatar className="size-9 border-2 border-primary-light">
                 <AvatarFallback className="bg-primary-light text-xs font-semibold text-primary-strong">{initials(treasurer)}</AvatarFallback>
               </Avatar>
@@ -98,7 +95,7 @@ function TopBar() {
                 <span className="block text-[11px] text-muted-foreground">Bendahari</span>
               </span>
               <ChevronDown className="hidden size-4 text-muted-foreground md:block" />
-            </button>
+            </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>

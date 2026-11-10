@@ -1,7 +1,10 @@
 "use client";
 
 import { useKelab, useSnapshot } from "@/components/data-provider";
+import { ChoiceCard, ChoiceCards } from "@/components/choice";
+import { DatePicker } from "@/components/date-picker";
 import { MoneyInput, parseMoney } from "@/components/money-input";
+import { MonthPicker } from "@/components/month-picker";
 import { collectionTypeIcons } from "@/components/sections/kutipan";
 import { DetailList, FilterPills, Money, PageHeader, PageShell, SearchInput, SectionCard, StatusChip, Toolbar } from "@/components/shared";
 import { Button } from "@/components/ui/button";
@@ -43,9 +46,6 @@ const typeHints: Record<CollectionType, string> = {
   monthly: "Caj berasingan setiap bulan, cth. yuran KGK.",
   voluntary: "Ahli menyumbang ikut kemampuan. Tiada hutang.",
 };
-
-const fieldClass =
-  "h-11 w-full min-w-0 rounded-xl border border-input bg-card px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring aria-invalid:border-destructive";
 
 type Details = {
   name: string;
@@ -393,13 +393,13 @@ function Stepper({ step, onGo }: { step: Step; onGo: (step: Step) => void }) {
         const state = index < step ? "done" : index === step ? "current" : "todo";
         return (
           <li key={item.title} className="min-w-0">
-            <button
-              type="button"
+            <Button
+              variant="ghost"
               onClick={() => onGo(index as Step)}
               disabled={state !== "done"}
               aria-current={state === "current" ? "step" : undefined}
               className={cn(
-                "flex min-h-12 w-full min-w-0 flex-col items-center gap-1 rounded-xl px-1 py-2 text-center sm:flex-row sm:gap-2.5 sm:px-3 sm:text-left",
+                "h-auto min-h-12 w-full min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-center font-normal whitespace-normal hover:bg-transparent disabled:opacity-100 sm:flex-row sm:justify-start sm:gap-2.5 sm:px-3 sm:text-left",
                 state === "current" && "bg-primary-tint",
                 state === "done" && "hover:bg-primary-tint",
               )}
@@ -420,7 +420,7 @@ function Stepper({ step, onGo }: { step: Step; onGo: (step: Step) => void }) {
                 </span>
                 <span className="hidden text-xs text-muted-foreground sm:block">{item.hint}</span>
               </span>
-            </button>
+            </Button>
           </li>
         );
       })}
@@ -470,33 +470,23 @@ function DetailsStep({
 
         <fieldset className="grid gap-1.5">
           <legend className="mb-1.5 text-sm font-medium">Jenis kutipan</legend>
-          <div className="grid gap-2 sm:grid-cols-3" role="radiogroup" aria-label="Jenis kutipan">
+          <ChoiceCards label="Jenis kutipan" value={details.type} onChange={(value) => set("type", value)} className="grid gap-2 sm:grid-cols-3">
             {(Object.keys(collectionTypeLabels) as CollectionType[]).map((value) => {
               const Icon = collectionTypeIcons[value];
               const on = details.type === value;
               return (
-                <button
-                  key={value}
-                  type="button"
-                  role="radio"
-                  aria-checked={on}
-                  onClick={() => set("type", value)}
-                  className={cn(
-                    "flex min-h-14 items-start gap-3 rounded-2xl border p-3 text-left transition-colors",
-                    on ? "border-primary bg-primary-tint" : "border-border bg-card hover:bg-primary-tint/60",
-                  )}
-                >
+                <ChoiceCard key={value} value={value} checked={on}>
                   <span className={cn("grid size-9 shrink-0 place-items-center rounded-xl", on ? "bg-primary-fill text-primary-foreground" : "bg-primary-light text-primary-strong")}>
                     <Icon className="size-4.5" aria-hidden />
                   </span>
                   <span className="min-w-0">
-                    <span className={cn("block text-sm font-semibold", on && "text-primary-strong")}>{collectionTypeLabels[value]}</span>
+                    <span className={cn("block text-sm font-semibold", !on && "text-foreground")}>{collectionTypeLabels[value]}</span>
                     <span className="block text-xs text-muted-foreground">{typeHints[value]}</span>
                   </span>
-                </button>
+                </ChoiceCard>
               );
             })}
-          </div>
+          </ChoiceCards>
         </fieldset>
 
         {details.type !== "voluntary" ? (
@@ -527,7 +517,7 @@ function DetailsStep({
         {details.type === "one_off" && (
           <div className="grid gap-1.5 sm:max-w-xs">
             <Label htmlFor="wz-due">Tarikh akhir (pilihan)</Label>
-            <input id="wz-due" type="date" value={details.dueDate} onChange={(event) => set("dueDate", event.target.value)} className={fieldClass} />
+            <DatePicker id="wz-due" value={details.dueDate} onChange={(day) => set("dueDate", day)} clearable emptyLabel="Tiada tarikh akhir" clearLabel="Tiada tarikh akhir" />
             <p className="text-xs text-muted-foreground">Tanpa tarikh akhir, caj tidak akan menjadi Lewat.</p>
           </div>
         )}
@@ -537,25 +527,23 @@ function DetailsStep({
             <div className="grid grid-cols-1 gap-3 min-[400px]:grid-cols-2 sm:max-w-md">
               <div className="grid min-w-0 gap-1.5">
                 <Label htmlFor="wz-start">Bulan mula</Label>
-                <input
+                <MonthPicker
                   id="wz-start"
-                  type="month"
                   value={details.startMonth}
-                  onChange={(event) => set("startMonth", event.target.value)}
-                  className={fieldClass}
-                  aria-invalid={Boolean(errors.months)}
+                  onChange={(month) => set("startMonth", month)}
+                  invalid={Boolean(errors.months)}
+                  aria-describedby={errors.months ? "wz-months-error" : undefined}
                 />
               </div>
               <div className="grid min-w-0 gap-1.5">
                 <Label htmlFor="wz-end">Bulan akhir</Label>
-                <input
+                <MonthPicker
                   id="wz-end"
-                  type="month"
                   value={details.endMonth}
                   min={details.startMonth}
-                  onChange={(event) => set("endMonth", event.target.value)}
-                  className={fieldClass}
-                  aria-invalid={Boolean(errors.months)}
+                  onChange={(month) => set("endMonth", month)}
+                  invalid={Boolean(errors.months)}
+                  aria-describedby={errors.months ? "wz-months-error" : undefined}
                 />
               </div>
             </div>
@@ -566,14 +554,14 @@ function DetailsStep({
             )}
             <div className="grid gap-1.5 sm:max-w-xs">
               <Label htmlFor="wz-dueday">Hari akhir bayaran setiap bulan</Label>
-              <input
+              <Input
                 id="wz-dueday"
                 type="text"
                 inputMode="numeric"
                 value={details.dueDay}
                 onChange={(event) => set("dueDay", event.target.value.replace(/[^\d]/g, "").slice(0, 2))}
                 placeholder="10"
-                className={fieldClass}
+                className="h-11 rounded-xl bg-card px-3 text-sm"
                 aria-invalid={Boolean(errors.dueDay)}
                 aria-describedby="wz-dueday-hint"
               />
@@ -695,35 +683,28 @@ function MembersStep({
       description={voluntary ? "Ahli yang dijemput menyumbang. Mereka tidak berhutang apa-apa." : "Hanya ahli yang dipilih akan mendapat caj."}
     >
       <div className="grid gap-4">
-        <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Skop ahli">
+        <ChoiceCards
+          label="Skop ahli"
+          value={allSelected ? "all" : "some"}
+          onChange={(value) => {
+            if (value === "all") setSelected(new Set(members.map((m) => m.id)));
+            // Only clears when switching from "all"; a custom selection is never wiped.
+            else if (allSelected) setSelected(new Set());
+          }}
+          className="grid gap-2 sm:grid-cols-2"
+        >
           {[
-            { on: allSelected, label: `Semua ahli aktif (${members.length})`, hint: "Pilihan biasa untuk yuran dan jamuan.", action: () => setSelected(new Set(members.map((m) => m.id))) },
-            { on: !allSelected, label: "Ahli terpilih sahaja", hint: "Mulakan dengan senarai kosong dan tanda sendiri.",
-              // Only clears when switching from "all"; a custom selection is never wiped by a second click.
-              action: () => allSelected && setSelected(new Set()),
-            },
+            { value: "all", on: allSelected, label: `Semua ahli aktif (${members.length})`, hint: "Pilihan biasa untuk yuran dan jamuan." },
+            { value: "some", on: !allSelected, label: "Ahli terpilih sahaja", hint: "Mulakan dengan senarai kosong dan tanda sendiri." },
           ].map((option) => (
-            <button
-              key={option.label}
-              type="button"
-              role="radio"
-              aria-checked={option.on}
-              onClick={option.action}
-              className={cn(
-                "flex min-h-14 items-start gap-3 rounded-2xl border p-3 text-left",
-                option.on ? "border-primary bg-primary-tint" : "border-border bg-card hover:bg-primary-tint/60",
-              )}
-            >
-              <span className={cn("mt-0.5 grid size-5 shrink-0 place-items-center rounded-full border-2", option.on ? "border-primary" : "border-input")}>
-                {option.on && <span className="size-2.5 rounded-full bg-primary" />}
-              </span>
+            <ChoiceCard key={option.value} value={option.value} checked={option.on} indicator>
               <span className="min-w-0">
-                <span className={cn("block text-sm font-semibold", option.on && "text-primary-strong")}>{option.label}</span>
+                <span className={cn("block text-sm font-semibold", !option.on && "text-foreground")}>{option.label}</span>
                 <span className="block text-xs text-muted-foreground">{option.hint}</span>
               </span>
-            </button>
+            </ChoiceCard>
           ))}
-        </div>
+        </ChoiceCards>
 
         <div className="flex flex-wrap items-center gap-2 rounded-xl bg-primary-tint px-3 py-2.5 text-sm" aria-live="polite">
           <span className="font-semibold">{selected.size} ahli dipilih</span>

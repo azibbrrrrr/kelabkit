@@ -94,3 +94,21 @@ export function waNumber(phone: string | null) {
   if (digits.startsWith("0")) return `6${digits}`;
   return `60${digits}`;
 }
+
+// Calendar widgets work on Date objects; our values are Malaysian calendar days. Convert
+// through local date components only (never UTC or toISOString), so the day a treasurer
+// picks is the day stored, whatever timezone the browser is in.
+
+/** `YYYY-MM-DD` → a local-midnight Date for a calendar widget. */
+export function dayToDate(day: Day): Date {
+  const [y, m, d] = day.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
+/** A calendar widget's Date → `YYYY-MM-DD`, read from its local components. */
+export function dateToDay(date: Date): Day {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+/** Malay short month names, January first: for month pickers. */
+export const monthNamesShort: readonly string[] = MONTHS_SHORT;

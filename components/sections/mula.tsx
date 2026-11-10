@@ -105,10 +105,10 @@ export function OnboardingPage() {
             <ul className="grid gap-1">
               {checks.map((check) => (
                 <li key={check.label}>
-                  <button
-                    type="button"
+                  <Button
+                    variant="ghost"
                     onClick={() => setStep(check.step)}
-                    className="flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-primary-tint"
+                    className="h-auto w-full justify-start gap-2.5 rounded-lg px-2 py-1.5 text-left font-normal whitespace-normal hover:bg-primary-tint"
                   >
                     {check.done ? (
                       <span className="grid size-5 shrink-0 place-items-center rounded-full bg-st-paid-bg text-st-paid">
@@ -119,7 +119,7 @@ export function OnboardingPage() {
                     )}
                     <span className={cn("min-w-0", check.done && "text-muted-foreground")}>{check.label}</span>
                     <span className="sr-only">{check.done ? "(selesai)" : "(belum)"}</span>
-                  </button>
+                  </Button>
                 </li>
               ))}
             </ul>
@@ -151,12 +151,12 @@ function StepCard({
   const id = useId();
   return (
     <li className={cn("min-w-0 rounded-2xl border bg-card transition-colors", active ? "border-primary/50 shadow-[0_8px_24px_-18px_var(--primary)]" : "border-border")}>
-      <button
-        type="button"
+      <Button
+        variant="ghost"
         onClick={onOpen}
         aria-expanded={active}
         aria-controls={id}
-        className="flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background md:px-5"
+        className="h-auto w-full justify-start gap-3 rounded-2xl px-4 py-3.5 text-left text-base font-normal whitespace-normal hover:bg-transparent aria-expanded:bg-transparent motion-safe:not-disabled:active:scale-100 md:px-5"
       >
         <span
           className={cn(
@@ -171,7 +171,7 @@ function StepCard({
           <span className="block font-semibold">{title}</span>
         </span>
         <Icon className="size-[18px] shrink-0 text-primary" aria-hidden />
-      </button>
+      </Button>
       {active && (
         <div id={id} className="px-4 pb-4 md:px-5 md:pb-5">
           {children}

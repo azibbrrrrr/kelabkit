@@ -1,11 +1,15 @@
 "use client";
 
 import { useKelab, useSnapshot } from "@/components/data-provider";
+import { ChoiceCard } from "@/components/choice";
+import { DatePicker } from "@/components/date-picker";
 import { MoneyInput, parseMoney } from "@/components/money-input";
+import { MonthPicker } from "@/components/month-picker";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RadioGroup } from "@/components/ui/radio-group";
 import { Spinner } from "@/components/ui/spinner";
 import { messageFor } from "@/lib/errors";
 import { formatMoney, today } from "@/lib/format";
@@ -112,23 +116,14 @@ export function AddCollectionDialog({
             <Input id="col-name" autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder="cth. Jamuan Akhir Tahun" className="h-11 rounded-xl" />
           </div>
           <div className="grid gap-1.5">
-            <Label>Jenis</Label>
-            <div className="grid grid-cols-3 gap-1.5">
+            <Label id="col-type-label">Jenis</Label>
+            <RadioGroup value={type} onValueChange={(next) => setType(next as CollectionType)} aria-labelledby="col-type-label" className="grid grid-cols-3 gap-1.5">
               {(Object.keys(collectionTypeLabels) as CollectionType[]).map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  aria-pressed={type === value}
-                  onClick={() => setType(value)}
-                  className={cn(
-                    "min-h-11 rounded-xl border px-2 text-xs leading-tight font-medium",
-                    type === value ? "border-primary bg-primary-tint text-primary-strong" : "border-border text-muted-foreground",
-                  )}
-                >
+                <ChoiceCard key={value} value={value} checked={type === value} className={cn("min-h-11 items-center justify-center rounded-xl px-2 py-1.5 text-center text-xs leading-tight font-medium", type !== value && "text-muted-foreground")}>
                   {collectionTypeLabels[value]}
-                </button>
+                </ChoiceCard>
               ))}
-            </div>
+            </RadioGroup>
           </div>
           {type !== "voluntary" && (
             <div className="grid gap-1.5">
@@ -140,13 +135,7 @@ export function AddCollectionDialog({
           {type === "one_off" && (
             <div className="grid gap-1.5">
               <Label htmlFor="col-due">Tarikh akhir (pilihan)</Label>
-              <input
-                id="col-due"
-                type="date"
-                value={dueDate}
-                onChange={(event) => setDueDate(event.target.value)}
-                className="h-11 rounded-xl border border-input bg-card px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
-              />
+              <DatePicker id="col-due" value={dueDate} onChange={setDueDate} clearable emptyLabel="Tiada tarikh akhir" clearLabel="Tiada tarikh akhir" />
               <p className="text-xs text-muted-foreground">Tanpa tarikh akhir, caj tidak akan menjadi Lewat.</p>
             </div>
           )}
@@ -154,11 +143,11 @@ export function AddCollectionDialog({
             <div className="grid grid-cols-2 gap-2">
               <div className="grid gap-1.5">
                 <Label htmlFor="col-start">Bulan mula</Label>
-                <input id="col-start" type="month" value={startMonth} onChange={(event) => setStartMonth(event.target.value)} className="h-11 rounded-xl border border-input bg-card px-3 text-sm" />
+                <MonthPicker id="col-start" value={startMonth} onChange={setStartMonth} />
               </div>
               <div className="grid gap-1.5">
                 <Label htmlFor="col-end">Bulan akhir</Label>
-                <input id="col-end" type="month" value={endMonth} min={startMonth} onChange={(event) => setEndMonth(event.target.value)} className="h-11 rounded-xl border border-input bg-card px-3 text-sm" />
+                <MonthPicker id="col-end" value={endMonth} min={startMonth} onChange={setEndMonth} />
               </div>
               <p className="col-span-2 text-xs text-muted-foreground">Setiap bulan menjadi lajur sendiri, perlu dibayar sebelum 10hb.</p>
             </div>

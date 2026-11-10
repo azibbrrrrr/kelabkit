@@ -1,6 +1,7 @@
 "use client";
 
 import { useSnapshot } from "@/components/data-provider";
+import { DatePicker } from "@/components/date-picker";
 import { PaymentList } from "@/components/payments";
 import { DataTable, EmptyState, LabelChip, MobileRow, PageHeader, PageShell, SearchInput, StatCard, type Column } from "@/components/shared";
 import { Button } from "@/components/ui/button";
@@ -259,28 +260,13 @@ export function BayaranPage() {
                 <Label htmlFor="pay-from" className="text-xs text-muted-foreground">
                   Dari
                 </Label>
-                <input
-                  id="pay-from"
-                  type="date"
-                  value={from}
-                  max={to || view.today}
-                  onChange={(event) => setFrom(event.target.value)}
-                  className="h-10 w-full min-w-0 rounded-xl border border-input bg-card px-2.5 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring sm:w-40"
-                />
+                <DatePicker id="pay-from" value={from} max={to || view.today} onChange={setFrom} clearable emptyLabel="Mana-mana" clearLabel="Kosongkan" className="h-10 px-2.5 sm:w-40" />
               </div>
               <div className="grid min-w-0 gap-1">
                 <Label htmlFor="pay-to" className="text-xs text-muted-foreground">
                   Hingga
                 </Label>
-                <input
-                  id="pay-to"
-                  type="date"
-                  value={to}
-                  min={from || undefined}
-                  max={view.today}
-                  onChange={(event) => setTo(event.target.value)}
-                  className="h-10 w-full min-w-0 rounded-xl border border-input bg-card px-2.5 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring sm:w-40"
-                />
+                <DatePicker id="pay-to" value={to} min={from || undefined} max={view.today} onChange={setTo} clearable emptyLabel="Mana-mana" clearLabel="Kosongkan" className="h-10 px-2.5 sm:w-40" />
               </div>
               {filtersOn && (
                 <Button variant="outline" onClick={clearFilters} className="col-span-2 h-10 justify-self-start rounded-xl sm:col-span-1">

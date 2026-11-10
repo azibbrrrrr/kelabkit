@@ -319,15 +319,16 @@ export function RemindersPage() {
             <div className="grid gap-3">
               <div className="flex flex-wrap gap-1.5" aria-label="Pemegang tempat">
                 {PLACEHOLDERS.map((p) => (
-                  <button
+                  <Button
                     key={p.key}
-                    type="button"
+                    variant="outline"
+                    size="sm"
                     onClick={() => insertPlaceholder(p.key)}
                     title={p.hint}
-                    className="inline-flex h-8 items-center rounded-lg border border-border bg-primary-tint px-2.5 font-mono text-xs text-primary-strong transition-colors hover:bg-primary-light"
+                    className="rounded-lg bg-primary-tint px-2.5 font-mono text-xs text-primary-strong hover:bg-primary-light hover:text-primary-strong"
                   >
                     {`{${p.key}}`}
-                  </button>
+                  </Button>
                 ))}
               </div>
               <Label htmlFor={templateId} className="sr-only">
@@ -429,15 +430,16 @@ export function RemindersPage() {
                   </Button>
                 }
               >
-                <button
-                  type="button"
+                <Button
+                  variant="link"
+                  size="xs"
                   onClick={() => setShowGroup((v) => !v)}
                   aria-expanded={showGroup}
-                  className="inline-flex items-center gap-1 text-xs font-medium text-primary-strong hover:underline"
+                  className="px-0"
                 >
                   <ChevronDown className={cn("size-3.5 transition-transform", showGroup && "rotate-180")} aria-hidden />
                   {showGroup ? "Sembunyikan mesej" : "Lihat mesej"}
-                </button>
+                </Button>
                 {showGroup && (
                   <pre className="mt-2 rounded-xl border border-border bg-primary-tint/60 p-3 font-sans text-[13px] leading-relaxed break-words whitespace-pre-wrap">
                     {groupText}

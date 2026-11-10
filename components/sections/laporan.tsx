@@ -1,9 +1,9 @@
 "use client";
 
 import { useSnapshot } from "@/components/data-provider";
+import { DatePicker } from "@/components/date-picker";
 import { EmptyState, FilterPills, LabelChip, PageHeader, PageShell, SectionCard } from "@/components/shared";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -661,11 +661,11 @@ export function ReportsPage() {
             <>
               <div className="grid min-w-0 gap-1.5 sm:w-44">
                 <Label htmlFor="rpt-from">Dari</Label>
-                <Input id="rpt-from" type="date" value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)} className="h-10 rounded-xl bg-card" />
+                <DatePicker id="rpt-from" value={from} max={to || undefined} onChange={setFrom} className="h-10" />
               </div>
               <div className="grid min-w-0 gap-1.5 sm:w-44">
                 <Label htmlFor="rpt-to">Hingga</Label>
-                <Input id="rpt-to" type="date" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} className="h-10 rounded-xl bg-card" />
+                <DatePicker id="rpt-to" value={to} min={from || undefined} onChange={setTo} className="h-10" />
               </div>
             </>
           )}
