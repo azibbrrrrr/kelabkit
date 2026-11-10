@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import {
   BadgeCheck,
   BellRing,
+  CalendarDays,
   ChartColumn,
   ChevronLeft,
   ChevronRight,
@@ -71,40 +72,70 @@ export function Dashboard() {
     <PageShell className="relative">
       <Floral asset="corner-bottom-left" className="-bottom-6 -left-10 z-0 hidden w-[240px] opacity-80 xl:block" />
 
-      <PageHeader
-        title={
-          <>
+      {/* Below md (no sidebar) the shared PageHeader with the "Lagi" menu; from md up the original hero row. Only one
+          is displayed at a time (display:none), so there is a single h1 in the accessibility tree. */}
+      <div className="md:hidden">
+        <PageHeader
+          title={
+            <>
+              {t("dashboard.hero.welcome", { name: firstName })} <Blossom />
+            </>
+          }
+          description={t("dashboard.hero.subtitle")}
+          actions={
+            <>
+              <Button variant="brand" asChild>
+                <Link href="/kutipan/baru/">
+                  <Plus /> {t("dashboard.hero.addCollection")}
+                </Link>
+              </Button>
+              <Button asChild>
+                <Link href="/bayaran/baru/">
+                  <Plus /> {t("dashboard.hero.recordPayment")}
+                </Link>
+              </Button>
+            </>
+          }
+          more={
+            <DropdownMenuItem asChild>
+              <Link href="/ahli/">
+                <Search /> {t("dashboard.hero.findMember")}
+              </Link>
+            </DropdownMenuItem>
+          }
+        />
+      </div>
+      <div className="hidden flex-col gap-4 md:flex xl:flex-row xl:items-end xl:justify-between">
+        <div className="min-w-0 xl:max-w-[520px]">
+          <h1 className="text-[28px] leading-tight font-bold tracking-[-.02em]">
             {t("dashboard.hero.welcome", { name: firstName })} <Blossom />
-          </>
-        }
-        description={t("dashboard.hero.subtitle")}
-        actions={
-          <>
-            <Button variant="brand" asChild>
-              <Link href="/kutipan/baru/">
-                <Plus /> {t("dashboard.hero.addCollection")}
-              </Link>
-            </Button>
-            <Button asChild>
-              <Link href="/bayaran/baru/">
-                <Plus /> {t("dashboard.hero.recordPayment")}
-              </Link>
-            </Button>
-          </>
-        }
-        more={
-          <DropdownMenuItem asChild>
+          </h1>
+          <p className="mt-1.5 text-[13px] text-muted-foreground">{t("dashboard.hero.subtitle")}</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 xl:flex-nowrap">
+          <span className="inline-flex h-9 items-center gap-2 rounded-[10px] border border-border bg-card px-3 text-[13px] font-medium whitespace-nowrap">
+            <CalendarDays className="size-4 text-muted-foreground" /> {t("dashboard.hero.session", { session: data.club.session })}
+          </span>
+          <Button variant="outline" asChild>
             <Link href="/ahli/">
               <Search /> {t("dashboard.hero.findMember")}
             </Link>
-          </DropdownMenuItem>
-        }
-      />
+          </Button>
+          <Button variant="brand" asChild>
+            <Link href="/kutipan/baru/">
+              <Plus /> {t("dashboard.hero.addCollection")}
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link href="/bayaran/baru/">
+              <Plus /> {t("dashboard.hero.recordPayment")}
+            </Link>
+          </Button>
+        </div>
+      </div>
 
-      {/* Layout follows the width of the page content, not the viewport: the sidebar takes 256px, so a
-          1280px window only leaves ~960px. Two columns until the content reaches 1100px. */}
-      <div className="@container relative z-10 grid gap-5 md:gap-6">
-        <div className="grid grid-cols-2 gap-3 @[880px]:grid-cols-4">
+      <div className="relative z-10 grid gap-5 md:gap-6">
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
           <StatCard
             icon={Database}
             label={t("dashboard.stats.totalLabel")}
@@ -144,13 +175,13 @@ export function Dashboard() {
           />
         </div>
 
-        <div className="grid grid-cols-1 gap-3 @3xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] @[1100px]:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,.8fr)]">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,.8fr)]">
           <CollectionsCard collections={sortCollections(data.collections).filter((c) => c.status === "active")} />
           <ActionsCard owing={memberStatus.owing} pending={pending} />
           <MonthlyCard payments={data.payments} />
         </div>
 
-        <div className="grid grid-cols-1 gap-3 @[900px]:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
+        <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
           <SectionCard title={t("dashboard.recent.title")} icon={ReceiptText} action={<CardLink href="/bayaran/">{t("dashboard.recent.viewAll")}</CardLink>} contentClassName="px-0 md:px-0">
             <RecentPayments payments={recent} />
           </SectionCard>
