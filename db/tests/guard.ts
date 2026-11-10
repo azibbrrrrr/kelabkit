@@ -13,8 +13,23 @@ export function assertDbTestEnv(env: Record<string, string | undefined>): void {
   }
 }
 
-/** Every fixture is named with this prefix: clubs by name, storage objects by key prefix. */
+/** Every fixture of any run starts with this; the stale sweep looks for it. */
 export const TEST_PREFIX = "kk-test-";
+
+/** Fixtures older than this are leftovers of a crashed run and may be swept by a later one. */
+export const STALE_AFTER_HOURS = 1;
+
+/** Set once per run by global-setup (workers inherit it). Two runs on one database never share a prefix. */
+export function runId(env: Record<string, string | undefined> = process.env): string {
+  const id = env.KELABKIT_TEST_RUN;
+  if (!id || !/^[0-9a-f]{8}$/.test(id)) throw new Error("KELABKIT_TEST_RUN is not set: db:test fixtures must be named per run (see db/tests/global-setup.ts).");
+  return id;
+}
+
+/** `kk-test-<runId>-`: prefix for this run's club names, user labels and storage keys. Cleanup and the residue check touch only this. */
+export function runPrefix(env?: Record<string, string | undefined>): string {
+  return `${TEST_PREFIX}${runId(env)}-`;
+}
 
 /** Club-scoped tables, children first. Residue is counted per table so the failure says where. */
 export const CLUB_TABLES = [
@@ -33,9 +48,24 @@ export const CLUB_TABLES = [
 
 export type Residue = { clubs: number; tables: Record<string, number>; objects: string[] };
 
-export function residueMessage(r: Residue): string | null {
+export function residueMessage(r: Residue, prefix = TEST_PREFIX): string | null {
   const tables = Object.entries(r.tables).filter(([, n]) => n > 0);
   if (r.clubs === 0 && tables.length === 0 && r.objects.length === 0) return null;
-  const parts = [`${r.clubs} kk-test-* club(s)`, ...tables.map(([t, n]) => `${n} row(s) in ${t}`), `${r.objects.length} kk-test-* object(s)`];
+  const parts = [`${r.clubs} ${prefix}* club(s)`, ...tables.map(([t, n]) => `${n} row(s) in ${t}`), `${r.objects.length} ${prefix}* object(s)`];
   return `db:test left fixtures behind: ${parts.join(", ")}. Clean them up (and fix the test that leaked them).`;
+}
+
+type Queryable = { query: (sql: string, params?: unknown[]) => Promise<{ rows: Record<string, unknown>[] }> };
+
+/** Deletes one club and everything under it, children first. */
+export async function dropClubCascade(pool: Queryable, clubId: string): Promise<void> {
+  for (const table of CLUB_TABLES) await pool.query(`delete from ${table} where club_id = $1`, [clubId]);
+  await pool.query("delete from clubs where id = $1", [clubId]);
+}
+
+/** Removes kk-test-* clubs older than STALE_AFTER_HOURS (any run). Never touches a recent run's fixtures. Returns how many it removed. */
+export async function sweepStaleClubs(pool: Queryable): Promise<number> {
+  const stale = await pool.query("select id from clubs where name like $1 and created_at < now() - make_interval(hours => $2)", [`${TEST_PREFIX}%`, STALE_AFTER_HOURS]);
+  for (const row of stale.rows) await dropClubCascade(pool, row.id as string);
+  return stale.rows.length;
 }

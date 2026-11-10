@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assertDbTestEnv, residueMessage } from "@/db/tests/guard";
+import { assertDbTestEnv, residueMessage, runId, runPrefix } from "@/db/tests/guard";
 
 describe("db:test environment guard", () => {
   it("refuses unless KELABKIT_DB_ENV is exactly dev", () => {
@@ -26,5 +26,23 @@ describe("db:test residue check", () => {
     expect(residueMessage({ clubs: 1, tables: { payments: 0 }, objects: [] })).toMatch(/1 kk-test-\* club/);
     expect(residueMessage({ clubs: 0, tables: { payments: 3 }, objects: [] })).toMatch(/3 row\(s\) in payments/);
     expect(residueMessage({ clubs: 0, tables: {}, objects: ["kk-test-a/b"] })).toMatch(/1 kk-test-\* object/);
+  });
+});
+
+describe("per-run fixture prefix", () => {
+  it("refuses to name fixtures without a run id", () => {
+    expect(() => runPrefix({})).toThrow(/KELABKIT_TEST_RUN/);
+    expect(() => runId({ KELABKIT_TEST_RUN: "../x" })).toThrow(/KELABKIT_TEST_RUN/);
+  });
+
+  it("builds kk-test-<runId>- and two runs never share a prefix or match each other", () => {
+    const a = runPrefix({ KELABKIT_TEST_RUN: "0123abcd" });
+    const b = runPrefix({ KELABKIT_TEST_RUN: "4567ef01" });
+    expect(a).toBe("kk-test-0123abcd-");
+    expect(`${b}club`.startsWith(a)).toBe(false);
+  });
+
+  it("the residue message names the run prefix", () => {
+    expect(residueMessage({ clubs: 1, tables: {}, objects: [] }, "kk-test-0123abcd-")).toMatch(/kk-test-0123abcd-\* club/);
   });
 });

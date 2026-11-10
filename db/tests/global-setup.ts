@@ -1,9 +1,11 @@
-import type { PoolClient } from "@neondatabase/serverless";
+import { randomBytes } from "node:crypto";
 import { createPool } from "../client";
-import { assertDbTestEnv, CLUB_TABLES, residueMessage, TEST_PREFIX, type Residue } from "./guard";
+import { assertDbTestEnv, CLUB_TABLES, residueMessage, runPrefix, STALE_AFTER_HOURS, sweepStaleClubs, TEST_PREFIX, type Residue } from "./guard";
 
-// Runs once around the whole db:test run. Setup refuses to start unless this is the dev database;
-// teardown fails the run when any kk-test-* club, its rows, or a kk-test-* storage object remains.
+// Runs once around the whole db:test run. Setup refuses to start unless this is the dev database,
+// gives the run its own id (every fixture is named kk-test-<runId>-*, so concurrent runs on the one
+// database cannot touch each other), and sweeps fixtures older than an hour left by crashed runs.
+// Teardown fails the run when anything under THIS run's prefix remains: clubs, their rows, or objects.
 
 try {
   process.loadEnvFile(".env.local");
@@ -11,46 +13,43 @@ try {
   // Variables may already be exported (CI).
 }
 
-// Every suite starts by deleting all kk-test-* clubs, so two runs on the one database destroy each
-// other's fixtures. A session-level advisory lock on a dedicated connection serialises runs: a second
-// run refuses to start instead of corrupting the first (and the residue check below stays truthful).
-const LOCK_KEY = "kelabkit-db-test";
-let lockClient: PoolClient | undefined;
-let lockPool: ReturnType<typeof createPool> | undefined;
-
 export async function setup() {
   assertDbTestEnv(process.env);
-  lockPool = createPool("DATABASE_URL_UNPOOLED", 1);
-  lockClient = await lockPool.connect();
-  const got = (await lockClient.query("select pg_try_advisory_lock(hashtext($1)) as ok", [LOCK_KEY])).rows[0].ok as boolean;
-  if (!got) {
-    lockClient.release();
-    await lockPool.end();
-    throw new Error("Another db:test run holds the lock on this database. Wait for it to finish; runs share one set of kk-test-* fixtures.");
+  process.env.KELABKIT_TEST_RUN = randomBytes(4).toString("hex");
+  const pool = createPool("DATABASE_URL_UNPOOLED", 1);
+  try {
+    const swept = await sweepStaleClubs(pool);
+    if (swept) console.log(`[db:test] swept ${swept} stale kk-test-* club(s) older than ${STALE_AFTER_HOURS}h`);
+  } finally {
+    await pool.end();
   }
 }
 
 export async function teardown() {
+  const prefix = runPrefix();
   const pool = createPool("DATABASE_URL_UNPOOLED", 1);
   try {
     const residue: Residue = { clubs: 0, tables: {}, objects: [] };
-    residue.clubs = Number((await pool.query("select count(*)::int as n from clubs where name like $1", [`${TEST_PREFIX}%`])).rows[0].n);
+    const like = `${prefix}%`;
+    residue.clubs = Number((await pool.query("select count(*)::int as n from clubs where name like $1", [like])).rows[0].n);
     for (const table of CLUB_TABLES) {
       const sql = `select count(*)::int as n from ${table} where club_id in (select id from clubs where name like $1)`;
-      residue.tables[table] = Number((await pool.query(sql, [`${TEST_PREFIX}%`])).rows[0].n);
+      residue.tables[table] = Number((await pool.query(sql, [like])).rows[0].n);
     }
     // Storage is optional locally; when it is configured, fixtures must not leave objects.
     const { missingStorageEnv } = await import("../../lib/server/env");
     if (missingStorageEnv().length === 0) {
       const { listObjects } = await import("../../lib/server/storage");
-      residue.objects = (await listObjects(TEST_PREFIX)).map((o) => o.key);
+      residue.objects = (await listObjects(prefix)).map((o) => o.key);
+      const cutoff = Date.now() - STALE_AFTER_HOURS * 3_600_000;
+      const { deleteObject } = await import("../../lib/server/storage");
+      for (const o of await listObjects(TEST_PREFIX)) {
+        if (!o.key.startsWith(prefix) && o.lastModified && o.lastModified.getTime() < cutoff) await deleteObject(o.key);
+      }
     }
-    const message = residueMessage(residue);
+    const message = residueMessage(residue, prefix);
     if (message) throw new Error(message);
   } finally {
     await pool.end();
-    await lockClient?.query("select pg_advisory_unlock(hashtext($1))", [LOCK_KEY]).catch(() => undefined);
-    lockClient?.release();
-    await lockPool?.end();
   }
 }
