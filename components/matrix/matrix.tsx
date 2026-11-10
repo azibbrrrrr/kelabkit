@@ -4,6 +4,7 @@ import { AddCollectionDialog } from "@/components/add-collection-dialog";
 import { AddMemberDialog } from "@/components/add-member-dialog";
 import { useKelab, useSnapshot } from "@/components/data-provider";
 import { CellEditor } from "@/components/matrix/cell-editor";
+import { MonthTile } from "@/components/matrix/month-tile";
 import { ChargeStatusChips, EmptyState, FilterPills, Money, PageHeader, PageShell, SearchInput, StatusChip } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import {
@@ -653,7 +654,7 @@ function ColumnHeader({ collection, onHide, wide }: { collection: Collection; on
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState(collection.name);
   const [busy, setBusy] = useState(false);
-  const totals = view.collectionTotals(collection.id);
+  const progress = view.collectionProgress(collection.id);
 
   const commit = async () => {
     if (!name.trim() || name.trim() === collection.name) {
@@ -720,7 +721,7 @@ function ColumnHeader({ collection, onHide, wide }: { collection: Collection; on
           {amount}
           {collection.status === "draft" && " · Draf"}
           {collection.status === "completed" && " · Selesai"}
-          {collection.type !== "voluntary" && ` · ${totals.counts.paid}/${totals.participants} bayar`}
+          {collection.type !== "voluntary" && ` · ${progress.settled}/${progress.total} selesai`}
         </span>
       </div>
       <DropdownMenu>
@@ -871,40 +872,5 @@ function MemberCards({ rows, columns }: { rows: Member[]; columns: MatrixColumn[
         </SheetContent>
       </Sheet>
     </>
-  );
-}
-
-function MonthTile({ cell, onOpen }: { cell: MatrixCell; onOpen: () => void }) {
-  const month = cell.column.period ? formatMonth(cell.column.period.month, false) : "";
-  if (cell.kind !== "charge")
-    return (
-      <span className="grid h-11 place-items-center rounded-lg bg-st-na-bg text-[10px] text-st-na" aria-label={`${month}: Tidak Berkaitan`}>
-        {month}
-      </span>
-    );
-  const { ledger, status } = cell;
-  const tone = ledger.overdue
-    ? "bg-st-overdue-bg text-st-overdue"
-    : status === "paid"
-      ? "bg-st-paid-bg text-st-paid"
-      : status === "partial"
-        ? "bg-st-partial-bg text-st-partial"
-        : status === "exempt"
-          ? "bg-st-exempt-bg text-st-exempt"
-          : status === "future"
-            ? "bg-st-future-bg text-st-future"
-            : ledger.pending > 0
-              ? "bg-st-pending-bg text-st-pending"
-              : "bg-st-unpaid-bg text-st-unpaid";
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      aria-label={`${month}: ${describeCell(cell)}`}
-      className={cn("grid h-11 place-items-center rounded-lg text-[10px] leading-tight font-semibold", tone)}
-    >
-      {month}
-      <span className="font-normal">{status === "paid" ? "✓" : status === "future" ? "·" : formatMoneyShort(ledger.remaining)}</span>
-    </button>
   );
 }

@@ -30,6 +30,8 @@ export type View = {
   collectionsById: Map<string, Collection>;
   collectionTotals: (collectionId: string) => Totals & { voluntary: Sen; participants: number };
   memberTotals: (memberId: string) => Totals;
+  /** Members with nothing due now in this collection, out of members with a non-exempt charge. */
+  collectionProgress: (collectionId: string) => { settled: number; total: number };
   memberLedgers: (memberId: string) => ChargeLedger[];
   columns: (collections: Collection[]) => MatrixColumn[];
   cell: (member: Member, column: MatrixColumn) => MatrixCell;
@@ -86,6 +88,23 @@ export function buildView(snapshot: Snapshot, today: Day): View {
       };
     },
     memberTotals: (memberId) => totalsOf(ledgerList(chargesByMember.get(memberId))),
+    collectionProgress(collectionId) {
+      const byMember = new Map<string, { charged: boolean; due: Sen }>();
+      for (const ledger of ledgerList(chargesByCollection.get(collectionId))) {
+        const entry = byMember.get(ledger.charge.memberId) ?? { charged: false, due: 0 };
+        if (!ledger.charge.exempt) entry.charged = true;
+        if (!ledger.future) entry.due += ledger.remaining;
+        byMember.set(ledger.charge.memberId, entry);
+      }
+      let settled = 0;
+      let total = 0;
+      for (const entry of byMember.values()) {
+        if (!entry.charged) continue;
+        total += 1;
+        if (entry.due === 0) settled += 1;
+      }
+      return { settled, total };
+    },
     memberLedgers: (memberId) => ledgerList(chargesByMember.get(memberId)),
     columns(collections) {
       const columns: MatrixColumn[] = [];

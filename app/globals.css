@@ -311,3 +311,15 @@
 [data-accent="sage"] .floral-tint {
   filter: hue-rotate(-150deg) saturate(0.45);
 }
+
+/* Laporan "Cetak / PDF": print the report only. */
+@media print {
+  [data-slot="sidebar-gap"],
+  [data-slot="sidebar-container"],
+  .floral {
+    display: none !important;
+  }
+  .page-glow {
+    background: var(--card);
+  }
+}

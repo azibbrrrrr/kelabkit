@@ -130,6 +130,17 @@ export function voluntaryReceived(payments: Payment[], collectionId: string, mem
   );
 }
 
+/** Voluntary money for a collection: confirmed, pending, and distinct confirmed contributors. */
+export function voluntarySummary(payments: Payment[], collectionId: string) {
+  const mine = payments.filter((payment) => payment.collectionId === collectionId);
+  const confirmed = mine.filter((payment) => payment.state === "confirmed");
+  return {
+    received: sum(confirmed.map((payment) => payment.amount)),
+    pending: sum(mine.filter((payment) => payment.state === "pending").map((payment) => payment.amount)),
+    contributors: new Set(confirmed.map((payment) => payment.memberId)).size,
+  };
+}
+
 export type AllocationPlan = { chargeId: string; amount: Sen }[];
 
 /**

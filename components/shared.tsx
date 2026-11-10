@@ -122,6 +122,7 @@ const statTone = {
   partial: "bg-st-partial-bg text-st-partial",
   unpaid: "bg-st-unpaid-bg text-st-unpaid",
   exempt: "bg-st-exempt-bg text-st-exempt",
+  pending: "bg-st-pending-bg text-st-pending",
 } as const;
 
 /** The reference's summary tile: tinted icon, label, large figure, one line of context. */

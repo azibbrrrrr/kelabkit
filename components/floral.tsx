@@ -10,7 +10,7 @@ export function Floral({ asset, className }: { asset: FloralAsset; className?: s
   return (
     // eslint-disable-next-line @next/next/no-img-element -- decorative, sized by CSS
     <img
-      src={`/floral/${asset}.png`}
+      src={`/floral/${asset}.webp`}
       alt=""
       aria-hidden
       draggable={false}
@@ -25,7 +25,7 @@ export function Blossom({ className }: { className?: string }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element -- decorative
     <img
-      src="/floral/blossom.png"
+      src="/floral/blossom.webp"
       alt=""
       aria-hidden
       draggable={false}

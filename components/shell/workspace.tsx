@@ -33,7 +33,7 @@ export function Workspace({ children }: { children: ReactNode }) {
         <SidebarInset className="page-glow relative min-w-0 overflow-x-clip">
           <Floral asset="corner-top-right" className="top-0 right-0 z-0 hidden w-[260px] opacity-80 lg:block" />
           <TopBar />
-          <main className="relative z-10 flex flex-1 flex-col pb-24 md:pb-0">
+          <main className="relative z-10 flex flex-1 flex-col pb-24 md:pb-0 print:pb-0">
             <DataGate>{children}</DataGate>
           </main>
           <MobileNav />
@@ -47,7 +47,7 @@ function TopBar() {
   const { demo, data } = useKelab();
   const treasurer = data?.club.treasurerName ?? "Bendahari";
   return (
-    <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b border-border/70 bg-background/80 px-3 backdrop-blur-xl md:px-6">
+    <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b border-border/70 bg-background/80 px-3 backdrop-blur-xl md:px-6 print:hidden">
       <SidebarTrigger className="md:hidden" aria-label="Buka menu" />
       <GlobalSearch className="hidden sm:block" />
       <div className="sm:hidden">
@@ -160,7 +160,7 @@ function MobileNav() {
   return (
     <nav
       aria-label="Navigasi utama"
-      className="fixed inset-x-0 bottom-0 z-40 flex items-stretch border-t border-border bg-card/95 px-1 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 flex items-stretch border-t border-border bg-card/95 px-1 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden print:hidden"
     >
       {item("/", "Utama", House)}
       {item("/matriks/", "Matriks", Sheet)}

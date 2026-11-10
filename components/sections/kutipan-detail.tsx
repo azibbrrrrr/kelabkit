@@ -1,0 +1,1256 @@
+"use client";
+
+import { useKelab, useSnapshot } from "@/components/data-provider";
+import { CellEditor } from "@/components/matrix/cell-editor";
+import { MoneyInput, parseMoney } from "@/components/money-input";
+import { amountLabel, collectionTypeIcons, scheduleLabel } from "@/components/sections/kutipan";
+import { voluntarySummary } from "@/lib/money/ledger";
+import {
+  ChargeStatusChips,
+  type Column,
+  DataTable,
+  DetailList,
+  EmptyState,
+  FilterPills,
+  LabelChip,
+  Money,
+  MobileRow,
+  PageHeader,
+  PageShell,
+  ProgressBar,
+  SearchInput,
+  SectionCard,
+  StatCard,
+  StatusChip,
+} from "@/components/shared";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Spinner } from "@/components/ui/spinner";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { errorMessages, messageFor } from "@/lib/errors";
+import { formatDateTime, formatDay, formatMoney, formatMonth, formatMonthLong, formatPercent } from "@/lib/format";
+import { categoryLabels, collectionStatusLabels, collectionTypeLabels } from "@/lib/labels";
+import { senToInput } from "@/lib/money/amount";
+import { totalsOf, type ChargeLedger } from "@/lib/money/ledger";
+import { monthOf } from "@/lib/money/months";
+import type { Collection, CollectionStatus, Member, Participant, Sen } from "@/lib/types";
+import type { MatrixCell, MatrixColumn } from "@/lib/view";
+import { cn } from "@/lib/utils";
+import {
+  Archive,
+  ArchiveRestore,
+  CalendarClock,
+  Check,
+  CircleAlert,
+  CircleCheck,
+  Hourglass,
+  Pencil,
+  Play,
+  SearchX,
+  Sheet as SheetIcon,
+  UserPlus,
+  Users,
+  WalletCards,
+  X,
+} from "lucide-react";
+import Link from "next/link";
+import { useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { toast } from "sonner";
+
+// One collection: its figures, its participants and every member's charge. Figures and
+// statuses come from the ledger via the view; this screen only filters and sums them.
+// Recording a payment opens the matrix's CellEditor, so there is one payment form.
+
+export function KutipanDetail({ id }: { id: string }) {
+  const { view } = useSnapshot();
+  const collection = view.collectionsById.get(id);
+  if (!collection) {
+    return (
+      <PageShell>
+        <PageHeader title="Kutipan tidak dijumpai" back={{ href: "/kutipan/", label: "Kutipan KGK" }} />
+        <EmptyState
+          icon={SearchX}
+          title="Kutipan ini tiada dalam rekod"
+          description="Pautan mungkin salah, atau data demo telah ditetapkan semula."
+          action={
+            <Button asChild>
+              <Link href="/kutipan/">Kembali ke senarai kutipan</Link>
+            </Button>
+          }
+        />
+      </PageShell>
+    );
+  }
+  return <CollectionDetail key={collection.id} collection={collection} />;
+}
+
+type Editing = { memberId: string; columnKey: string };
+
+function CollectionDetail({ collection }: { collection: Collection }) {
+  const { data, view } = useSnapshot();
+  const archived = collection.status === "archived";
+  const voluntary = collection.type === "voluntary";
+  const monthly = collection.type === "monthly";
+  const TypeIcon = collectionTypeIcons[collection.type];
+
+  const columns = useMemo(() => view.columns([collection]), [view, collection]);
+  const periods = view.periodsByCollection.get(collection.id) ?? [];
+  const thisMonth = monthOf(view.today);
+  const [month, setMonth] = useState<string>(() => {
+    if (!periods.length) return "all";
+    const current = periods.find((period) => period.month === thisMonth);
+    if (current) return current.id;
+    return thisMonth > periods[periods.length - 1].month ? periods[periods.length - 1].id : periods[0].id;
+  });
+  const [editing, setEditing] = useState<Editing | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
+
+  const participants = useMemo(
+    () =>
+      (view.participantsByCollection.get(collection.id) ?? [])
+        .map((participant) => ({ participant, member: view.membersById.get(participant.memberId) }))
+        .filter((row): row is { participant: Participant; member: Member } => Boolean(row.member))
+        .sort((a, b) => a.member.name.localeCompare(b.member.name, "ms")),
+    [view, collection.id],
+  );
+
+  // Ledgers in the chosen scope: the whole collection, or one month of a monthly one.
+  const allLedgers = useMemo(() => (view.chargesByCollection.get(collection.id) ?? []).map((charge) => view.ledgers.get(charge.id)!), [view, collection.id]);
+  const scopeLedgers = monthly && month !== "all" ? allLedgers.filter((ledger) => ledger.charge.periodId === month) : allLedgers;
+  const totals = totalsOf(scopeLedgers);
+  const contributions = voluntary ? voluntarySummary(data.payments, collection.id) : null;
+  const selectedPeriod = periods.find((period) => period.id === month) ?? null;
+  const scopeLabel = monthly ? (selectedPeriod ? formatMonthLong(selectedPeriod.month) : "Semua bulan") : null;
+
+  return (
+    <PageShell>
+      <PageHeader
+        back={{ href: "/kutipan/", label: "Kutipan KGK" }}
+        title={<TitleEditor collection={collection} />}
+        description={collection.description ?? undefined}
+        actions={<StatusActions collection={collection} dueNow={view.collectionTotals(collection.id).dueNow} onAddParticipants={() => setAddOpen(true)} />}
+      />
+
+      <div className="-mt-2 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+        <LabelChip entry={collectionStatusLabels[collection.status]} />
+        <span className="inline-flex h-6 items-center gap-1 rounded-full bg-primary-light px-2.5 font-medium text-primary-strong">
+          <TypeIcon className="size-3.5" aria-hidden /> {collectionTypeLabels[collection.type]}
+        </span>
+        <span className="px-1">{amountLabel(collection)}</span>
+        <span aria-hidden>·</span>
+        <span className="px-1">{scheduleLabel(collection)}</span>
+      </div>
+
+      {archived && (
+        <p className="rounded-2xl border border-dashed border-border bg-card/70 px-4 py-3 text-sm text-muted-foreground">
+          <b className="text-foreground">Diarkib.</b> Semua caj dan bayaran dikekalkan untuk rujukan. Kutipan ini tidak menerima bayaran baharu.
+        </p>
+      )}
+
+      {monthly && periods.length > 0 && <MonthPicker periods={periods} value={month} onChange={setMonth} thisMonth={thisMonth} />}
+
+      {voluntary ? (
+        <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 xl:grid-cols-4">
+          <StatCard label="Jumlah terkumpul" value={formatMoney(contributions!.received)} icon={CircleCheck} tone="paid" hint="Sumbangan disahkan sahaja" />
+          <StatCard label="Penyumbang" value={contributions!.contributors} icon={Users} hint={`daripada ${participants.length} ahli dijemput`} />
+          <StatCard label="Menunggu semakan" value={formatMoney(contributions!.pending)} icon={Hourglass} tone="pending" hint="Belum dikira sebagai diterima" />
+          <StatCard label="Peserta" value={participants.length} icon={WalletCards} hint="Tiada hutang untuk sumbangan sukarela" />
+        </div>
+      ) : (
+        // Six cards for monthly fill a 3-column grid; one-off has five, laid out as 2 wide + 3.
+        <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 lg:grid-cols-6">
+          <StatCard
+            label="Dijangka"
+            value={formatMoney(totals.expected)}
+            icon={WalletCards}
+            hint={scopeLabel ?? "Jumlah caj tidak dikecualikan"}
+            className={monthly ? "lg:col-span-2" : "lg:col-span-3"}
+          />
+          <StatCard
+            label="Diterima"
+            value={formatMoney(totals.received)}
+            icon={CircleCheck}
+            tone="paid"
+            hint={`${formatPercent(totals.received, totals.expected)} daripada dijangka`}
+            className={monthly ? "lg:col-span-2" : "lg:col-span-3"}
+          />
+          <StatCard
+            label="Baki semasa"
+            value={formatMoney(totals.dueNow)}
+            icon={CircleAlert}
+            tone="unpaid"
+            hint={totals.counts.overdue > 0 ? `${totals.counts.overdue} caj lewat` : "Tiada caj lewat"}
+            className="lg:col-span-2"
+          />
+          {monthly && (
+            <StatCard
+              label="Akan datang"
+              value={formatMoney(totals.upcoming)}
+              icon={CalendarClock}
+              tone="exempt"
+              hint="Bulan hadapan, belum perlu dibayar"
+              className="lg:col-span-2"
+            />
+          )}
+          <StatCard
+            label="Menunggu semakan"
+            value={formatMoney(totals.pending)}
+            icon={Hourglass}
+            tone="pending"
+            hint={totals.counts.pendingReview > 0 ? `${totals.counts.pendingReview} caj · belum dikira diterima` : "Belum dikira sebagai diterima"}
+            className="lg:col-span-2"
+          />
+          <StatCard
+            label="Peserta"
+            value={participants.length}
+            icon={Users}
+            hint={totals.counts.exempt > 0 ? `${totals.counts.exempt} caj dikecualikan` : "Tiada pengecualian"}
+            className="lg:col-span-2"
+          />
+        </div>
+      )}
+
+      {voluntary ? (
+        <InfoCard collection={collection} />
+      ) : (
+        <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
+          <SectionCard title="Kemajuan kutipan" icon={CircleCheck} description={scopeLabel ? `Paparan: ${scopeLabel}` : undefined}>
+            <div className="grid gap-3">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-3 text-sm">
+                <span>
+                  <Money sen={totals.received} className="text-lg font-bold" />
+                  <span className="text-muted-foreground"> / {formatMoney(totals.expected)}</span>
+                </span>
+                <span className="font-medium text-primary-strong tabular-nums">{formatPercent(totals.received, totals.expected)}</span>
+              </div>
+              <ProgressBar value={totals.received} max={totals.expected} label="Diterima berbanding dijangka" className="h-2.5" />
+              <StatusCounts
+                counts={totals.counts}
+                future={scopeLedgers.filter((ledger) => ledger.future && ledger.status === "unpaid" && ledger.pending === 0).length}
+              />
+              {monthly && month === "all" && <p className="text-[11px] text-subtle">Kiraan ikut caj (ahli × bulan).</p>}
+            </div>
+          </SectionCard>
+          <InfoCard collection={collection} />
+        </div>
+      )}
+
+      {voluntary ? (
+        <VoluntaryTable collection={collection} participants={participants} column={columns[0]} archived={archived} onOpen={setEditing} />
+      ) : monthly && month === "all" ? (
+        <AllMonthsTable collection={collection} participants={participants} columns={columns} archived={archived} onOpen={setEditing} />
+      ) : (
+        <ChargeTable
+          participants={participants}
+          column={monthly ? (columns.find((column) => column.period?.id === month) ?? columns[0]) : columns[0]}
+          archived={archived}
+          onOpen={setEditing}
+        />
+      )}
+
+      <EditorHost editing={editing} columns={columns} onClose={() => setEditing(null)} />
+      {!archived && <AddParticipantsDialog collection={collection} open={addOpen} onOpenChange={setAddOpen} />}
+    </PageShell>
+  );
+}
+
+// Header pieces ------------------------------------------------------------------------------
+
+function TitleEditor({ collection }: { collection: Collection }) {
+  const { run } = useKelab();
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(collection.name);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!editing) {
+    return (
+      <span className="inline-flex max-w-full items-start gap-2">
+        <span className="min-w-0 break-words">{collection.name}</span>
+        {collection.status !== "archived" && (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="mt-1 shrink-0 text-muted-foreground"
+            aria-label="Namakan semula kutipan"
+            onClick={() => {
+              setValue(collection.name);
+              setError(null);
+              setEditing(true);
+            }}
+          >
+            <Pencil />
+          </Button>
+        )}
+      </span>
+    );
+  }
+
+  const save = async (event: FormEvent) => {
+    event.preventDefault();
+    const name = value.replace(/\s+/g, " ").trim();
+    if (!name) return setError(errorMessages.NAME_REQUIRED);
+    if (name === collection.name) return setEditing(false);
+    setBusy(true);
+    setError(null);
+    try {
+      await run((backend) => backend.updateCollection(collection.id, { name }));
+      toast.success(`Kutipan dinamakan semula kepada "${name}".`);
+      setEditing(false);
+    } catch (cause) {
+      setError(messageFor(cause));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <form onSubmit={save} className="grid gap-1.5 font-sans text-base font-normal tracking-normal" noValidate>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <Input
+          autoFocus
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
+          onKeyDown={(event) => event.key === "Escape" && setEditing(false)}
+          aria-label="Nama kutipan"
+          aria-invalid={Boolean(error)}
+          maxLength={140}
+          className="h-11 min-w-0 rounded-xl text-base font-semibold sm:w-96"
+        />
+        <div className="flex gap-2">
+          <Button type="submit" size="lg" disabled={busy}>
+            {busy ? <Spinner className="size-4" /> : <Check />} Simpan
+          </Button>
+          <Button type="button" variant="outline" size="lg" onClick={() => setEditing(false)} disabled={busy}>
+            <X /> Batal
+          </Button>
+        </div>
+      </div>
+      {error && <p className="text-xs font-medium text-st-unpaid">{error}</p>}
+    </form>
+  );
+}
+
+type StatusChange = { status: CollectionStatus; title: string; body: string; confirm: string; success: string };
+
+function StatusActions({ collection, dueNow, onAddParticipants }: { collection: Collection; dueNow: Sen; onAddParticipants: () => void }) {
+  const { run } = useKelab();
+  const [busy, setBusy] = useState(false);
+  const [confirming, setConfirming] = useState<StatusChange | null>(null);
+
+  const change = async (next: StatusChange) => {
+    setBusy(true);
+    try {
+      await run((backend) => backend.setCollectionStatus(collection.id, next.status));
+      toast.success(next.success);
+      setConfirming(null);
+    } catch (cause) {
+      toast.error(messageFor(cause));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const activate: StatusChange = {
+    status: "active",
+    title: "Aktifkan kutipan",
+    body: "",
+    confirm: "Aktifkan",
+    success: `"${collection.name}" kini aktif.`,
+  };
+  const complete: StatusChange = {
+    status: "completed",
+    title: "Tandakan selesai?",
+    body: `Masih ada baki semasa ${formatMoney(dueNow)}. Baki itu kekal direkod dan bayaran masih boleh direkod selepas ini.`,
+    confirm: "Tandakan selesai",
+    success: `"${collection.name}" ditanda selesai.`,
+  };
+  const archive: StatusChange = {
+    status: "archived",
+    title: "Arkibkan kutipan ini?",
+    body: "Semua caj, bayaran dan log audit dikekalkan dan masih boleh dilihat. Kutipan diarkib disembunyikan daripada Matriks dan tidak menerima bayaran baharu. Anda boleh memulihkannya kemudian.",
+    confirm: "Arkibkan",
+    success: `"${collection.name}" diarkib. Semua rekod dikekalkan.`,
+  };
+  const restore: StatusChange = {
+    status: "completed",
+    title: "Pulihkan dari arkib",
+    body: "",
+    confirm: "Pulihkan",
+    success: `"${collection.name}" dipulihkan sebagai Selesai.`,
+  };
+
+  return (
+    <>
+      {collection.status !== "archived" && (
+        <Button variant="brand" onClick={onAddParticipants}>
+          <UserPlus /> Tambah peserta
+        </Button>
+      )}
+      {(collection.status === "draft" || collection.status === "completed") && (
+        <Button onClick={() => void change(activate)} disabled={busy}>
+          {busy ? <Spinner className="size-4" /> : <Play />} {collection.status === "draft" ? "Aktifkan" : "Aktifkan semula"}
+        </Button>
+      )}
+      {collection.status === "active" && (
+        <Button onClick={() => (dueNow > 0 ? setConfirming(complete) : void change(complete))} disabled={busy}>
+          {busy ? <Spinner className="size-4" /> : <Check />} Tandakan selesai
+        </Button>
+      )}
+      {collection.status === "archived" ? (
+        <Button variant="outline" onClick={() => void change(restore)} disabled={busy}>
+          {busy ? <Spinner className="size-4" /> : <ArchiveRestore />} Pulihkan dari arkib
+        </Button>
+      ) : (
+        <>
+          <Button variant="outline" asChild>
+            <Link href="/matriks/">
+              <SheetIcon /> Buka dalam Matriks
+            </Link>
+          </Button>
+          <Button variant="ghost" className="text-muted-foreground" onClick={() => setConfirming(archive)} disabled={busy}>
+            <Archive /> Arkibkan
+          </Button>
+        </>
+      )}
+
+      <AlertDialog open={confirming !== null} onOpenChange={(open) => !open && !busy && setConfirming(null)}>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{confirming?.title}</AlertDialogTitle>
+            <AlertDialogDescription>{confirming?.body}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={busy}>Batal</AlertDialogCancel>
+            {/* A plain button, not AlertDialogAction, so the dialog stays open until the change succeeds. */}
+            <Button onClick={() => confirming && void change(confirming)} disabled={busy}>
+              {busy && <Spinner className="size-4" />}
+              {confirming?.confirm}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
+function MonthPicker({
+  periods,
+  value,
+  onChange,
+  thisMonth,
+}: {
+  periods: { id: string; month: string }[];
+  value: string;
+  onChange: (value: string) => void;
+  thisMonth: string;
+}) {
+  return (
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <Label htmlFor="kutipan-month" className="shrink-0 text-sm font-medium">
+        Paparan bulan
+      </Label>
+      <select
+        id="kutipan-month"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="h-11 w-full rounded-xl border border-input bg-card px-3 text-sm font-medium outline-none focus:border-primary focus:ring-3 focus:ring-ring/20 sm:w-64"
+      >
+        <option value="all">Semua bulan (ringkasan setiap ahli)</option>
+        {periods.map((period) => (
+          <option key={period.id} value={period.id}>
+            {formatMonthLong(period.month)}
+            {period.month === thisMonth ? " (bulan ini)" : period.month > thisMonth ? " (akan datang)" : ""}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+function StatusCounts({ counts, future }: { counts: ReturnType<typeof totalsOf>["counts"]; future: number }) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      <StatusChip label={`Dibayar ${counts.paid}`} tone="paid" />
+      <StatusChip label={`Sebahagian ${counts.partial}`} tone="partial" />
+      <StatusChip label={`Belum bayar ${counts.unpaid - future}`} tone="unpaid" />
+      {future > 0 && <StatusChip label={`Akan datang ${future}`} tone="future" />}
+      {counts.overdue > 0 && <StatusChip label={`Lewat ${counts.overdue}`} tone="overdue" />}
+      {counts.pendingReview > 0 && <StatusChip label={`Menunggu ${counts.pendingReview}`} tone="pending" />}
+      {counts.exempt > 0 && <StatusChip label={`Dikecualikan ${counts.exempt}`} tone="exempt" />}
+    </div>
+  );
+}
+
+function InfoCard({ collection }: { collection: Collection }) {
+  return (
+    <SectionCard title="Maklumat kutipan" icon={WalletCards}>
+      <DetailList
+        items={[
+          { label: "Jenis", value: collectionTypeLabels[collection.type] },
+          { label: "Amaun asal", value: amountLabel(collection) },
+          ...(collection.type === "one_off" ? [{ label: "Tarikh akhir", value: <DueDateEditor collection={collection} /> }] : []),
+          ...(collection.type === "monthly" && collection.startMonth && collection.endMonth
+            ? [
+                { label: "Tempoh", value: `${formatMonth(collection.startMonth)} – ${formatMonth(collection.endMonth)}` },
+                {
+                  label: "Hari akhir bayaran",
+                  value: collection.dueDay ? `${collection.dueDay}hb setiap bulan (hari terakhir bulan jika lebih)` : "Tiada",
+                },
+              ]
+            : []),
+          { label: "Penerangan", value: collection.description },
+          { label: "Nota", value: collection.notes },
+          { label: "Dicipta", value: formatDateTime(collection.createdAt) },
+        ]}
+      />
+    </SectionCard>
+  );
+}
+
+function DueDateEditor({ collection }: { collection: Collection }) {
+  const { run } = useKelab();
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(collection.dueDate ?? "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const save = async (next: string | null) => {
+    if (next !== null && !/^\d{4}-\d{2}-\d{2}$/.test(next)) return setError(errorMessages.DATE_INVALID);
+    setBusy(true);
+    setError(null);
+    try {
+      await run((backend) => backend.updateCollection(collection.id, { dueDate: next }));
+      toast.success(next ? `Tarikh akhir ditukar ke ${formatDay(next)}.` : "Tarikh akhir dibuang. Caj tidak akan menjadi Lewat.");
+      setEditing(false);
+    } catch (cause) {
+      setError(messageFor(cause));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!editing) {
+    return (
+      <span className="inline-flex flex-wrap items-center gap-x-2">
+        {collection.dueDate ? formatDay(collection.dueDate) : "Tiada tarikh akhir"}
+        {collection.status !== "archived" && (
+          <Button
+            variant="link"
+            size="sm"
+            className="h-auto px-0"
+            onClick={() => {
+              setValue(collection.dueDate ?? "");
+              setEditing(true);
+            }}
+          >
+            Ubah
+          </Button>
+        )}
+      </span>
+    );
+  }
+
+  return (
+    <span className="grid gap-2">
+      <input
+        type="date"
+        value={value}
+        onChange={(event) => setValue(event.target.value)}
+        aria-label="Tarikh akhir"
+        className="h-11 w-full min-w-0 rounded-xl border border-input bg-card px-3 text-sm outline-none focus:border-primary focus:ring-3 focus:ring-ring/20"
+      />
+      <span className="flex flex-wrap gap-1.5">
+        <Button size="sm" onClick={() => void save(value || null)} disabled={busy}>
+          {busy && <Spinner className="size-3.5" />} Simpan
+        </Button>
+        {collection.dueDate && (
+          <Button size="sm" variant="outline" onClick={() => void save(null)} disabled={busy}>
+            Buang tarikh
+          </Button>
+        )}
+        <Button size="sm" variant="ghost" onClick={() => setEditing(false)} disabled={busy}>
+          Batal
+        </Button>
+      </span>
+      {error && <span className="text-xs font-medium text-st-unpaid">{error}</span>}
+    </span>
+  );
+}
+
+// Tables -------------------------------------------------------------------------------------
+
+type Row = { participant: Participant; member: Member };
+
+function memberCell(member: Member) {
+  return (
+    <span className="block min-w-0">
+      <span className="block font-medium break-words">{member.name}</span>
+      <span className="block text-xs text-muted-foreground">
+        {member.category ? categoryLabels[member.category] : "Tiada kategori"}
+        {!member.active && " · Tidak aktif"}
+      </span>
+    </span>
+  );
+}
+
+function TableToolbar({ children }: { children: ReactNode }) {
+  return <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">{children}</div>;
+}
+
+const matchesQuery = (member: Member, query: string) => !query.trim() || member.name.toLowerCase().includes(query.trim().toLowerCase());
+
+type ChargeFilter = "all" | "paid" | "partial" | "unpaid" | "future" | "overdue" | "pending" | "exempt";
+
+/** One-off collections, or one month of a monthly collection: a row per participant. */
+function ChargeTable({
+  participants,
+  column,
+  archived,
+  onOpen,
+}: {
+  participants: Row[];
+  column: MatrixColumn;
+  archived: boolean;
+  onOpen: (editing: Editing) => void;
+}) {
+  const { view } = useSnapshot();
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<ChargeFilter>("all");
+
+  const rows = participants.map((row) => ({ ...row, cell: view.cell(row.member, column) }));
+  const ledgerOf = (cell: MatrixCell) => (cell.kind === "charge" ? cell.ledger : null);
+  const matches = (cell: MatrixCell, value: ChargeFilter) => {
+    if (value === "all") return true;
+    const ledger = ledgerOf(cell);
+    if (!ledger || cell.kind !== "charge") return false;
+    if (value === "overdue") return ledger.overdue;
+    if (value === "pending") return ledger.pending > 0;
+    return cell.status === value;
+  };
+  const count = (value: ChargeFilter) => rows.filter((row) => matches(row.cell, value)).length;
+  const visible = rows.filter((row) => matches(row.cell, filter) && matchesQuery(row.member, query));
+
+  const options: { value: ChargeFilter; label: string; count: number }[] = (
+    [
+      ["all", "Semua"],
+      ["paid", "Dibayar"],
+      ["partial", "Sebahagian"],
+      ["unpaid", "Belum bayar"],
+      ["future", "Akan datang"],
+      ["overdue", "Lewat"],
+      ["pending", "Menunggu"],
+      ["exempt", "Dikecualikan"],
+    ] as [ChargeFilter, string][]
+  )
+    .map(([value, label]) => ({ value, label, count: count(value) }))
+    .filter((option) => option.value === "all" || option.value === filter || option.count > 0 || ["paid", "unpaid"].includes(option.value));
+
+  const open = (row: Row) => onOpen({ memberId: row.member.id, columnKey: column.key });
+  const actionLabel = (cell: MatrixCell) => (archived ? "Lihat" : cell.kind === "charge" && cell.status === "exempt" ? "Butiran" : "Rekod");
+  const note = (row: Row & { cell: MatrixCell }) => {
+    const ledger = ledgerOf(row.cell);
+    if (ledger?.charge.exempt) return ledger.charge.exemptReason;
+    return ledger?.charge.note ?? row.participant.note;
+  };
+
+  const tableColumns: Column<Row & { cell: MatrixCell }>[] = [
+    { key: "member", header: "Ahli", cell: (row) => memberCell(row.member) },
+    {
+      key: "required",
+      header: "Perlu bayar",
+      align: "right",
+      cell: (row) => {
+        const ledger = ledgerOf(row.cell);
+        return ledger ? ledger.charge.exempt ? <span className="text-muted-foreground">—</span> : formatMoney(ledger.required) : "—";
+      },
+    },
+    {
+      key: "paid",
+      header: "Dibayar",
+      align: "right",
+      cell: (row) => {
+        const ledger = ledgerOf(row.cell);
+        if (!ledger) return "—";
+        return (
+          <span className="block">
+            {formatMoney(ledger.confirmed)}
+            {ledger.pending > 0 && <span className="block text-[11px] text-st-pending">+{formatMoney(ledger.pending)} menunggu</span>}
+          </span>
+        );
+      },
+    },
+    {
+      key: "remaining",
+      header: "Baki",
+      align: "right",
+      cell: (row) => {
+        const ledger = ledgerOf(row.cell);
+        if (!ledger) return "—";
+        return (
+          <span className={cn(ledger.overdue && "font-semibold text-st-overdue", ledger.remaining === 0 && "text-muted-foreground")}>
+            {formatMoney(ledger.remaining)}
+          </span>
+        );
+      },
+    },
+    {
+      key: "status",
+      header: "Status",
+      cell: (row) =>
+        row.cell.kind === "charge" ? (
+          <ChargeStatusChips status={row.cell.status} overdue={row.cell.ledger.overdue} pending={row.cell.ledger.pending > 0} compact />
+        ) : (
+          <ChargeStatusChips status="na" compact />
+        ),
+    },
+    { key: "last", header: "Bayaran terakhir", hideBelow: "lg", cell: (row) => formatDay(ledgerOf(row.cell)?.lastPaidOn) },
+    {
+      key: "note",
+      header: "Nota",
+      hideBelow: "xl",
+      className: "max-w-48",
+      cell: (row) => <span className="line-clamp-2 text-xs text-muted-foreground">{note(row) || "—"}</span>,
+    },
+    {
+      key: "action",
+      header: <span className="sr-only">Tindakan</span>,
+      align: "right",
+      cell: (row) => (
+        <Button size="sm" variant={archived ? "outline" : "brand"} onClick={() => open(row)}>
+          {actionLabel(row.cell)}
+        </Button>
+      ),
+    },
+  ];
+
+  return (
+    <section className="grid min-w-0 grid-cols-1 gap-3" aria-label="Penjejakan bayaran">
+      <h2 className="text-[15px] font-semibold">Penjejakan bayaran{column.period ? ` · ${formatMonthLong(column.period.month)}` : ""}</h2>
+      <TableToolbar>
+        <SearchInput id="kutipan-detail-search" value={query} onChange={setQuery} placeholder="Cari ahli…" />
+        <FilterPills label="Tapis status" value={filter} onChange={setFilter} options={options} />
+      </TableToolbar>
+      <DataTable
+        rows={visible}
+        columns={tableColumns}
+        rowKey={(row) => row.member.id}
+        onSelect={open}
+        empty={<EmptyRows hasParticipants={participants.length > 0} />}
+        mobileCard={(row) => {
+          const ledger = ledgerOf(row.cell);
+          return (
+            <MobileRow
+              title={row.member.name}
+              amount={ledger ? (ledger.charge.exempt ? "—" : `Baki ${formatMoney(ledger.remaining)}`) : "—"}
+              meta={ledger ? (ledger.charge.exempt ? ledger.charge.exemptReason ?? "Dikecualikan" : `Dibayar ${formatMoney(ledger.confirmed)}`) : "Tiada caj"}
+              status={
+                row.cell.kind === "charge" ? (
+                  <ChargeStatusChips
+                    status={row.cell.status}
+                    overdue={row.cell.ledger.overdue}
+                    pending={row.cell.ledger.pending > 0}
+                    compact
+                    className="justify-end"
+                  />
+                ) : undefined
+              }
+            />
+          );
+        }}
+      />
+    </section>
+  );
+}
+
+type MonthsFilter = "all" | "owing" | "overdue" | "pending" | "settled";
+
+/** Monthly collections, "Semua bulan": one summary row per participant across every month. */
+function AllMonthsTable({
+  collection,
+  participants,
+  columns,
+  archived,
+  onOpen,
+}: {
+  collection: Collection;
+  participants: Row[];
+  columns: MatrixColumn[];
+  archived: boolean;
+  onOpen: (editing: Editing) => void;
+}) {
+  const { view } = useSnapshot();
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<MonthsFilter>("all");
+  const charges = view.chargesByCollection.get(collection.id) ?? [];
+  const periodMonth = new Map((view.periodsByCollection.get(collection.id) ?? []).map((period) => [period.id, period.month]));
+  const thisMonth = monthOf(view.today);
+
+  const rows = participants.map((row) => {
+    const ledgers: ChargeLedger[] = charges
+      .filter((charge) => charge.memberId === row.member.id)
+      .map((charge) => view.ledgers.get(charge.id)!)
+      .sort((a, b) => (periodMonth.get(a.charge.periodId ?? "") ?? "").localeCompare(periodMonth.get(b.charge.periodId ?? "") ?? ""));
+    const totals = totalsOf(ledgers);
+    // The month "Rekod" opens: the oldest one that can still take money, else this month.
+    const target =
+      ledgers.find((ledger) => !ledger.future && ledger.payable > 0) ??
+      ledgers.find((ledger) => ledger.payable > 0) ??
+      ledgers.find((ledger) => periodMonth.get(ledger.charge.periodId ?? "") === thisMonth) ??
+      ledgers[0];
+    const targetColumn = target ? columns.find((column) => column.period?.id === target.charge.periodId) : undefined;
+    return { ...row, ledgers, totals, targetColumn };
+  });
+  type MonthRow = (typeof rows)[number];
+
+  const matches = (row: MonthRow, value: MonthsFilter) => {
+    if (value === "owing") return row.totals.dueNow > 0;
+    if (value === "overdue") return row.totals.counts.overdue > 0;
+    if (value === "pending") return row.totals.counts.pendingReview > 0;
+    if (value === "settled") return row.ledgers.length > 0 && row.totals.dueNow === 0;
+    return true;
+  };
+  const visible = rows.filter((row) => matches(row, filter) && matchesQuery(row.member, query));
+  const open = (row: MonthRow) => row.targetColumn && onOpen({ memberId: row.member.id, columnKey: row.targetColumn.key });
+  const settledMonths = (row: MonthRow) => row.totals.counts.paid + row.totals.counts.exempt;
+
+  const tableColumns: Column<MonthRow>[] = [
+    { key: "member", header: "Ahli", cell: (row) => memberCell(row.member) },
+    { key: "required", header: "Perlu bayar", align: "right", cell: (row) => formatMoney(row.totals.expected) },
+    {
+      key: "paid",
+      header: "Dibayar",
+      align: "right",
+      cell: (row) => (
+        <span className="block">
+          {formatMoney(row.totals.received)}
+          {row.totals.pending > 0 && <span className="block text-[11px] text-st-pending">+{formatMoney(row.totals.pending)} menunggu</span>}
+        </span>
+      ),
+    },
+    {
+      key: "due",
+      header: "Baki semasa",
+      align: "right",
+      cell: (row) => (
+        <span className={cn(row.totals.counts.overdue > 0 && "font-semibold text-st-overdue", row.totals.dueNow === 0 && "text-muted-foreground")}>
+          {formatMoney(row.totals.dueNow)}
+        </span>
+      ),
+    },
+    {
+      key: "upcoming",
+      header: "Akan datang",
+      align: "right",
+      hideBelow: "lg",
+      cell: (row) => <span className="text-muted-foreground">{formatMoney(row.totals.upcoming)}</span>,
+    },
+    {
+      key: "status",
+      header: "Status",
+      cell: (row) => (
+        <span className="inline-flex flex-wrap items-center gap-1">
+          <span className="text-xs whitespace-nowrap text-muted-foreground tabular-nums">
+            {settledMonths(row)}/{row.ledgers.length} bulan selesai
+          </span>
+          {row.totals.counts.overdue > 0 && <StatusChip label={`Lewat ${row.totals.counts.overdue}`} tone="overdue" compact />}
+          {row.totals.counts.pendingReview > 0 && <StatusChip label="Menunggu Semakan" tone="pending" compact />}
+        </span>
+      ),
+    },
+    {
+      key: "action",
+      header: <span className="sr-only">Tindakan</span>,
+      align: "right",
+      cell: (row) =>
+        row.targetColumn ? (
+          <Button size="sm" variant={archived ? "outline" : "brand"} onClick={() => open(row)}>
+            {archived ? "Lihat" : "Rekod"} · {row.targetColumn.short}
+          </Button>
+        ) : (
+          "—"
+        ),
+    },
+  ];
+
+  return (
+    <section className="grid min-w-0 grid-cols-1 gap-3" aria-label="Ringkasan semua bulan">
+      <div>
+        <h2 className="text-[15px] font-semibold">Semua bulan · ringkasan setiap ahli</h2>
+        <p className="text-xs text-muted-foreground">
+          &ldquo;Rekod&rdquo; membuka bulan tertua yang masih berbaki. Pilih bulan di atas untuk melihat satu bulan sahaja.
+        </p>
+      </div>
+      <TableToolbar>
+        <SearchInput id="kutipan-detail-search" value={query} onChange={setQuery} placeholder="Cari ahli…" />
+        <FilterPills
+          label="Tapis baris"
+          value={filter}
+          onChange={setFilter}
+          options={(
+            [
+              ["all", "Semua"],
+              ["owing", "Ada baki"],
+              ["overdue", "Lewat"],
+              ["pending", "Menunggu"],
+              ["settled", "Selesai"],
+            ] as [MonthsFilter, string][]
+          ).map(([value, label]) => ({ value, label, count: rows.filter((row) => matches(row, value)).length }))}
+        />
+      </TableToolbar>
+      <DataTable
+        rows={visible}
+        columns={tableColumns}
+        rowKey={(row) => row.member.id}
+        onSelect={(row) => open(row)}
+        empty={<EmptyRows hasParticipants={participants.length > 0} />}
+        mobileCard={(row) => (
+          <MobileRow
+            title={row.member.name}
+            amount={`Baki ${formatMoney(row.totals.dueNow)}`}
+            meta={`${settledMonths(row)}/${row.ledgers.length} bulan selesai · dibayar ${formatMoney(row.totals.received)}`}
+            status={
+              row.totals.counts.overdue > 0 ? (
+                <StatusChip label={`Lewat ${row.totals.counts.overdue}`} tone="overdue" compact />
+              ) : row.totals.counts.pendingReview > 0 ? (
+                <StatusChip label="Menunggu" tone="pending" compact />
+              ) : undefined
+            }
+          />
+        )}
+      />
+    </section>
+  );
+}
+
+type VoluntaryFilter = "all" | "given" | "none" | "pending";
+
+/** Voluntary collections: contributions per member. No balance, no lateness. */
+function VoluntaryTable({
+  collection,
+  participants,
+  column,
+  archived,
+  onOpen,
+}: {
+  collection: Collection;
+  participants: Row[];
+  column: MatrixColumn;
+  archived: boolean;
+  onOpen: (editing: Editing) => void;
+}) {
+  const { view } = useSnapshot();
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<VoluntaryFilter>("all");
+
+  const rows = participants.map((row) => {
+    const cell = view.cell(row.member, column);
+    const confirmed = view.paymentsFor(row.member.id, null, collection.id).filter((payment) => payment.state === "confirmed");
+    const last = confirmed.reduce<string | null>((latest, payment) => (!latest || payment.paidOn > latest ? payment.paidOn : latest), null);
+    return {
+      ...row,
+      received: cell.kind === "voluntary" ? cell.received : 0,
+      pending: cell.kind === "voluntary" ? cell.pending : 0,
+      count: cell.kind === "voluntary" ? cell.count : 0,
+      last,
+    };
+  });
+  type VoluntaryRow = (typeof rows)[number];
+
+  const matches = (row: VoluntaryRow, value: VoluntaryFilter) => {
+    if (value === "given") return row.received > 0;
+    if (value === "none") return row.count === 0;
+    if (value === "pending") return row.pending > 0;
+    return true;
+  };
+  const visible = rows.filter((row) => matches(row, filter) && matchesQuery(row.member, query));
+  const open = (row: VoluntaryRow) => onOpen({ memberId: row.member.id, columnKey: column.key });
+
+  const tableColumns: Column<VoluntaryRow>[] = [
+    { key: "member", header: "Ahli", cell: (row) => memberCell(row.member) },
+    { key: "received", header: "Jumlah sumbangan", align: "right", cell: (row) => formatMoney(row.received) },
+    { key: "count", header: "Bilangan", align: "right", cell: (row) => row.count },
+    { key: "last", header: "Sumbangan terakhir", hideBelow: "lg", cell: (row) => formatDay(row.last) },
+    {
+      key: "pending",
+      header: "Menunggu semakan",
+      align: "right",
+      cell: (row) => (row.pending > 0 ? <span className="text-st-pending">{formatMoney(row.pending)}</span> : <span className="text-muted-foreground">—</span>),
+    },
+    {
+      key: "note",
+      header: "Nota",
+      hideBelow: "xl",
+      className: "max-w-48",
+      cell: (row) => <span className="line-clamp-2 text-xs text-muted-foreground">{row.participant.note || "—"}</span>,
+    },
+    {
+      key: "action",
+      header: <span className="sr-only">Tindakan</span>,
+      align: "right",
+      cell: (row) => (
+        <Button size="sm" variant={archived ? "outline" : "brand"} onClick={() => open(row)}>
+          {archived ? "Lihat" : "Rekod"}
+        </Button>
+      ),
+    },
+  ];
+
+  return (
+    <section className="grid min-w-0 grid-cols-1 gap-3" aria-label="Sumbangan ahli">
+      <h2 className="text-[15px] font-semibold">Sumbangan ahli</h2>
+      <TableToolbar>
+        <SearchInput id="kutipan-detail-search" value={query} onChange={setQuery} placeholder="Cari ahli…" />
+        <FilterPills
+          label="Tapis sumbangan"
+          value={filter}
+          onChange={setFilter}
+          options={(
+            [
+              ["all", "Semua"],
+              ["given", "Sudah menyumbang"],
+              ["none", "Belum menyumbang"],
+              ["pending", "Menunggu"],
+            ] as [VoluntaryFilter, string][]
+          ).map(([value, label]) => ({ value, label, count: rows.filter((row) => matches(row, value)).length }))}
+        />
+      </TableToolbar>
+      <DataTable
+        rows={visible}
+        columns={tableColumns}
+        rowKey={(row) => row.member.id}
+        onSelect={open}
+        empty={<EmptyRows hasParticipants={participants.length > 0} />}
+        mobileCard={(row) => (
+          <MobileRow
+            title={row.member.name}
+            amount={formatMoney(row.received)}
+            meta={row.count ? `${row.count} sumbangan · terakhir ${formatDay(row.last)}` : "Belum menyumbang"}
+            status={row.pending > 0 ? <StatusChip label="Menunggu" tone="pending" compact /> : undefined}
+          />
+        )}
+      />
+    </section>
+  );
+}
+
+function EmptyRows({ hasParticipants }: { hasParticipants: boolean }) {
+  return hasParticipants ? (
+    <EmptyState icon={SearchX} title="Tiada ahli sepadan" description="Cuba carian atau penapis lain." />
+  ) : (
+    <EmptyState icon={UserPlus} title="Belum ada peserta" description="Tambah peserta untuk mula menjejak bayaran kutipan ini." />
+  );
+}
+
+// Payment editor: Dialog on desktop, bottom sheet on phones ----------------------------------
+
+function EditorHost({ editing, columns, onClose }: { editing: Editing | null; columns: MatrixColumn[]; onClose: () => void }) {
+  const { view } = useSnapshot();
+  const isMobile = useIsMobile();
+  const [dirty, setDirty] = useState(false);
+
+  const member = editing ? view.membersById.get(editing.memberId) : undefined;
+  const column = editing ? columns.find((row) => row.key === editing.columnKey) : undefined;
+  // Rebuilt from the latest snapshot on every render, so the editor shows the reloaded ledger.
+  const cell = member && column ? view.cell(member, column) : null;
+
+  const close = () => {
+    setDirty(false);
+    onClose();
+  };
+  const onOpenChange = (next: boolean) => {
+    if (next) return;
+    if (dirty && !window.confirm("Buang perubahan yang belum disimpan?")) return;
+    close();
+  };
+  const editor = cell && <CellEditor cell={cell} onDone={close} onDirtyChange={setDirty} />;
+
+  if (isMobile) {
+    return (
+      <Sheet open={cell !== null} onOpenChange={onOpenChange}>
+        <SheetContent side="bottom" className="max-h-[90svh] overflow-y-auto rounded-t-3xl px-4 pt-2 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+          <div className="mx-auto mb-1 h-1.5 w-10 rounded-full bg-border" aria-hidden />
+          <SheetHeader className="sr-only">
+            <SheetTitle>Rekod bayaran</SheetTitle>
+            <SheetDescription>Rekod bayaran, ubah amaun atau lihat sejarah</SheetDescription>
+          </SheetHeader>
+          {editor}
+        </SheetContent>
+      </Sheet>
+    );
+  }
+  return (
+    <Dialog open={cell !== null} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[92svh] overflow-y-auto rounded-2xl sm:max-w-md">
+        <DialogHeader className="sr-only">
+          <DialogTitle>Rekod bayaran</DialogTitle>
+          <DialogDescription>Rekod bayaran, ubah amaun atau lihat sejarah</DialogDescription>
+        </DialogHeader>
+        {editor}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Add participants ---------------------------------------------------------------------------
+
+function AddParticipantsDialog({ collection, open, onOpenChange }: { collection: Collection; open: boolean; onOpenChange: (open: boolean) => void }) {
+  const { data, view } = useSnapshot();
+  const { run } = useKelab();
+  const voluntary = collection.type === "voluntary";
+  const [query, setQuery] = useState("");
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [amount, setAmount] = useState(collection.defaultAmount !== null ? senToInput(collection.defaultAmount) : "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [amountError, setAmountError] = useState<string | null>(null);
+
+  const included = new Set((view.participantsByCollection.get(collection.id) ?? []).map((row) => row.memberId));
+  const candidates = data.members.filter((member) => member.active && !included.has(member.id)).sort((a, b) => a.name.localeCompare(b.name, "ms"));
+  const visible = candidates.filter((member) => matchesQuery(member, query));
+  const months = view.periodsByCollection.get(collection.id)?.length ?? 0;
+  const pastMonths = (view.periodsByCollection.get(collection.id) ?? []).filter((period) => period.month < monthOf(view.today)).length;
+
+  const reset = () => {
+    setQuery("");
+    setPicked(new Set());
+    setAmount(collection.defaultAmount !== null ? senToInput(collection.defaultAmount) : "");
+    setError(null);
+    setAmountError(null);
+  };
+
+  const toggle = (id: string, on: boolean) => {
+    const next = new Set(picked);
+    if (on) next.add(id);
+    else next.delete(id);
+    setPicked(next);
+    setError(null);
+  };
+
+  const submit = async () => {
+    if (!picked.size) return setError("Pilih sekurang-kurangnya seorang ahli.");
+    let override: Sen | null = null;
+    if (!voluntary) {
+      const parsed = parseMoney(amount);
+      if (parsed.error !== null) return setAmountError(parsed.error);
+      if (parsed.sen === 0) return setAmountError(errorMessages.AMOUNT_ZERO);
+      override = parsed.sen === collection.defaultAmount ? null : parsed.sen;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const ids = [...picked];
+      await run((backend) =>
+        backend.addParticipants(
+          collection.id,
+          ids.map((memberId) => ({ memberId, amountOverride: override, exempt: false, note: null })),
+        ),
+      );
+      toast.success(`${ids.length} ahli ditambah ke "${collection.name}".`);
+      reset();
+      onOpenChange(false);
+    } catch (cause) {
+      setError(messageFor(cause));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (busy) return;
+        if (!next) reset();
+        onOpenChange(next);
+      }}
+    >
+      <DialogContent className="flex max-h-[92svh] flex-col overflow-hidden rounded-2xl sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Tambah peserta</DialogTitle>
+          <DialogDescription>
+            {voluntary
+              ? "Ahli yang ditambah dijemput menyumbang. Mereka tidak berhutang apa-apa."
+              : isMonthly(collection)
+                ? `Caj dicipta untuk setiap ${months} bulan dalam tempoh kutipan.`
+                : "Caj dicipta untuk setiap ahli yang ditambah."}
+          </DialogDescription>
+        </DialogHeader>
+
+        {candidates.length === 0 ? (
+          <p className="rounded-xl bg-primary-tint px-3 py-4 text-center text-sm text-muted-foreground">Semua ahli aktif sudah termasuk dalam kutipan ini.</p>
+        ) : (
+          <div className="grid min-h-0 gap-3 overflow-y-auto">
+            {!voluntary && (
+              <div className="grid gap-1.5">
+                <Label htmlFor="add-amount">{isMonthly(collection) ? "Amaun sebulan" : "Amaun perlu dibayar"}</Label>
+                <MoneyInput
+                  id="add-amount"
+                  value={amount}
+                  onChange={(event) => {
+                    setAmount(event.target.value);
+                    setAmountError(null);
+                  }}
+                  invalid={Boolean(amountError)}
+                />
+                {amountError && <p className="text-xs font-medium text-st-unpaid">{amountError}</p>}
+                {isMonthly(collection) && pastMonths > 0 && (
+                  <p className="text-xs text-st-partial">
+                    Perhatian: {pastMonths} bulan sudah berlalu. Caj bulan itu akan terus menjadi Belum Bayar atau Lewat. Jika ahli tidak perlu membayarnya,
+                    pilih bulan itu dan gunakan &ldquo;Kecualikan&rdquo; dalam tab Ubah amaun.
+                  </p>
+                )}
+              </div>
+            )}
+            <SearchInput id="add-participant-search" value={query} onChange={setQuery} placeholder="Cari ahli…" className="sm:max-w-none" />
+            <ul className="grid max-h-72 gap-1 overflow-y-auto rounded-xl border border-border p-1">
+              {visible.length === 0 ? (
+                <li className="px-3 py-4 text-center text-sm text-muted-foreground">Tiada ahli sepadan.</li>
+              ) : (
+                visible.map((member) => (
+                  <li key={member.id}>
+                    <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg px-2.5 hover:bg-primary-tint">
+                      <Checkbox checked={picked.has(member.id)} onCheckedChange={(value) => toggle(member.id, value === true)} />
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-medium break-words">{member.name}</span>
+                        <span className="block text-xs text-muted-foreground">{member.category ? categoryLabels[member.category] : "Tiada kategori"}</span>
+                      </span>
+                    </label>
+                  </li>
+                ))
+              )}
+            </ul>
+          </div>
+        )}
+
+        {error && <p className="text-xs font-medium text-st-unpaid">{error}</p>}
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
+            {candidates.length === 0 ? "Tutup" : "Batal"}
+          </Button>
+          {candidates.length > 0 && (
+            <Button onClick={() => void submit()} disabled={busy}>
+              {busy ? <Spinner className="size-4" /> : <UserPlus />}
+              Tambah {picked.size || ""} ahli
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+const isMonthly = (collection: Collection) => collection.type === "monthly";
