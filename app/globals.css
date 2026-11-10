@@ -126,6 +126,7 @@
   --st-partial-bg: #fef3c7;
   --st-unpaid: #b91c1c;
   --st-unpaid-bg: #fee2e2;
+  /* On the red chip only; overdue text on the page uses --st-unpaid. */
   --st-overdue: #ffffff;
   --st-overdue-bg: #dc2626;
   --st-exempt: #6d28d9;

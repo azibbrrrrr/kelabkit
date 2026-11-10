@@ -357,7 +357,7 @@ function RecentPayments({ payments }: { payments: Payment[] }) {
   if (!payments.length) return <p className="px-5 py-6 text-center text-sm text-muted-foreground">Belum ada bayaran direkod.</p>;
   return (
     <>
-      <div className="hidden overflow-x-auto px-4 md:block md:px-5">
+      <div className="@container/ledger hidden overflow-x-auto px-4 md:block md:px-5">
         <table className="w-full text-[13px]">
           <thead>
             <tr className="text-left text-xs text-muted-foreground">
@@ -365,7 +365,7 @@ function RecentPayments({ payments }: { payments: Payment[] }) {
               <th className="bg-primary-tint px-3 py-2 font-semibold">Ahli</th>
               <th className="bg-primary-tint px-3 py-2 font-semibold">Kutipan</th>
               <th className="bg-primary-tint px-3 py-2 text-right font-semibold">Jumlah</th>
-              <th className="bg-primary-tint px-3 py-2 font-semibold">Kaedah</th>
+              <th className="hidden bg-primary-tint px-3 py-2 font-semibold @2xl/ledger:table-cell">Kaedah</th>
               <th className="rounded-r-lg bg-primary-tint px-3 py-2 font-semibold">Status</th>
             </tr>
           </thead>
@@ -378,7 +378,7 @@ function RecentPayments({ payments }: { payments: Payment[] }) {
                 <td className={cn("px-3 py-2.5 text-right font-medium whitespace-nowrap tabular-nums", payment.state === "reversed" && "text-muted-foreground line-through")}>
                   {formatMoney(payment.amount)}
                 </td>
-                <td className="px-3 py-2.5 whitespace-nowrap">{methodLabels[payment.method]}</td>
+                <td className="hidden px-3 py-2.5 whitespace-nowrap @2xl/ledger:table-cell">{methodLabels[payment.method]}</td>
                 <td className="px-3 py-2.5">
                   <LabelChip entry={paymentStateLabels[payment.state]} compact />
                 </td>

@@ -25,7 +25,7 @@ import type { Allocation, Collection, Payment, PaymentState, Sen, Snapshot } fro
 import { cellStatus, sortCollections, type View } from "@/lib/view";
 import { cn } from "@/lib/utils";
 import { Download, FileText, Printer } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { toast } from "sonner";
 
@@ -37,7 +37,8 @@ type ReportKind = "kutipan" | "ahli" | "belum" | "bulanan" | "sejarah";
 type ColKind = "text" | "money" | "count" | "status";
 type Chip = [string, Tone];
 type Value = string | number | Chip[] | null;
-type Col = { key: string; label: string; kind: ColKind };
+/** `low` columns drop out of the on-screen table when it is narrow; print, CSV and phone cards keep them. */
+type Col = { key: string; label: string; kind: ColKind; low?: boolean };
 type Report = {
   title: string;
   scope: string;
@@ -115,6 +116,7 @@ const money = (key: string, label: string): Col => ({ key, label, kind: "money" 
 const count = (key: string, label: string): Col => ({ key, label, kind: "count" });
 const text = (key: string, label: string): Col => ({ key, label, kind: "text" });
 const status = (key: string, label: string): Col => ({ key, label, kind: "status" });
+const low = (col: Col): Col => ({ ...col, low: true });
 
 function voluntaryPending(payments: Payment[], collectionId: string, memberId?: string) {
   return sum(
@@ -184,11 +186,11 @@ function collectionSummary(data: Snapshot, view: View, collectionId: string | nu
       money("dueNow", "Tertunggak"),
       money("upcoming", "Akan datang"),
       money("pending", "Menunggu semakan"),
-      count("paid", "Dibayar"),
-      count("partial", "Sebahagian"),
-      count("unpaid", "Belum bayar"),
-      count("exempt", "Dikecualikan"),
-      count("overdue", "Lewat"),
+      low(count("paid", "Dibayar")),
+      low(count("partial", "Sebahagian")),
+      low(count("unpaid", "Belum bayar")),
+      low(count("exempt", "Dikecualikan")),
+      low(count("overdue", "Lewat")),
     ],
     rows,
     totals: {
@@ -254,7 +256,7 @@ function memberSummary(data: Snapshot, view: View, collectionId: string | null):
   const all = totalsOf(scope);
   const columns = [
     text("name", "Ahli"),
-    text("category", "Kategori"),
+    low(text("category", "Kategori")),
     money("expected", "Dijangka"),
     money("received", "Diterima"),
     money("dueNow", "Baki semasa"),
@@ -304,7 +306,7 @@ function owingReport(data: Snapshot, view: View, collection: Collection, periodI
   const monthly = collection.type === "monthly";
   const totals = totalsOf(owing);
   const period = periodId ? periods.get(periodId) : null;
-  const columns = [text("name", "Ahli"), text("phone", "Telefon")];
+  const columns = [text("name", "Ahli"), low(text("phone", "Telefon"))];
   if (monthly) columns.push(text("month", "Bulan"));
   columns.push(
     money("required", "Amaun"),
@@ -312,7 +314,7 @@ function owingReport(data: Snapshot, view: View, collection: Collection, periodI
     money("remaining", "Baki"),
     money("pending", "Menunggu semakan"),
     status("status", "Status"),
-    text("due", "Tarikh akhir"),
+    low(text("due", "Tarikh akhir")),
   );
   return {
     title: "Ahli belum bayar / sebahagian",
@@ -367,15 +369,15 @@ function monthlyReport(view: View, collection: Collection): Report {
     scope: collection.name,
     columns: [
       text("month", "Bulan"),
-      text("due", "Tarikh akhir"),
+      low(text("due", "Tarikh akhir")),
       status("state", "Keadaan"),
       money("expected", "Dijangka"),
       money("received", "Diterima"),
       money("dueNow", "Tertunggak"),
       money("upcoming", "Akan datang"),
       money("pending", "Menunggu semakan"),
-      count("paid", "Dibayar"),
-      count("charged", "Ahli dikenakan"),
+      low(count("paid", "Dibayar")),
+      low(count("charged", "Ahli dikenakan")),
     ],
     rows: periods.map((period) => {
       const ledgers = charges.filter((c) => c.periodId === period.id).map((c) => view.ledgers.get(c.id)!);
@@ -481,8 +483,8 @@ function historyReport(
       text("member", "Ahli"),
       text("collection", "Kutipan"),
       money("amount", "Amaun"),
-      text("method", "Kaedah"),
-      text("reference", "Rujukan"),
+      low(text("method", "Kaedah")),
+      low(text("reference", "Rujukan")),
       status("state", "Status"),
       text("note", "Catatan / sebab"),
     ],
@@ -739,44 +741,126 @@ function ReportView({ report, header }: { report: Report; header: [string, strin
         {report.rows.length === 0 ? (
           <p className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">{report.empty}</p>
         ) : (
-          <div className="min-w-0 overflow-hidden rounded-xl border border-border print:overflow-visible print:rounded-none [&_[data-slot=table-container]]:print:overflow-visible">
-            <Table className="text-[13px] print:text-[10px]">
-              <TableHeader className="bg-primary-tint">
-                <TableRow className="hover:bg-transparent">
-                  {report.columns.map((col) => (
-                    <TableHead
-                      key={col.key}
-                      className={cn("h-10 px-3 text-xs font-semibold whitespace-nowrap text-muted-foreground print:h-7 print:px-1.5", col.kind !== "text" && col.kind !== "status" && "text-right")}
-                    >
-                      {col.label}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {report.rows.map((row) => (
-                  <TableRow key={row.key} className="break-inside-avoid hover:bg-primary-tint/40">
-                    {report.columns.map((col) => (
-                      <ValueCell key={col.key} col={col} value={row.values[col.key] ?? null} />
-                    ))}
-                  </TableRow>
-                ))}
-              </TableBody>
-              {report.totals && (
-                <TableFooter className="bg-primary-tint/60 font-semibold">
-                  <TableRow className="hover:bg-transparent">
-                    {report.columns.map((col) => (
-                      <ValueCell key={col.key} col={col} value={report.totals![col.key] ?? null} total />
-                    ))}
-                  </TableRow>
-                </TableFooter>
-              )}
-            </Table>
-          </div>
+          <>
+            <ReportCards report={report} />
+            <ReportTable report={report} />
+          </>
         )}
         {report.footnote && <p className="text-xs text-muted-foreground">{report.footnote}</p>}
       </div>
     </SectionCard>
+  );
+}
+
+// Below the table's 72rem container width, `low` columns drop out on screen. Print shows them all.
+const lowCol = (col: Col) => col.low && "hidden @6xl/report:table-cell print:table-cell";
+
+/** Tablets and up, and print: the full table, scrolling sideways with a fade while more columns sit off to the right. */
+function ReportTable({ report }: { report: Report }) {
+  const frame = useRef<HTMLDivElement>(null);
+  const [more, setMore] = useState(false);
+  useEffect(() => {
+    const scroller = frame.current?.querySelector<HTMLElement>("[data-slot=table-container]");
+    if (!scroller) return;
+    const update = () => setMore(scroller.scrollLeft + scroller.clientWidth < scroller.scrollWidth - 1);
+    update();
+    scroller.addEventListener("scroll", update, { passive: true });
+    const observer = new ResizeObserver(update);
+    observer.observe(scroller);
+    if (scroller.firstElementChild) observer.observe(scroller.firstElementChild);
+    return () => {
+      scroller.removeEventListener("scroll", update);
+      observer.disconnect();
+    };
+  }, [report]);
+  return (
+    <div
+      ref={frame}
+      data-report-table
+      className="@container/report relative hidden min-w-0 overflow-hidden rounded-xl border border-border md:block print:block print:overflow-visible print:rounded-none [&_[data-slot=table-container]]:overscroll-x-contain [&_[data-slot=table-container]]:print:overflow-visible"
+    >
+      <Table className="text-[13px] print:text-[10px]">
+        <TableHeader className="bg-primary-tint">
+          <TableRow className="hover:bg-transparent">
+            {report.columns.map((col) => (
+              <TableHead
+                key={col.key}
+                className={cn(
+                  "h-10 px-3 text-xs font-semibold whitespace-nowrap text-muted-foreground print:h-7 print:px-1.5",
+                  col.kind !== "text" && col.kind !== "status" && "text-right",
+                  lowCol(col),
+                )}
+              >
+                {col.label}
+              </TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {report.rows.map((row) => (
+            <TableRow key={row.key} className="break-inside-avoid hover:bg-primary-tint/40">
+              {report.columns.map((col) => (
+                <ValueCell key={col.key} col={col} value={row.values[col.key] ?? null} />
+              ))}
+            </TableRow>
+          ))}
+        </TableBody>
+        {report.totals && (
+          <TableFooter className="bg-primary-tint/60 font-semibold">
+            <TableRow className="hover:bg-transparent">
+              {report.columns.map((col) => (
+                <ValueCell key={col.key} col={col} value={report.totals![col.key] ?? null} total />
+              ))}
+            </TableRow>
+          </TableFooter>
+        )}
+      </Table>
+      <div
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-card to-transparent transition-opacity print:hidden",
+          more ? "opacity-100" : "opacity-0",
+        )}
+      />
+    </div>
+  );
+}
+
+/** Phones: one card per row, every column as a label and value, then the totals card. Same report object as the table. */
+function ReportCards({ report }: { report: Report }) {
+  const [head, ...rest] = report.columns;
+  const card = (key: string, values: Record<string, Value>, total?: boolean) => (
+    <li key={key} className={cn("min-w-0 rounded-xl border border-border p-3", total ? "bg-primary-tint/60" : "bg-card")}>
+      <p className="text-sm font-semibold break-words">{screenText(head, values[head.key] ?? null)}</p>
+      <dl className="mt-2 grid grid-cols-1 gap-1 text-[13px]">
+        {rest.map((col) => {
+          const value = values[col.key] ?? null;
+          if (total && value === null) return null;
+          return (
+            <div key={col.key} className="flex min-w-0 items-baseline justify-between gap-3">
+              <dt className="shrink-0 text-xs text-muted-foreground">{col.label}</dt>
+              <dd className={cn("min-w-0 text-right break-words", (col.kind === "money" || col.kind === "count") && "tabular-nums", total && "font-semibold", value === null && "text-subtle")}>
+                {col.kind === "status" && Array.isArray(value) && value.length > 0 ? (
+                  <span className="inline-flex flex-wrap justify-end gap-1">
+                    {value.map((chip) => (
+                      <LabelChip key={chip[0]} entry={chip} compact />
+                    ))}
+                  </span>
+                ) : (
+                  screenText(col, value)
+                )}
+              </dd>
+            </div>
+          );
+        })}
+      </dl>
+    </li>
+  );
+  return (
+    <ul className="grid grid-cols-1 gap-2 md:hidden print:hidden" aria-label={report.title}>
+      {report.rows.map((row) => card(row.key, row.values))}
+      {report.totals && card("totals", report.totals, true)}
+    </ul>
   );
 }
 
@@ -789,6 +873,7 @@ function ValueCell({ col, value, total }: { col: Col; value: Value; total?: bool
         numeric && "text-right whitespace-nowrap tabular-nums",
         col.kind === "text" && "min-w-28 max-w-64 break-words whitespace-normal",
         value === null && "text-subtle",
+        lowCol(col),
       )}
     >
       {col.kind === "status" && Array.isArray(value) && value.length > 0 && !total ? (

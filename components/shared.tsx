@@ -322,10 +322,11 @@ export type Column<T> = {
   cell: (row: T) => ReactNode;
   align?: "left" | "right";
   className?: string;
-  hideBelow?: "lg" | "xl";
+  hideBelow?: "lg" | "xl" | "2xl";
 };
 
-const hide = { lg: "hidden @2xl/table:table-cell", xl: "hidden @4xl/table:table-cell" };
+// Breakpoints are the table's own width (container queries), not the viewport's.
+const hide = { lg: "hidden @2xl/table:table-cell", xl: "hidden @4xl/table:table-cell", "2xl": "hidden @6xl/table:table-cell" };
 
 /**
  * A table on tablets and desktops and a stack of cards on phones. Rows call `onSelect`

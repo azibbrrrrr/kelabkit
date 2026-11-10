@@ -187,7 +187,7 @@ function MemberPicker({ onSelect }: { onSelect: (id: string) => void }) {
       {shown.length === 0 ? (
         <p className="rounded-xl border border-dashed border-border px-3 py-6 text-center text-sm text-muted-foreground">Tiada ahli sepadan dengan &quot;{query}&quot;.</p>
       ) : (
-        <ul id={listId} role="listbox" aria-label="Ahli" className="grid max-h-[min(420px,55svh)] gap-1 overflow-y-auto overscroll-contain rounded-xl border border-border bg-card p-1">
+        <ul id={listId} role="listbox" aria-label="Ahli" className="grid max-h-[min(420px,55svh)] grid-cols-1 gap-1 overflow-y-auto overscroll-contain rounded-xl border border-border bg-card p-1">
           {shown.map(({ member, totals }, i) => (
             <li
               key={member.id}
@@ -196,7 +196,7 @@ function MemberPicker({ onSelect }: { onSelect: (id: string) => void }) {
               aria-selected={i === index}
               onMouseEnter={() => setActive(i)}
               onClick={() => onSelect(member.id)}
-              className={cn("flex min-h-12 cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2", i === index && "bg-primary-tint")}
+              className={cn("flex min-h-12 min-w-0 cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2", i === index && "bg-primary-tint")}
             >
               <span
                 aria-hidden
@@ -208,12 +208,12 @@ function MemberPicker({ onSelect }: { onSelect: (id: string) => void }) {
                 {initials(member.name)}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-medium">{member.name}</span>
+                <span className="block truncate text-sm font-medium" title={member.name}>{member.name}</span>
                 <span className="block truncate text-xs text-muted-foreground">
                   {[member.category ? categoryLabels[member.category] : null, member.active ? null : "Tidak aktif"].filter(Boolean).join(" · ") || "Ahli"}
                 </span>
               </span>
-              <span className="shrink-0 text-right text-xs">
+              <span className="shrink-0 text-right text-xs whitespace-nowrap">
                 <span className={cn("block font-semibold tabular-nums", totals.dueNow > 0 ? "text-st-unpaid" : "text-st-paid")}>
                   {totals.dueNow > 0 ? formatMoney(totals.dueNow) : "Tiada baki"}
                 </span>

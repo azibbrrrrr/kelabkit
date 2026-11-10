@@ -116,7 +116,7 @@ export function AhliPage() {
       cell: ({ dueNow, overdue }) => (
         <span className="inline-flex flex-col items-end">
           <span className={cn("font-semibold", dueNow > 0 ? "text-st-unpaid" : "text-st-paid")}>{formatMoney(dueNow)}</span>
-          {overdue > 0 && <span className="text-[11px] font-normal text-st-overdue">{overdue} caj lewat</span>}
+          {overdue > 0 && <span className="text-[11px] font-normal text-st-unpaid">{overdue} caj lewat</span>}
         </span>
       ),
     },
