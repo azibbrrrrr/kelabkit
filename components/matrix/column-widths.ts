@@ -1,4 +1,4 @@
-// Column widths for the desktop matrix grid. A display preference only: kept in this browser's
+// Column widths for the desktop matrix grid. A display preference only (see lib/prefs.ts): kept in this browser's
 // localStorage, never in the snapshot or the backend. Keys are "ahli", a collection id (one-off
 // and voluntary columns) or a period id (one month of a monthly collection).
 
@@ -18,7 +18,9 @@ export const WIDTH_LIMITS: Record<WidthKind, { min: number; max: number } & Reco
   month: { min: 120, max: 480, narrow: 120, normal: 136, wide: 200 },
 };
 
-export type Widths = Record<string, number>;
+import { sanitizeWidths, type Widths } from "@/lib/prefs";
+
+export type { Widths };
 
 export function clampWidth(kind: WidthKind, width: number) {
   const { min, max } = WIDTH_LIMITS[kind];
@@ -28,13 +30,7 @@ export function clampWidth(kind: WidthKind, width: number) {
 /** Reads saved widths; anything malformed is dropped rather than trusted. */
 export function readWidths(storage: Pick<Storage, "getItem"> | undefined): Widths {
   try {
-    const parsed: unknown = JSON.parse(storage?.getItem(WIDTHS_STORAGE_KEY) ?? "{}");
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
-    const widths: Widths = {};
-    for (const [key, value] of Object.entries(parsed)) {
-      if (typeof value === "number" && Number.isFinite(value) && value > 0) widths[key] = Math.round(value);
-    }
-    return widths;
+    return sanitizeWidths(JSON.parse(storage?.getItem(WIDTHS_STORAGE_KEY) ?? "{}"));
   } catch {
     return {};
   }

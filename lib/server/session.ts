@@ -6,7 +6,8 @@ import { MODE_COOKIE } from "@/lib/auth/mode";
 import { getAuth } from "@/lib/auth/server";
 import { KelabError } from "@/lib/errors";
 import { logMissingEnv, missingSignedInEnv } from "@/lib/server/env";
-import { listClubs, type ClubSummary, type Ctx } from "@/lib/server/service";
+import type { StoredPrefs } from "@/lib/prefs";
+import { listClubs, loadShellContext, type ClubSummary, type Ctx } from "@/lib/server/service";
 
 export const CLUB_COOKIE = "kk_club";
 
@@ -61,7 +62,8 @@ export async function requireCtx(): Promise<Ctx> {
 
 export type AppContext =
   | { mode: "demo" }
-  | { mode: "neon"; user: SessionUser; hasClub: boolean }
+  /** `prefs` is null when the user has never saved any (the browser then offers its localStorage copy). */
+  | { mode: "neon"; user: SessionUser; hasClub: boolean; prefs: StoredPrefs | null }
   | { mode: "signed-out" }
   /** Signed-in mode needs environment variables this deployment does not have; only the demo works. */
   | { mode: "unconfigured" };
@@ -76,5 +78,6 @@ export const getAppContext = cache(async (): Promise<AppContext> => {
   }
   const user = await getUser();
   if (!user) return { mode: "signed-out" };
-  return { mode: "neon", user, hasClub: (await listClubs(user.id)).length > 0 };
+  const { clubs, prefs } = await loadShellContext(user.id);
+  return { mode: "neon", user, hasClub: clubs.length > 0, prefs };
 });

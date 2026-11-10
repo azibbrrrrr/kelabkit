@@ -1,26 +1,69 @@
 "use client";
 
+import { savePrefs } from "@/app/actions/prefs";
+import { readLayout, writeLayout } from "@/components/matrix/view-pref";
+import { browserStorage, readWidths, writeWidths } from "@/components/matrix/column-widths";
 import { isLocale, setCurrentLocale } from "@/lib/i18n";
+import { createPrefsSaver, isEmptyPrefs, PREFS_SOURCE_ATTR, mergePrefs, samePrefs, type MatrixLayout, type PrefsSaver, type StoredPrefs, type Widths } from "@/lib/prefs";
 import { defaultPreferences, isThemeId, PREFS_KEY, type Preferences } from "@/lib/themes";
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
-// Display preferences live apart from club data, so changing a theme can never touch a
-// payment record. Phase 2 moves them to user_preferences; this keeps them per browser.
+// Display preferences live apart from club data, so changing a theme can never touch a payment
+// record. Where they are kept depends on the mode, decided once per render tree:
+//   - demo / signed out: this browser's localStorage (unchanged from before accounts existed);
+//   - signed in: Postgres, per user (lib/prefs.ts, kk_save_prefs), so they follow the treasurer
+//     across devices. The server loads them with the shell (no extra request) and seeds `account`;
+//     a change is applied and mirrored at once, then saved after a short quiet period.
 
-type PrefsState = Preferences & { setPrefs: (changes: Partial<Preferences>) => void };
+type Resolved = Preferences & {
+  /** null = no saved choice: Jadual on desktop, Kad on phones. */
+  matrixLayout: MatrixLayout | null;
+  matrixWidths: Widths;
+};
+type PrefsState = Resolved & { setPrefs: (changes: StoredPrefs) => void };
+export type AccountSeed = { initial: StoredPrefs | null };
 
 const PrefsContext = createContext<PrefsState | null>(null);
 
-function readPrefs(): Preferences {
+const defaults: Resolved = { ...defaultPreferences, matrixLayout: null, matrixWidths: {} };
+
+function resolve(stored: StoredPrefs): Resolved {
+  return {
+    theme: stored.theme ?? defaults.theme,
+    floral: stored.floral ?? defaults.floral,
+    locale: stored.locale ?? defaults.locale,
+    matrixLayout: stored.matrixLayout ?? null,
+    matrixWidths: stored.matrixWidths ?? {},
+  };
+}
+
+/** What this browser has saved, only the keys it actually has (so it can seed an account). */
+function readLocal(): StoredPrefs {
+  const stored: StoredPrefs = {};
   try {
     const parsed = JSON.parse(window.localStorage.getItem(PREFS_KEY) ?? "{}");
-    return {
-      theme: isThemeId(parsed.theme) ? parsed.theme : defaultPreferences.theme,
-      floral: typeof parsed.floral === "boolean" ? parsed.floral : defaultPreferences.floral,
-      locale: isLocale(parsed.locale) ? parsed.locale : defaultPreferences.locale,
-    };
+    if (isThemeId(parsed.theme)) stored.theme = parsed.theme;
+    if (typeof parsed.floral === "boolean") stored.floral = parsed.floral;
+    if (isLocale(parsed.locale)) stored.locale = parsed.locale;
   } catch {
-    return defaultPreferences;
+    // Unreadable or blocked storage: nothing to carry over.
+  }
+  const layout = readLayout(browserStorage());
+  if (layout) stored.matrixLayout = layout;
+  const widths = readWidths(browserStorage());
+  if (Object.keys(widths).length > 0) stored.matrixWidths = widths;
+  return stored;
+}
+
+const DISPLAY_KEYS = ["theme", "floral", "locale"] as const;
+const touchesDisplay = (changes: StoredPrefs) => DISPLAY_KEYS.some((key) => key in changes);
+
+/** Theme, floral and language go to localStorage in both modes: the boot script reads them before paint. */
+function mirrorDisplay(prefs: Resolved) {
+  try {
+    window.localStorage.setItem(PREFS_KEY, JSON.stringify({ theme: prefs.theme, floral: prefs.floral, locale: prefs.locale }));
+  } catch {
+    // Blocked storage: the choice lasts for this visit.
   }
 }
 
@@ -40,29 +83,90 @@ function apply(prefs: Preferences) {
 /** Runs before paint (inlined in the root layout) so the saved theme and a collapsed sidebar never flash. */
 export const prefsBootScript = `(function(){try{var p=JSON.parse(localStorage.getItem(${JSON.stringify(PREFS_KEY)})||"{}");var r=document.documentElement;if(p.theme)r.dataset.accent=p.theme;if(p.floral===false)r.dataset.floral="off";if(p.locale==="en"||p.locale==="ms")r.lang=p.locale;}catch(e){}if(/(?:^|; )sidebar_state=false(?:;|$)/.test(document.cookie))document.documentElement.dataset.sidebarBoot="collapsed";})();`;
 
-export function PrefsProvider({ children }: { children: ReactNode }) {
-  const [prefs, setState] = useState<Preferences>(defaultPreferences);
+export function PrefsProvider({ children, account }: { children: ReactNode; account?: AccountSeed }) {
+  // Signed in: seeded synchronously from the server, so the first render already has the right language.
+  const [prefs, setState] = useState<Resolved>(() => resolve(account?.initial ?? {}));
+  const latest = useRef(prefs);
+  const saver = useRef<PrefsSaver | null>(null);
   // Keep the non-React locale (labels, errors, formatters) in step before children render.
   setCurrentLocale(prefs.locale);
 
-  useEffect(() => {
-    const stored = readPrefs();
-    setState(stored);
-    apply(stored);
+  const commit = useCallback((next: Resolved) => {
+    latest.current = next;
+    setState(next);
   }, []);
 
-  const setPrefs = useCallback((changes: Partial<Preferences>) => {
-    setState((current) => {
-      const next = { ...current, ...changes };
-      apply(next);
-      try {
-        window.localStorage.setItem(PREFS_KEY, JSON.stringify(next));
-      } catch {
-        // Blocked storage: the choice lasts for this visit.
-      }
-      return next;
+  useEffect(() => {
+    // The signed-in provider (below) already owns the page; this root one stays out of its way.
+    if (account || document.documentElement.dataset[PREFS_SOURCE_ATTR] === "account") return;
+    const stored = resolve(readLocal());
+    commit(stored);
+    apply(stored);
+  }, [account, commit]);
+
+  useLayoutEffect(() => {
+    if (!account) return;
+    document.documentElement.dataset[PREFS_SOURCE_ATTR] = "account";
+    const sender = createPrefsSaver({
+      send: async (patch) => {
+        const result = await savePrefs(patch);
+        if (!result.ok) console.error("kelabkit: preferences were not saved", result.code);
+        return result.ok;
+      },
     });
+    saver.current = sender;
+    if (account.initial === null) {
+      // Nothing stored for this user yet: carry over what this browser had, once.
+      const local = readLocal();
+      if (!isEmptyPrefs(local)) {
+        const next = resolve(mergePrefs({}, local));
+        commit(next);
+        apply(next);
+        sender.queue(local);
+      }
+    } else {
+      apply(latest.current);
+      mirrorDisplay(latest.current);
+    }
+    const flush = () => void sender.flush();
+    const onVisibility = () => document.visibilityState === "hidden" && flush();
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", flush);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", flush);
+      flush();
+      saver.current = null;
+    };
+    // The seed is read once; later server refreshes must not replace what the user just changed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const setPrefs = useCallback(
+    (changes: StoredPrefs) => {
+      const current = latest.current;
+      // Only what actually differs: a resize that ends where it began saves nothing.
+      const changed: StoredPrefs = {};
+      const before = { theme: current.theme, floral: current.floral, locale: current.locale, matrixLayout: current.matrixLayout ?? undefined, matrixWidths: current.matrixWidths } satisfies StoredPrefs;
+      for (const key of Object.keys(changes) as (keyof StoredPrefs)[]) {
+        if (changes[key] === undefined) continue;
+        if (!samePrefs({ [key]: changes[key] }, { [key]: before[key] })) Object.assign(changed, { [key]: changes[key] });
+      }
+      if (isEmptyPrefs(changed)) return;
+      const next = resolve({ ...before, ...changed });
+      commit(next);
+      if (touchesDisplay(changed)) apply(next);
+      if (account) {
+        if (touchesDisplay(changed)) mirrorDisplay(next);
+        saver.current?.queue(changed);
+        return;
+      }
+      if (touchesDisplay(changed)) mirrorDisplay(next);
+      if (changed.matrixLayout) writeLayout(browserStorage(), changed.matrixLayout);
+      if (changed.matrixWidths) writeWidths(browserStorage(), changed.matrixWidths);
+    },
+    [account, commit],
+  );
 
   const value = useMemo(() => ({ ...prefs, setPrefs }), [prefs, setPrefs]);
   return <PrefsContext.Provider value={value}>{children}</PrefsContext.Provider>;

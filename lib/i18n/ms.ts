@@ -180,6 +180,7 @@ export const ms = {
     NO_CLUB: "Anda belum mempunyai kelab. Cipta kelab dahulu.",
     SESSION_REQUIRED: "Sesi diperlukan, contohnya 2026.",
     CLUB_LIMIT: "Anda sudah mencapai had lima kelab.",
+    PREFS_INVALID: "Tetapan paparan itu tidak dapat disimpan.",
     INTERNAL: "Sesuatu tidak kena. Cuba lagi.",
     NOT_AVAILABLE: "Tindakan ini belum tersedia untuk akaun sebenar.",
   },
