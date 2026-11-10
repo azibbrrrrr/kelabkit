@@ -25,7 +25,7 @@ import { authClient } from "@/lib/auth/client";
 import { leaveDemo } from "@/lib/auth/mode";
 import { formatDay, formatMoney, initials } from "@/lib/format";
 import { useLocale, useT } from "@/lib/i18n/react";
-import { isActive } from "@/lib/nav";
+import { hasOwnActionBar, isActive } from "@/lib/nav";
 import { cn } from "@/lib/utils";
 import { Bell, ChevronDown, House, LogOut, Menu, Plus, Settings, Sheet, TriangleAlert, UsersRound } from "lucide-react";
 import Link from "next/link";
@@ -136,27 +136,27 @@ function TopBar({ user }: { user?: ShellUser }) {
         <span className="font-display text-[17px] font-bold">KelabKit</span>
       </div>
       {demo && (
-        <span className="hidden shrink-0 rounded-full border border-dashed border-primary/50 bg-card px-2.5 py-0.5 text-[11px] font-medium text-primary-strong lg:inline-flex">
+        <span className="hidden shrink-0 rounded-full border border-dashed border-primary/50 bg-card px-2.5 py-0.5 text-[11px] font-medium text-primary-strong xl:inline-flex">
           {t("shell.demoData")}
         </span>
       )}
-      <div className="ml-auto flex items-center gap-1.5">
+      <div className="ml-auto flex shrink-0 items-center gap-1.5">
         <SaveStatus />
         <IsiPantasButton />
         <LanguagePill placement="topbar" className="hidden md:flex" />
         <PendingBell />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-auto gap-2.5 rounded-xl px-1.5 py-1 font-normal hover:bg-primary-tint aria-expanded:bg-primary-tint">
+            <Button variant="ghost" aria-label={treasurer} className="h-auto gap-2.5 rounded-xl px-1.5 py-1 font-normal hover:bg-primary-tint aria-expanded:bg-primary-tint">
               <Avatar className="size-9 border-2 border-primary-light">
                 {user?.image && <AvatarImage src={user.image} alt="" referrerPolicy="no-referrer" />}
                 <AvatarFallback className="bg-primary-light text-xs font-semibold text-primary-strong">{initials(treasurer)}</AvatarFallback>
               </Avatar>
-              <span className="hidden text-left leading-tight md:block">
+              <span className="hidden text-left leading-tight xl:block">
                 <span className="block text-[13px] font-semibold">{treasurer}</span>
                 <span className="block text-[11px] text-muted-foreground">{t("shell.treasurer")}</span>
               </span>
-              <ChevronDown className="hidden size-4 text-muted-foreground md:block" />
+              <ChevronDown className="hidden size-4 text-muted-foreground xl:block" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
@@ -234,6 +234,8 @@ function MobileNav() {
   const t = useT();
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
+  // The wizard and the payment form have their own fixed bar just above this nav: no raised button there.
+  const ownBar = hasOwnActionBar(pathname);
   const item = (href: string, label: string, Icon: typeof House) => {
     const active = isActive(pathname, href);
     return (
@@ -259,13 +261,15 @@ function MobileNav() {
       {item("/", t("shell.home"), House)}
       {item("/matriks/", t("nav.matrix"), Sheet)}
       <div className="flex flex-1 items-center justify-center">
-        <Link
-          href="/bayaran/baru/"
-          aria-label={t("shell.recordPayment")}
-          className="brand-gradient -mt-6 grid size-14 place-items-center rounded-2xl text-white shadow-[0_12px_24px_-10px_var(--primary)]"
-        >
-          <Plus className="size-6" />
-        </Link>
+        {!ownBar && (
+          <Link
+            href="/bayaran/baru/"
+            aria-label={t("shell.recordPayment")}
+            className="brand-gradient -mt-6 grid size-14 place-items-center rounded-2xl text-white shadow-[0_12px_24px_-10px_var(--primary)]"
+          >
+            <Plus className="size-6" />
+          </Link>
+        )}
       </div>
       {item("/ahli/", t("nav.members"), UsersRound)}
       <button

@@ -3,8 +3,9 @@
 import { useSnapshot } from "@/components/data-provider";
 import { CollectionIcon } from "@/components/collection-icon";
 import { Blossom, Floral } from "@/components/floral";
-import { CardLink, LabelChip, PageShell, ProgressBar, SectionCard, StatCard } from "@/components/shared";
+import { CardLink, LabelChip, PageHeader, PageShell, ProgressBar, SectionCard, StatCard } from "@/components/shared";
 import { Button } from "@/components/ui/button";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { formatDayShort, formatMoney, formatMonth, formatNumber, formatPercent } from "@/lib/format";
 import { methodLabels, paymentStateLabels } from "@/lib/labels";
 import { useT } from "@/lib/i18n/react";
@@ -16,7 +17,6 @@ import { cn } from "@/lib/utils";
 import {
   BadgeCheck,
   BellRing,
-  CalendarDays,
   ChartColumn,
   ChevronLeft,
   ChevronRight,
@@ -71,120 +71,125 @@ export function Dashboard() {
     <PageShell className="relative">
       <Floral asset="corner-bottom-left" className="-bottom-6 -left-10 z-0 hidden w-[240px] opacity-80 xl:block" />
 
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-        <div className="min-w-0 xl:max-w-[520px]">
-          <h1 className="text-[24px] leading-tight font-bold tracking-[-.02em] md:text-[28px]">
+      <PageHeader
+        title={
+          <>
             {t("dashboard.hero.welcome", { name: firstName })} <Blossom />
-          </h1>
-          <p className="mt-1.5 text-[13px] text-muted-foreground">{t("dashboard.hero.subtitle")}</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 xl:flex-nowrap">
-          <span className="inline-flex h-9 items-center gap-2 rounded-[10px] border border-border bg-card px-3 text-[13px] font-medium whitespace-nowrap">
-            <CalendarDays className="size-4 text-muted-foreground" /> {t("dashboard.hero.session", { session: data.club.session })}
-          </span>
-          <Button variant="outline" asChild>
+          </>
+        }
+        description={t("dashboard.hero.subtitle")}
+        actions={
+          <>
+            <Button variant="brand" asChild>
+              <Link href="/kutipan/baru/">
+                <Plus /> {t("dashboard.hero.addCollection")}
+              </Link>
+            </Button>
+            <Button asChild>
+              <Link href="/bayaran/baru/">
+                <Plus /> {t("dashboard.hero.recordPayment")}
+              </Link>
+            </Button>
+          </>
+        }
+        more={
+          <DropdownMenuItem asChild>
             <Link href="/ahli/">
               <Search /> {t("dashboard.hero.findMember")}
             </Link>
-          </Button>
-          <Button variant="brand" asChild>
-            <Link href="/kutipan/baru/">
-              <Plus /> {t("dashboard.hero.addCollection")}
-            </Link>
-          </Button>
-          <Button asChild>
-            <Link href="/bayaran/baru/">
-              <Plus /> {t("dashboard.hero.recordPayment")}
-            </Link>
-          </Button>
+          </DropdownMenuItem>
+        }
+      />
+
+      {/* Layout follows the width of the page content, not the viewport: the sidebar takes 256px, so a
+          1280px window only leaves ~960px. Two columns until the content reaches 1100px. */}
+      <div className="@container relative z-10 grid gap-5 md:gap-6">
+        <div className="grid grid-cols-2 gap-3 @[880px]:grid-cols-4">
+          <StatCard
+            icon={Database}
+            label={t("dashboard.stats.totalLabel")}
+            value={formatMoney(totals.expected)}
+            hint={totals.upcoming > 0 ? t("dashboard.stats.totalUpcoming", { amount: formatMoney(totals.upcoming) }) : t("dashboard.stats.totalExpected")}
+            href="/kutipan/"
+          />
+          <StatCard
+            icon={BadgeCheck}
+            tone="paid"
+            label={t("dashboard.stats.paidLabel")}
+            value={formatMoney(totals.received)}
+            hint={
+              <>
+                <b className="text-st-paid">{formatPercent(totals.received, totals.expected)}</b> {t("dashboard.stats.paidOfTotal")}
+              </>
+            }
+            className="bg-st-paid-bg/35"
+          />
+          <StatCard
+            icon={Clock3}
+            tone="partial"
+            label={t("dashboard.stats.unpaidLabel")}
+            value={formatMoney(totals.dueNow)}
+            hint={t("dashboard.stats.unpaidHint", { percent: formatPercent(totals.dueNow, totals.expected), count: memberStatus.owing })}
+            href="/peringatan/"
+            className="bg-st-partial-bg/35"
+          />
+          <StatCard
+            icon={UsersRound}
+            tone="exempt"
+            label={t("dashboard.stats.membersLabel")}
+            value={formatNumber(activeMembers.length)}
+            hint={t("dashboard.stats.membersInactive", { count: data.members.length - activeMembers.length })}
+            href="/ahli/"
+            className="bg-st-exempt-bg/35"
+          />
         </div>
-      </div>
 
-      <div className="relative z-10 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          icon={Database}
-          label={t("dashboard.stats.totalLabel")}
-          value={formatMoney(totals.expected)}
-          hint={totals.upcoming > 0 ? t("dashboard.stats.totalUpcoming", { amount: formatMoney(totals.upcoming) }) : t("dashboard.stats.totalExpected")}
-          href="/kutipan/"
-        />
-        <StatCard
-          icon={BadgeCheck}
-          tone="paid"
-          label={t("dashboard.stats.paidLabel")}
-          value={formatMoney(totals.received)}
-          hint={
-            <>
-              <b className="text-st-paid">{formatPercent(totals.received, totals.expected)}</b> {t("dashboard.stats.paidOfTotal")}
-            </>
-          }
-          className="bg-st-paid-bg/35"
-        />
-        <StatCard
-          icon={Clock3}
-          tone="partial"
-          label={t("dashboard.stats.unpaidLabel")}
-          value={formatMoney(totals.dueNow)}
-          hint={t("dashboard.stats.unpaidHint", { percent: formatPercent(totals.dueNow, totals.expected), count: memberStatus.owing })}
-          href="/peringatan/"
-          className="bg-st-partial-bg/35"
-        />
-        <StatCard
-          icon={UsersRound}
-          tone="exempt"
-          label={t("dashboard.stats.membersLabel")}
-          value={formatNumber(activeMembers.length)}
-          hint={t("dashboard.stats.membersInactive", { count: data.members.length - activeMembers.length })}
-          href="/ahli/"
-          className="bg-st-exempt-bg/35"
-        />
-      </div>
+        <div className="grid grid-cols-1 gap-3 @3xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] @[1100px]:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,.8fr)]">
+          <CollectionsCard collections={sortCollections(data.collections).filter((c) => c.status === "active")} />
+          <ActionsCard owing={memberStatus.owing} pending={pending} />
+          <MonthlyCard payments={data.payments} />
+        </div>
 
-      <div className="relative z-10 grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,.8fr)]">
-        <CollectionsCard collections={sortCollections(data.collections).filter((c) => c.status === "active")} />
-        <ActionsCard owing={memberStatus.owing} pending={pending} />
-        <MonthlyCard payments={data.payments} />
-      </div>
-
-      <div className="relative z-10 grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
-        <SectionCard title={t("dashboard.recent.title")} icon={ReceiptText} action={<CardLink href="/bayaran/">{t("dashboard.recent.viewAll")}</CardLink>} contentClassName="px-0 md:px-0">
-          <RecentPayments payments={recent} />
-        </SectionCard>
-        <SectionCard title={t("dashboard.memberStatus.title")} icon={UsersRound} action={<CardLink href="/matriks/">{t("dashboard.memberStatus.viewAll")}</CardLink>}>
-          <table className="w-full text-[13px]">
-            <thead>
-              <tr className="text-left text-xs text-muted-foreground">
-                <th className="rounded-l-lg bg-primary-tint px-3 py-2 font-semibold">{t("dashboard.memberStatus.status")}</th>
-                <th className="bg-primary-tint px-3 py-2 text-right font-semibold">{t("dashboard.memberStatus.count")}</th>
-                <th className="rounded-r-lg bg-primary-tint px-3 py-2 text-right font-semibold">{t("dashboard.memberStatus.percent")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(
-                [
-                  [t("dashboard.memberStatus.settled"), memberStatus.settled, "bg-success"],
-                  [t("dashboard.memberStatus.owing"), memberStatus.owing, "bg-warning"],
-                  [t("dashboard.memberStatus.none"), memberStatus.none, "bg-subtle"],
-                ] as const
-              ).map(([label, count, dot]) => (
-                <tr key={label} className="border-b border-border/60">
-                  <td className="px-3 py-2.5">
-                    <span className={cn("mr-2 inline-block size-2 rounded-full", dot)} />
-                    {label}
-                  </td>
-                  <td className="px-3 py-2.5 text-right tabular-nums">{count}</td>
-                  <td className="px-3 py-2.5 text-right tabular-nums">{formatPercent(count, activeMembers.length)}</td>
+        <div className="grid grid-cols-1 gap-3 @[900px]:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
+          <SectionCard title={t("dashboard.recent.title")} icon={ReceiptText} action={<CardLink href="/bayaran/">{t("dashboard.recent.viewAll")}</CardLink>} contentClassName="px-0 md:px-0">
+            <RecentPayments payments={recent} />
+          </SectionCard>
+          <SectionCard title={t("dashboard.memberStatus.title")} icon={UsersRound} action={<CardLink href="/matriks/">{t("dashboard.memberStatus.viewAll")}</CardLink>}>
+            <table className="w-full text-[13px]">
+              <thead>
+                <tr className="text-left text-xs text-muted-foreground">
+                  <th className="rounded-l-lg bg-primary-tint px-3 py-2 font-semibold">{t("dashboard.memberStatus.status")}</th>
+                  <th className="bg-primary-tint px-3 py-2 text-right font-semibold">{t("dashboard.memberStatus.count")}</th>
+                  <th className="rounded-r-lg bg-primary-tint px-3 py-2 text-right font-semibold">{t("dashboard.memberStatus.percent")}</th>
                 </tr>
-              ))}
-              <tr className="font-semibold">
-                <td className="rounded-l-lg bg-primary-tint px-3 py-2.5">{t("dashboard.memberStatus.total")}</td>
-                <td className="bg-primary-tint px-3 py-2.5 text-right tabular-nums">{activeMembers.length}</td>
-                <td className="rounded-r-lg bg-primary-tint px-3 py-2.5 text-right">100%</td>
-              </tr>
-            </tbody>
-          </table>
-          <p className="mt-2 text-[11px] text-muted-foreground">{t("dashboard.memberStatus.note")}</p>
-        </SectionCard>
+              </thead>
+              <tbody>
+                {(
+                  [
+                    [t("dashboard.memberStatus.settled"), memberStatus.settled, "bg-success"],
+                    [t("dashboard.memberStatus.owing"), memberStatus.owing, "bg-warning"],
+                    [t("dashboard.memberStatus.none"), memberStatus.none, "bg-subtle"],
+                  ] as const
+                ).map(([label, count, dot]) => (
+                  <tr key={label} className="border-b border-border/60">
+                    <td className="px-3 py-2.5">
+                      <span className={cn("mr-2 inline-block size-2 rounded-full", dot)} />
+                      {label}
+                    </td>
+                    <td className="px-3 py-2.5 text-right tabular-nums">{count}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums">{formatPercent(count, activeMembers.length)}</td>
+                  </tr>
+                ))}
+                <tr className="font-semibold">
+                  <td className="rounded-l-lg bg-primary-tint px-3 py-2.5">{t("dashboard.memberStatus.total")}</td>
+                  <td className="bg-primary-tint px-3 py-2.5 text-right tabular-nums">{activeMembers.length}</td>
+                  <td className="rounded-r-lg bg-primary-tint px-3 py-2.5 text-right">100%</td>
+                </tr>
+              </tbody>
+            </table>
+            <p className="mt-2 text-[11px] text-muted-foreground">{t("dashboard.memberStatus.note")}</p>
+          </SectionCard>
+        </div>
       </div>
     </PageShell>
   );

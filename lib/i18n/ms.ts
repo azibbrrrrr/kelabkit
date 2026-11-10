@@ -36,6 +36,7 @@ export const ms = {
     loading: "Memuatkan",
     search: "Cari…",
     retry: "Cuba lagi",
+    more: "Lagi",
   },
 
   lang: {

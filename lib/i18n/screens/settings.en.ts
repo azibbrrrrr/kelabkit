@@ -41,9 +41,6 @@ export const settingsEn: DeepStringify<typeof settingsMs> = {
     previewProgress: "Share of collection received",
     previewPercentOf: "{percent} of the expected total for active collections",
     previewNote: "The {theme} theme preview uses your real data. The theme choice is saved in this browser only.",
-    allThemes: "All themes",
-    listLabel: "Theme list",
-    defaultTag: "(default)",
   },
   demo: {
     title: "Demo data",

@@ -3,7 +3,6 @@ export const dashboardMs = {
   hero: {
     welcome: "Selamat datang, {name}!",
     subtitle: "Papan pemuka kutipan KGK — pantau bayaran, ahli dan peringatan dengan mudah.",
-    session: "Sesi {session}",
     findMember: "Cari Ahli",
     addCollection: "Tambah Kutipan",
     recordPayment: "Rekod Bayaran",

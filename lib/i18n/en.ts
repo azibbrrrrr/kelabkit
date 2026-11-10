@@ -34,6 +34,7 @@ export const en: Messages = {
     loading: "Loading",
     search: "Search…",
     retry: "Try again",
+    more: "More",
   },
 
   lang: {

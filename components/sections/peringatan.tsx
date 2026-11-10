@@ -498,14 +498,14 @@ export function RemindersPage() {
                             <Copy /> {t("reminders.row.copyMessage")}
                           </Button>
                           {number ? (
-                            <Button size="sm" asChild>
+                            <Button size="sm" variant="outline" asChild>
                               <a href={`https://wa.me/${number}?text=${encodeURIComponent(message)}`} target="_blank" rel="noopener noreferrer">
                                 <MessageCircle /> {t("reminders.row.openWhatsapp")}
                               </a>
                             </Button>
                           ) : (
                             <span className="inline-flex items-center gap-2">
-                              <Button size="sm" disabled aria-describedby={`${key}-nophone`}>
+                              <Button size="sm" variant="outline" disabled aria-describedby={`${key}-nophone`}>
                                 <MessageCircle /> {t("reminders.row.openWhatsapp")}
                               </Button>
                               <span id={`${key}-nophone`} className="text-xs text-muted-foreground">

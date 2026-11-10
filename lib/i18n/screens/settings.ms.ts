@@ -38,9 +38,6 @@ export const settingsMs = {
     previewProgress: "Peratus kutipan diterima",
     previewPercentOf: "{percent} daripada jumlah dijangka bagi kutipan aktif",
     previewNote: "Pratonton tema {theme} menggunakan data sebenar anda. Pilihan tema disimpan dalam pelayar ini sahaja.",
-    allThemes: "Semua tema",
-    listLabel: "Senarai tema",
-    defaultTag: "(lalai)",
   },
   demo: {
     title: "Data demo",

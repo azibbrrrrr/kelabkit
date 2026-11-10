@@ -98,7 +98,12 @@ export function useRestoreFocus({
   if (typeof document !== "undefined") {
     const active = document.activeElement
     if (!(active instanceof HTMLElement) || active === document.body) opener.current = null
-    else if (!active.closest("[data-modal-surface]")) opener.current = active
+    else if (!active.closest("[data-modal-surface]")) {
+      // A menu item that opens a dialog unmounts with its menu: remember the menu's trigger instead.
+      const menu = active.closest('[role="menu"]')
+      const trigger = menu ? document.getElementById(menu.getAttribute("aria-labelledby") ?? "") : null
+      opener.current = trigger instanceof HTMLElement ? trigger : active
+    }
   }
   return {
     onOpenAutoFocus,

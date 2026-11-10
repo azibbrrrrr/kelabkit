@@ -38,6 +38,15 @@ export const navItems: NavItem[] = defs.map((def) => ({
   },
 }));
 
+/**
+ * Routes that carry their own fixed action bar (the wizard's Batal / Seterusnya, the payment form's
+ * Simpan). The phone shell's floating actions step aside there so two hit areas never touch.
+ */
+export function hasOwnActionBar(pathname: string) {
+  const path = pathname.endsWith("/") ? pathname : `${pathname}/`;
+  return path === "/kutipan/baru/" || path === "/bayaran/baru/";
+}
+
 export function isActive(pathname: string, href: string) {
   const path = pathname.endsWith("/") ? pathname : `${pathname}/`;
   if (href === "/") return path === "/";

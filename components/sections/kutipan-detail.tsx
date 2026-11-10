@@ -18,6 +18,7 @@ import {
   LabelChip,
   Money,
   MobileRow,
+  MoreMenu,
   PageHeader,
   PageShell,
   ProgressBar,
@@ -34,6 +35,7 @@ import {
   AlertDialogContent,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ModalBody, ModalError, ModalField, ModalFooter, ModalHeader, ModalText } from "@/components/modal";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -419,16 +421,16 @@ function StatusActions({ collection, dueNow, onAddParticipants }: { collection: 
           <ArchiveRestore /> {t("collectionDetail.actions.restore")}
         </Button>
       ) : (
-        <>
-          <Button variant="outline" asChild>
+        <MoreMenu>
+          <DropdownMenuItem asChild>
             <Link href="/matriks/">
               <SheetIcon /> {t("collectionDetail.actions.openMatrix")}
             </Link>
-          </Button>
-          <Button variant="danger-outline" onClick={() => setConfirming(archive)} disabled={busy}>
+          </DropdownMenuItem>
+          <DropdownMenuItem variant="destructive" onSelect={() => setConfirming(archive)} disabled={busy}>
             <Archive /> {t("collectionDetail.actions.archive")}
-          </Button>
-        </>
+          </DropdownMenuItem>
+        </MoreMenu>
       )}
 
       <AlertDialog open={confirming !== null} onOpenChange={(open) => !open && !busy && setConfirming(null)}>

@@ -288,6 +288,8 @@
   }
   html {
     color-scheme: light;
+    /* The sticky top bar is 4rem (h-16): a focused or anchored row must clear it. */
+    scroll-padding-top: 4rem;
   }
   body {
     @apply bg-background font-sans text-sm leading-relaxed text-foreground antialiased;

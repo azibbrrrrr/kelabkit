@@ -66,7 +66,7 @@ export function GlobalSearch({ className }: { className?: string }) {
   };
 
   return (
-    <div ref={wrapper} className={cn("relative w-full max-w-md", className)}>
+    <div ref={wrapper} className={cn("relative w-full min-w-0 max-w-md", className)}>
       <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
       <Input
         type="search"
