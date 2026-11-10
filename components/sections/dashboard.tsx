@@ -220,7 +220,7 @@ function CollectionsCard({ collections }: { collections: Collection[] }) {
             const voluntary = collection.type === "voluntary";
             return (
               <li key={collection.id}>
-                <Link href={`/kutipan/${collection.id}/`} className="group flex items-center gap-3 rounded-xl outline-none focus-visible:ring-3 focus-visible:ring-ring/40">
+                <Link href={`/kutipan/${collection.id}/`} className="group flex items-center gap-3 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">
                   <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary-light text-primary-strong">
                     <Icon className="size-[18px]" />
                   </span>

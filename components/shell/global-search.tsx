@@ -90,7 +90,7 @@ export function GlobalSearch({ className }: { className?: string }) {
             setOpen(false);
           }
         }}
-        className="h-10 w-full rounded-xl border border-border bg-card pr-3 pl-10 text-[13px] outline-none placeholder:text-muted-foreground focus:border-primary focus:ring-3 focus:ring-ring/20"
+        className="h-10 w-full rounded-xl border border-border bg-card pr-3 pl-10 text-[13px] outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-1 focus:ring-ring"
       />
       {open && query.trim() && (
         <div id={listId} role="listbox" className="absolute top-12 right-0 left-0 z-50 overflow-hidden rounded-2xl border bg-popover p-1.5 shadow-xl">

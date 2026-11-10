@@ -19,6 +19,7 @@ import { toast } from "sonner";
 
 const tokens: [string, string][] = [
   ["Primary", "--primary"],
+  ["Primary Fill", "--primary-fill"],
   ["Primary Light", "--primary-light"],
   ["Primary Tint", "--primary-tint"],
   ["Primary Strong", "--primary-strong"],
@@ -97,11 +98,11 @@ export function DesignSystemPage() {
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="grid gap-1 text-xs text-muted-foreground">
               Input (biasa)
-              <input placeholder="Nama ahli" className="h-11 rounded-xl border border-input bg-card px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-3 focus:ring-ring/20" />
+              <input placeholder="Nama ahli" className="h-11 rounded-xl border border-input bg-card px-3 text-sm text-foreground outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
             </label>
             <label className="grid gap-1 text-xs text-muted-foreground">
               Input (fokus)
-              <input placeholder="Nama ahli" className="h-11 rounded-xl border border-primary bg-card px-3 text-sm text-foreground ring-3 ring-ring/20 outline-none" />
+              <input placeholder="Nama ahli" className="h-11 rounded-xl border border-ring bg-card px-3 text-sm text-foreground ring-1 ring-ring outline-none" />
             </label>
             <label className="grid gap-1 text-xs text-muted-foreground">
               Amaun (RM)
@@ -123,7 +124,7 @@ export function DesignSystemPage() {
             <label className="relative grid gap-1 text-xs text-muted-foreground sm:col-span-2">
               Carian
               <Search className="pointer-events-none absolute bottom-3.5 left-3 size-4" />
-              <input type="search" placeholder="Cari ahli…" className="h-11 rounded-xl border border-input bg-card pr-3 pl-9 text-sm text-foreground outline-none focus:border-primary" />
+              <input type="search" placeholder="Cari ahli…" className="h-11 rounded-xl border border-input bg-card pr-3 pl-9 text-sm text-foreground outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
             </label>
             <p className="text-xs font-medium text-st-unpaid sm:col-span-2">Contoh ralat: Amaun hanya boleh ada dua tempat perpuluhan.</p>
           </div>
@@ -191,7 +192,7 @@ export function DesignSystemPage() {
                   theme === option.id ? "border-primary bg-primary-tint" : "border-border",
                 )}
               >
-                <span className="grid size-7 shrink-0 place-items-center rounded-lg text-white" style={{ background: option.swatch }}>
+                <span className="grid size-7 shrink-0 place-items-center rounded-lg text-white" style={{ background: option.fill }}>
                   {theme === option.id && <Check className="size-4" />}
                 </span>
                 <span className="min-w-0">

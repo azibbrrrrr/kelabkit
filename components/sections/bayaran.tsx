@@ -265,7 +265,7 @@ export function BayaranPage() {
                   value={from}
                   max={to || view.today}
                   onChange={(event) => setFrom(event.target.value)}
-                  className="h-10 w-full min-w-0 rounded-xl border border-input bg-card px-2.5 text-sm outline-none focus:border-primary focus:ring-3 focus:ring-ring/20 sm:w-40"
+                  className="h-10 w-full min-w-0 rounded-xl border border-input bg-card px-2.5 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring sm:w-40"
                 />
               </div>
               <div className="grid min-w-0 gap-1">
@@ -279,7 +279,7 @@ export function BayaranPage() {
                   min={from || undefined}
                   max={view.today}
                   onChange={(event) => setTo(event.target.value)}
-                  className="h-10 w-full min-w-0 rounded-xl border border-input bg-card px-2.5 text-sm outline-none focus:border-primary focus:ring-3 focus:ring-ring/20 sm:w-40"
+                  className="h-10 w-full min-w-0 rounded-xl border border-input bg-card px-2.5 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring sm:w-40"
                 />
               </div>
               {filtersOn && (

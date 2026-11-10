@@ -70,7 +70,7 @@ export function SectionCard({
   contentClassName?: string;
 }) {
   return (
-    <Card className={cn("min-w-0 gap-0 rounded-2xl border-border py-0 shadow-[0_1px_2px_rgba(231,84,128,.04)]", className)}>
+    <Card className={cn("min-w-0 gap-0 rounded-2xl border-border py-0 shadow-[0_1px_2px_color-mix(in_srgb,var(--primary)_4%,transparent)]", className)}>
       {(title || action) && (
         <div className="flex items-start justify-between gap-3 px-4 pt-4 pb-3 md:px-5 md:pt-5">
           <div className="flex min-w-0 items-center gap-2.5">
@@ -163,7 +163,7 @@ export function StatCard({
     </Card>
   );
   return href ? (
-    <Link href={href} className="block min-w-0 rounded-2xl outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
+    <Link href={href} className="block min-w-0 rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">
       {body}
     </Link>
   ) : (
@@ -473,7 +473,7 @@ export function SearchInput({
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         aria-label={placeholder}
-        className="h-10 w-full rounded-xl border border-border bg-card pr-3 pl-9 text-sm outline-none placeholder:text-muted-foreground focus:border-primary focus:ring-3 focus:ring-ring/20"
+        className="h-10 w-full rounded-xl border border-border bg-card pr-3 pl-9 text-sm outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-1 focus:ring-ring"
       />
     </div>
   );
@@ -503,13 +503,13 @@ export function FilterPills<V extends string>({
           className={cn(
             "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border px-3 text-xs font-medium transition-colors",
             value === option.value
-              ? "border-transparent bg-primary text-primary-foreground"
+              ? "border-transparent bg-primary-fill text-primary-foreground"
               : "border-border bg-card text-muted-foreground hover:bg-primary-tint hover:text-foreground",
           )}
         >
           {option.label}
           {option.count !== undefined && (
-            <span className={cn("tabular-nums", value === option.value ? "text-primary-foreground/85" : "text-subtle")}>{option.count}</span>
+            <span className={cn("tabular-nums", value === option.value ? "text-primary-foreground" : "text-muted-foreground")}>{option.count}</span>
           )}
         </button>
       ))}

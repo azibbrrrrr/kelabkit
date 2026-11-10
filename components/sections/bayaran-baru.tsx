@@ -181,7 +181,7 @@ function MemberPicker({ onSelect }: { onSelect: (id: string) => void }) {
           }}
           onKeyDown={onKeyDown}
           placeholder="Taip nama ahli…"
-          className="h-11 w-full rounded-xl border border-border bg-card pr-3 pl-9 text-[15px] outline-none placeholder:text-muted-foreground focus:border-primary focus:ring-3 focus:ring-ring/20"
+          className="h-11 w-full rounded-xl border border-border bg-card pr-3 pl-9 text-[15px] outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-1 focus:ring-ring"
         />
       </div>
       {shown.length === 0 ? (
@@ -655,7 +655,7 @@ function PaymentForm({ member, onChange, onSaved }: { member: Member; onChange: 
                   max={view.today}
                   onChange={(event) => setPaidOn(event.target.value)}
                   aria-invalid={Boolean(dateError) || undefined}
-                  className="h-11 w-full min-w-0 rounded-xl border border-input bg-card px-2.5 text-sm outline-none focus:border-primary focus:ring-3 focus:ring-ring/20 aria-invalid:border-destructive"
+                  className="h-11 w-full min-w-0 rounded-xl border border-input bg-card px-2.5 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring aria-invalid:border-destructive"
                 />
                 {dateError && <p className="text-xs font-medium text-st-unpaid">{dateError}</p>}
               </div>
@@ -668,7 +668,7 @@ function PaymentForm({ member, onChange, onSaved }: { member: Member; onChange: 
                   value={reference}
                   onChange={(event) => setReference(event.target.value)}
                   placeholder={method === "transfer" ? "cth. DuitNow 1234" : "cth. Resit 015"}
-                  className="h-11 w-full min-w-0 rounded-xl border border-input bg-card px-2.5 text-sm outline-none placeholder:text-subtle focus:border-primary focus:ring-3 focus:ring-ring/20"
+                  className="h-11 w-full min-w-0 rounded-xl border border-input bg-card px-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-1 focus:ring-ring"
                 />
               </div>
             </div>

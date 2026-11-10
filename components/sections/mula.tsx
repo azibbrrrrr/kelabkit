@@ -115,7 +115,7 @@ export function OnboardingPage() {
                         <Check className="size-3.5" strokeWidth={3} aria-hidden />
                       </span>
                     ) : (
-                      <CircleDashed className="size-5 shrink-0 text-subtle" aria-hidden />
+                      <CircleDashed className="size-5 shrink-0 text-muted-foreground" aria-hidden />
                     )}
                     <span className={cn("min-w-0", check.done && "text-muted-foreground")}>{check.label}</span>
                     <span className="sr-only">{check.done ? "(selesai)" : "(belum)"}</span>
@@ -156,7 +156,7 @@ function StepCard({
         onClick={onOpen}
         aria-expanded={active}
         aria-controls={id}
-        className="flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50 md:px-5"
+        className="flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background md:px-5"
       >
         <span
           className={cn(

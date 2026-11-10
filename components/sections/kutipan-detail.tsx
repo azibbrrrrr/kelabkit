@@ -241,7 +241,7 @@ function CollectionDetail({ collection }: { collection: Collection }) {
                 counts={totals.counts}
                 future={scopeLedgers.filter((ledger) => ledger.future && ledger.status === "unpaid" && ledger.pending === 0).length}
               />
-              {monthly && month === "all" && <p className="text-[11px] text-subtle">Kiraan ikut caj (ahli × bulan).</p>}
+              {monthly && month === "all" && <p className="text-[11px] text-muted-foreground">Kiraan ikut caj (ahli × bulan).</p>}
             </div>
           </SectionCard>
           <InfoCard collection={collection} />
@@ -467,7 +467,7 @@ function MonthPicker({
         id="kutipan-month"
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-11 w-full rounded-xl border border-input bg-card px-3 text-sm font-medium outline-none focus:border-primary focus:ring-3 focus:ring-ring/20 sm:w-64"
+        className="h-11 w-full rounded-xl border border-input bg-card px-3 text-sm font-medium outline-none focus:border-ring focus:ring-1 focus:ring-ring sm:w-64"
       >
         <option value="all">Semua bulan (ringkasan setiap ahli)</option>
         {periods.map((period) => (
@@ -571,7 +571,7 @@ function DueDateEditor({ collection }: { collection: Collection }) {
         value={value}
         onChange={(event) => setValue(event.target.value)}
         aria-label="Tarikh akhir"
-        className="h-11 w-full min-w-0 rounded-xl border border-input bg-card px-3 text-sm outline-none focus:border-primary focus:ring-3 focus:ring-ring/20"
+        className="h-11 w-full min-w-0 rounded-xl border border-input bg-card px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
       />
       <span className="flex flex-wrap gap-1.5">
         <Button size="sm" onClick={() => void save(value || null)} disabled={busy}>

@@ -241,7 +241,7 @@ function CollectionCard({ collection, view, payments }: { collection: Collection
     <Link
       href={`/kutipan/${collection.id}/`}
       className={cn(
-        "group flex h-full min-w-0 flex-col gap-3.5 rounded-2xl border border-border bg-card p-4 shadow-[0_1px_2px_rgba(231,84,128,.04)] transition-colors outline-none hover:border-primary/40 focus-visible:ring-3 focus-visible:ring-ring/50 md:p-5",
+        "group flex h-full min-w-0 flex-col gap-3.5 rounded-2xl border border-border bg-card p-4 shadow-[0_1px_2px_color-mix(in_srgb,var(--primary)_4%,transparent)] transition-colors outline-none hover:border-primary/40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background md:p-5",
         collection.status === "archived" && "bg-card/70",
       )}
     >
@@ -299,7 +299,7 @@ function CollectionCard({ collection, view, payments }: { collection: Collection
             {counts.exempt > 0 && <StatusChip label={`Dikecualikan ${counts.exempt}`} tone="exempt" compact />}
           </div>
         )}
-        {collection.type === "monthly" && <p className="-mt-1 text-[11px] text-subtle">Kiraan ikut caj (ahli × bulan) sehingga bulan ini.</p>}
+        {collection.type === "monthly" && <p className="-mt-1 text-[11px] text-muted-foreground">Kiraan ikut caj (ahli × bulan) sehingga bulan ini.</p>}
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-border pt-2.5 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1">
             <Users className="size-3.5" aria-hidden /> {totals.participants} peserta

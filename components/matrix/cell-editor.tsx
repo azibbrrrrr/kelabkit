@@ -154,7 +154,7 @@ function PaymentDetails({
             value={paidOn}
             max={today()}
             onChange={(event) => setPaidOn(event.target.value)}
-            className="h-10 rounded-xl border border-input bg-card px-2.5 text-sm outline-none focus:border-primary focus:ring-3 focus:ring-ring/20"
+            className="h-10 rounded-xl border border-input bg-card px-2.5 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
           />
         </div>
         <div className="grid gap-1">
@@ -166,7 +166,7 @@ function PaymentDetails({
             value={reference}
             onChange={(event) => setReference(event.target.value)}
             placeholder="cth. DuitNow 1234"
-            className="h-10 rounded-xl border border-input bg-card px-2.5 text-sm outline-none placeholder:text-subtle focus:border-primary focus:ring-3 focus:ring-ring/20"
+            className="h-10 rounded-xl border border-input bg-card px-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-1 focus:ring-ring"
           />
         </div>
       </div>

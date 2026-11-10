@@ -64,7 +64,7 @@ function TopBar() {
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="flex items-center gap-2.5 rounded-xl px-1.5 py-1 outline-none hover:bg-primary-tint focus-visible:ring-3 focus-visible:ring-ring/40"
+              className="flex items-center gap-2.5 rounded-xl px-1.5 py-1 outline-none hover:bg-primary-tint focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
               <Avatar className="size-9 border-2 border-primary-light">
                 <AvatarFallback className="bg-primary-light text-xs font-semibold text-primary-strong">{initials(treasurer)}</AvatarFallback>
@@ -105,7 +105,7 @@ function PendingBell() {
         <Button variant="ghost" size="icon" className="relative rounded-xl" aria-label={`${pending.length} bayaran menunggu semakan`}>
           <Bell className="size-5" />
           {pending.length > 0 && (
-            <span className="absolute top-1.5 right-1.5 grid size-4 place-items-center rounded-full bg-primary text-[10px] font-semibold text-white">
+            <span className="absolute top-1.5 right-1.5 grid size-4 place-items-center rounded-full bg-primary-fill text-[10px] font-semibold text-primary-foreground">
               {pending.length}
             </span>
           )}
