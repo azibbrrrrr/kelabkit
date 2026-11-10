@@ -13,7 +13,6 @@ import { Spinner } from "@/components/ui/spinner";
 import {
   ACCEPT_ATTR,
   COMPRESS_ABOVE_BYTES,
-  DEMO_FILE_NOTICE,
   MAX_ACTIVE_ATTACHMENTS,
   activeAttachments,
   attachmentsOf,
@@ -74,7 +73,7 @@ export function ProofDropzone({
       // New batch: clear earlier refusals, keep anything still in progress.
       setRows((current) => [
         ...current.filter((row) => row.status !== "error" && (keepDone || row.status !== "done")),
-        ...entries.map(({ file, id }): Row => ({ id, name: file.name || "tampalan.png", size: file.size, status: "checking" })),
+        ...entries.map(({ file, id }): Row => ({ id, name: file.name || tNow("attachments.drop.pastedName", { n: "", ext: "png" }), size: file.size, status: "checking" })),
       ]);
       queue.current = queue.current.then(async () => {
         for (const { file, id } of entries) {
@@ -101,7 +100,7 @@ export function ProofDropzone({
     const files = [...event.clipboardData.files];
     if (!files.length) return;
     event.preventDefault();
-    handle(files.map((file, i) => (file.name ? file : new File([file], `tampalan-${i + 1}.png`, { type: file.type || "image/png" }))));
+    handle(files.map((file, i) => (file.name ? file : new File([file], tNow("attachments.drop.pastedName", { n: `-${i + 1}`, ext: "png" }), { type: file.type || "image/png" }))));
   };
   const onDrop = (event: DragEvent) => {
     event.preventDefault();
@@ -114,7 +113,7 @@ export function ProofDropzone({
       const files: File[] = [];
       for (const item of items) {
         const type = item.types.find((t) => t.startsWith("image/"));
-        if (type) files.push(new File([await item.getType(type)], `tampalan-${files.length + 1}.${type.split("/")[1] || "png"}`, { type }));
+        if (type) files.push(new File([await item.getType(type)], tNow("attachments.drop.pastedName", { n: `-${files.length + 1}`, ext: type.split("/")[1] || "png" }), { type }));
       }
       if (files.length) handle(files);
       else setPasteError(t("attachments.drop.noImage"));
@@ -166,7 +165,7 @@ export function ProofDropzone({
             event.target.value = "";
           }}
         />
-        {demo && <p className="text-[11px] text-muted-foreground">{DEMO_FILE_NOTICE}</p>}
+        {demo && <p className="text-[11px] text-muted-foreground">{t("attachments.demoNotice")}</p>}
       </div>
       {pasteError && (
         <p role="alert" className="text-xs font-medium text-st-unpaid">
@@ -331,12 +330,12 @@ export function AttachProofButton({ payment }: { payment: Payment }) {
         <DialogContent size="md">
           <ModalHeader
             icon={Paperclip}
-            title="Lampirkan bukti bayaran"
-            description={`Bayaran ${formatMoney(payment.amount)} pada ${formatDay(payment.paidOn)}. ${active} daripada ${MAX_ACTIVE_ATTACHMENTS} lampiran digunakan.`}
+            title={t("attachments.attach.title")}
+            description={t("attachments.attach.description", { amount: formatMoney(payment.amount), date: formatDay(payment.paidOn), active, max: MAX_ACTIVE_ATTACHMENTS })}
           />
           <ModalBody>{open && <ProofDropzone onFile={add} keepDone />}</ModalBody>
           <ModalFooter>
-            <Button onClick={() => setOpen(false)}>Selesai</Button>
+            <Button onClick={() => setOpen(false)}>{t("attachments.attach.done")}</Button>
           </ModalFooter>
         </DialogContent>
       </Dialog>
@@ -438,18 +437,18 @@ export function PaymentAttachments({ payment }: { payment: Payment }) {
       <ReasonDialog
         open={removing !== null}
         onOpenChange={(next) => !next && setRemoving(null)}
-        title="Buang lampiran"
+        title={t("attachments.list.removeTitle")}
         description={
           removing && (
             <>
-              <b className="break-all">{removing.fileName}</b> akan dibuang. Fail dipadam daripada pelayar; rekod dan sebab pembuangan kekal dalam log audit.
+              <b className="break-all">{removing.fileName}</b> {t("attachments.remove.description")}
             </>
           )
         }
-        confirmLabel="Buang lampiran"
+        confirmLabel={t("attachments.list.removeTitle")}
         destructive
-        placeholder="Contoh: gambar salah, kabur"
-        success="Lampiran dibuang."
+        placeholder={t("attachments.remove.placeholder")}
+        success={t("attachments.remove.success")}
         onConfirm={(reason) => run((backend) => backend.removeAttachment(removing!.id, reason))}
       />
     </>
@@ -483,8 +482,8 @@ export function ProofViewer({ attachment, onClose }: { attachment: Attachment | 
       <DialogContent size="lg">
         <ModalHeader
           icon={isPdf ? FileText : ImageIcon}
-          title={<span className="block truncate">{attachment?.fileName ?? "Lampiran"}</span>}
-          description={attachment ? `${formatBytes(attachment.sizeBytes)} · dilampirkan ${formatDateTime(attachment.createdAt)}` : ""}
+          title={<span className="block truncate">{attachment?.fileName ?? t("attachments.viewer.fallbackTitle")}</span>}
+          description={attachment ? t("attachments.viewer.meta", { size: formatBytes(attachment.sizeBytes), when: formatDateTime(attachment.createdAt) }) : ""}
         />
         <ModalBody>
         {attachment && (
@@ -499,15 +498,15 @@ export function ProofViewer({ attachment, onClose }: { attachment: Attachment | 
               </p>
             ) : isPdf ? (
               <object data={blob.url} type="application/pdf" aria-label={attachment.fileName} className="h-[68svh] w-full">
-                <p className="p-4 text-sm text-muted-foreground">Pratonton PDF tidak disokong dalam pelayar ini. Gunakan Muat turun.</p>
+                <p className="p-4 text-sm text-muted-foreground">{t("attachments.viewer.pdfUnsupported")}</p>
               </object>
             ) : unsupported ? (
-              <p className="p-4 text-sm text-muted-foreground">Pratonton tidak disokong dalam pelayar ini. Gunakan Muat turun untuk membukanya.</p>
+              <p className="p-4 text-sm text-muted-foreground">{t("attachments.viewer.unsupported")}</p>
             ) : (
               // eslint-disable-next-line @next/next/no-img-element -- blob URL, not optimisable
               <img
                 src={blob.url}
-                alt={`Bukti bayaran: ${attachment.fileName}`}
+                alt={t("attachments.viewer.alt", { name: attachment.fileName })}
                 onError={() => setFailed(attachment.id)}
                 className={cn("mx-auto block", zoom === "fit" ? "max-h-[68svh] w-auto max-w-full object-contain" : "max-w-none")}
                 style={zoom === "fit" ? undefined : { width: `${zoom * 100}%` }}
@@ -521,13 +520,13 @@ export function ProofViewer({ attachment, onClose }: { attachment: Attachment | 
             <div className="flex gap-2">
             {attachment && isImageMime(attachment.mimeType) && !unsupported && (
               <>
-                <Button variant="outline" size="icon-sm" aria-label="Muat dalam tetingkap" title="Muat dalam tetingkap" aria-pressed={zoom === "fit"} onClick={() => setZoom("fit")}>
+                <Button variant="outline" size="icon-sm" aria-label={t("attachments.viewer.fit")} title={t("attachments.viewer.fit")} aria-pressed={zoom === "fit"} onClick={() => setZoom("fit")}>
                   <Maximize2 />
                 </Button>
-                <Button variant="outline" size="icon-sm" aria-label="Zum masuk" title="Zum masuk" disabled={zoom === 2} onClick={() => setZoom(zoom === "fit" ? 1 : 2)}>
+                <Button variant="outline" size="icon-sm" aria-label={t("attachments.viewer.zoomIn")} title={t("attachments.viewer.zoomIn")} disabled={zoom === 2} onClick={() => setZoom(zoom === "fit" ? 1 : 2)}>
                   <ZoomIn />
                 </Button>
-                <Button variant="outline" size="icon-sm" aria-label="Zum keluar" title="Zum keluar" disabled={zoom === "fit"} onClick={() => setZoom(zoom === 2 ? 1 : "fit")}>
+                <Button variant="outline" size="icon-sm" aria-label={t("attachments.viewer.zoomOut")} title={t("attachments.viewer.zoomOut")} disabled={zoom === "fit"} onClick={() => setZoom(zoom === 2 ? 1 : "fit")}>
                   <ZoomOut />
                 </Button>
               </>
@@ -538,13 +537,13 @@ export function ProofViewer({ attachment, onClose }: { attachment: Attachment | 
             {attachment && blob?.url && (
               <Button asChild variant="outline">
                 <a href={blob.url} download={attachment.fileName}>
-                  <Download /> Muat turun
+                  <Download /> {t("attachments.viewer.download")}
                 </a>
               </Button>
             )}
             <Button onClick={onClose}>{t("ui.close")}</Button>
         </ModalFooter>
-        {heic && !unsupported && <span className="sr-only">Format HEIC dipaparkan jika pelayar menyokongnya.</span>}
+        {heic && !unsupported && <span className="sr-only">{t("attachments.viewer.heicNote")}</span>}
       </DialogContent>
     </Dialog>
   );

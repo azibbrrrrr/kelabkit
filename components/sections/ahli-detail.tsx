@@ -254,7 +254,7 @@ function Participation({ member }: { member: Member }) {
       {/* One Dialog: a centred card from 640px up, a bottom sheet below it. */}
       <Dialog open={current !== null} onOpenChange={close}>
         <DialogContent size="md">
-          <ModalHeader icon={WalletCards} title="Caj ahli" description="Rekod bayaran, ubah amaun atau lihat sejarah" />
+          <ModalHeader icon={WalletCards} title={t("memberDetail.dialogs.chargeTitle")} description={t("memberDetail.dialogs.chargeDescription")} />
           <ModalBody>{current && <CellEditor cell={current} onDone={done} onDirtyChange={setDirty} />}</ModalBody>
         </DialogContent>
       </Dialog>
@@ -404,6 +404,7 @@ function EditMemberDialog({ member, open, onOpenChange }: { member: Member; open
 }
 
 function EditMemberForm({ member, onClose }: { member: Member; onClose: () => void }) {
+  const t = useT();
   const { data } = useSnapshot();
   const { run } = useKelab();
   const [name, setName] = useState(member.name);
@@ -419,7 +420,7 @@ function EditMemberForm({ member, onClose }: { member: Member; onClose: () => vo
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!name.trim()) return setError("Nama diperlukan.");
+    if (!name.trim()) return setError(t("memberDetail.dialogs.edit.nameRequired"));
     const changes = {
       ...(name.trim() !== member.name ? { name } : {}),
       ...(category !== member.category ? { category } : {}),
@@ -431,7 +432,7 @@ function EditMemberForm({ member, onClose }: { member: Member; onClose: () => vo
     setError(null);
     try {
       await run((backend) => backend.updateMember(member.id, changes));
-      toast.success("Maklumat ahli dikemas kini.");
+      toast.success(t("memberDetail.dialogs.edit.saved"));
       onClose();
     } catch (cause) {
       setError(messageFor(cause));
@@ -442,27 +443,27 @@ function EditMemberForm({ member, onClose }: { member: Member; onClose: () => vo
 
   return (
     <form onSubmit={submit} className={modalFormClass} noValidate>
-      <ModalHeader icon={UserPen} title="Edit profil ahli" description="Perubahan direkod dalam log audit. Rekod bayaran tidak terjejas." />
+      <ModalHeader icon={UserPen} title={t("memberDetail.dialogs.edit.title")} description={t("memberDetail.dialogs.edit.description")} />
       <ModalBody>
-        <ModalSection label="Maklumat ahli">
+        <ModalSection label={t("memberDetail.dialogs.edit.sectionInfo")}>
           <ModalField
-            label="Nama penuh"
+            label={t("memberDetail.dialogs.edit.fullName")}
             htmlFor="edit-name"
             helper={
               clash && (
                 <span className="flex items-start gap-1.5 text-st-partial">
                   <TriangleAlert className="mt-px size-3.5 shrink-0" aria-hidden />
-                  Sama dengan ahli lain &quot;{clash.name}&quot;. Nama ahli mesti berbeza; tambah inisial atau nama penuh untuk membezakan.
+                  {t("memberDetail.dialogs.edit.nameClash", { name: clash.name })}
                 </span>
               )
             }
           >
             <Input id="edit-name" value={name} onChange={(event) => setName(event.target.value)} aria-invalid={Boolean(clash) || undefined} />
           </ModalField>
-          <ModalField label="Kategori" labelId="edit-category-label">
+          <ModalField label={t("memberDetail.profile.category")} labelId="edit-category-label">
             <SegmentedChoice<MemberCategory | "">
               joined
-              label="Kategori"
+              label={t("memberDetail.profile.category")}
               optional
               value={category ?? ""}
               onChange={(value) => setCategory(value || null)}
@@ -470,23 +471,23 @@ function EditMemberForm({ member, onClose }: { member: Member; onClose: () => vo
             />
           </ModalField>
         </ModalSection>
-        <ModalSection label="Hubungan" divided>
-          <ModalField label="No. telefon (pilihan)" htmlFor="edit-phone">
+        <ModalSection label={t("memberDetail.dialogs.edit.sectionContact")} divided>
+          <ModalField label={t("memberDetail.dialogs.edit.phoneOptional")} htmlFor="edit-phone">
             <Input id="edit-phone" inputMode="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="012-345 6789" />
           </ModalField>
-          <ModalField label="Catatan (pilihan)" htmlFor="edit-notes">
-            <Textarea id="edit-notes" rows={3} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="cth. Bertukar ke sekolah lain pada Jun" />
+          <ModalField label={t("memberDetail.dialogs.edit.notesOptional")} htmlFor="edit-notes">
+            <Textarea id="edit-notes" rows={3} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder={t("memberDetail.dialogs.edit.notesPlaceholder")} />
           </ModalField>
         </ModalSection>
         {error && <ModalError>{error}</ModalError>}
       </ModalBody>
       <ModalFooter>
         <Button type="button" variant="ghost" onClick={onClose} disabled={busy}>
-          Batal
+          {t("common.cancel")}
         </Button>
         <Button type="submit" disabled={busy}>
           {busy && <Spinner className="size-4" />}
-          Simpan perubahan
+          {t("memberDetail.dialogs.edit.submit")}
         </Button>
       </ModalFooter>
     </form>
@@ -494,6 +495,7 @@ function EditMemberForm({ member, onClose }: { member: Member; onClose: () => vo
 }
 
 function ActiveDialog({ member, open, onOpenChange }: { member: Member; open: boolean; onOpenChange: (open: boolean) => void }) {
+  const t = useT();
   const { run } = useKelab();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -504,7 +506,7 @@ function ActiveDialog({ member, open, onOpenChange }: { member: Member; open: bo
     setError(null);
     try {
       await run((backend) => backend.setMemberActive(member.id, next));
-      toast.success(next ? `${member.name} diaktifkan semula.` : `${member.name} dinyahaktifkan. Rekod bayaran dikekalkan.`);
+      toast.success(t(next ? "memberDetail.dialogs.active.activatedToast" : "memberDetail.dialogs.active.deactivatedToast", { name: member.name }));
       onOpenChange(false);
     } catch (cause) {
       setError(messageFor(cause));
@@ -526,16 +528,16 @@ function ActiveDialog({ member, open, onOpenChange }: { member: Member; open: bo
         <ModalHeader
           icon={next ? UserCheck : UserX}
           tone={next ? "brand" : "danger"}
-          title={next ? `Aktifkan semula ${member.name}?` : `Nyahaktifkan ${member.name}?`}
-          description={next ? "Ahli akan dipaparkan semula dalam senarai harian dan Matriks." : "Gunakan ini untuk ahli yang bertukar atau bersara. Tiada apa-apa dipadam."}
+          title={t(next ? "memberDetail.dialogs.active.activateTitle" : "memberDetail.dialogs.active.deactivateTitle", { name: member.name })}
+          description={t(next ? "memberDetail.dialogs.active.activateDescription" : "memberDetail.dialogs.active.deactivateDescription")}
         />
         {(!next || error) && (
           <ModalBody>
             {!next && (
               <ul className="grid gap-1.5 rounded-[10px] bg-primary-tint px-3 py-2.5 text-xs text-foreground/80">
-                <li>• Sejarah bayaran dikekalkan sepenuhnya.</li>
-                <li>• Ahli kekal dalam rekod kutipan sedia ada; baki yang belum dijelaskan masih dikira.</li>
-                <li>• Ahli disembunyikan daripada Matriks secara lalai dan boleh diaktifkan semula bila-bila masa.</li>
+                <li>• {t("memberDetail.dialogs.active.point1")}</li>
+                <li>• {t("memberDetail.dialogs.active.point2")}</li>
+                <li>• {t("memberDetail.dialogs.active.point3")}</li>
               </ul>
             )}
             {error && <ModalError>{error}</ModalError>}
@@ -543,11 +545,11 @@ function ActiveDialog({ member, open, onOpenChange }: { member: Member; open: bo
         )}
         <ModalFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>
-            Batal
+            {t("common.cancel")}
           </Button>
           <Button variant={next ? "default" : "danger"} onClick={() => void confirm()} disabled={busy}>
             {busy && <Spinner className="size-4" />}
-            {next ? "Aktifkan semula" : "Nyahaktifkan"}
+            {t(next ? "memberDetail.dialogs.active.activate" : "memberDetail.dialogs.active.deactivate")}
           </Button>
         </ModalFooter>
       </DialogContent>

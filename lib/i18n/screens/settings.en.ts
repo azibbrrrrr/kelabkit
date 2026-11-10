@@ -50,6 +50,11 @@ export const settingsEn: DeepStringify<typeof settingsMs> = {
     description: "This prototype is not connected to a server yet.",
     note: "All members, collections and payments are stored in this browser only. They are not shared with other devices and are lost if browser data is cleared.",
     resetNote: "Resetting deletes all your changes and restores the original sample data. Your theme and floral decoration choices are not affected.",
+    resetDone: "Demo data restored to the original.",
+    resetButton: "Reset demo data",
+    resetTitle: "Reset demo data?",
+    resetWarning: "All members, collections, payments and audit log entries you added or changed in this browser will be deleted and replaced with the original sample data. This cannot be undone.",
+    resetConfirm: "Yes, reset",
   },
   audit: {
     title: "Audit log",

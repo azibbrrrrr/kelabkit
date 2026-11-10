@@ -377,23 +377,23 @@ function StatusActions({ collection, dueNow, onAddParticipants }: { collection: 
 
   const activate: StatusChange = {
     status: "active",
-    title: "Aktifkan kutipan",
+    title: t("collectionDetail.status.activateTitle"),
     body: "",
-    confirm: "Aktifkan",
+    confirm: t("collectionDetail.status.activateConfirm"),
     success: t("collectionDetail.actions.activated", { name: collection.name }),
   };
   const complete: StatusChange = {
     status: "completed",
-    title: "Tandakan selesai?",
-    body: `Masih ada baki semasa ${formatMoney(dueNow)}. Baki itu kekal direkod dan bayaran masih boleh direkod selepas ini.`,
-    confirm: "Tandakan selesai",
+    title: t("collectionDetail.status.completeTitle"),
+    body: t("collectionDetail.status.completeBody", { due: formatMoney(dueNow) }),
+    confirm: t("collectionDetail.status.completeConfirm"),
     success: t("collectionDetail.actions.completed", { name: collection.name }),
   };
   const archive: StatusChange = {
     status: "archived",
-    title: "Arkibkan kutipan ini?",
-    body: "Semua caj, bayaran dan log audit dikekalkan dan masih boleh dilihat. Kutipan diarkib disembunyikan daripada Matriks dan tidak menerima bayaran baharu. Anda boleh memulihkannya kemudian.",
-    confirm: "Arkibkan",
+    title: t("collectionDetail.status.archiveTitle"),
+    body: t("collectionDetail.status.archiveBody"),
+    confirm: t("collectionDetail.status.archiveConfirm"),
     success: t("collectionDetail.actions.archivedDone", { name: collection.name }),
   };
   return (
@@ -443,7 +443,7 @@ function StatusActions({ collection, dueNow, onAddParticipants }: { collection: 
             <ModalText alert>{confirming?.body}</ModalText>
           </ModalBody>
           <ModalFooter>
-            <AlertDialogCancel variant="ghost" disabled={busy}>Batal</AlertDialogCancel>
+            <AlertDialogCancel variant="ghost" disabled={busy}>{t("common.cancel")}</AlertDialogCancel>
             {/* A plain button, not AlertDialogAction, so the dialog stays open until the change succeeds. */}
             <Button variant={confirming?.status === "archived" ? "danger" : "default"} onClick={() => confirming && void change(confirming)} disabled={busy}>
               {busy && <Spinner className="size-4" />}
@@ -1080,6 +1080,7 @@ function EmptyRows({ hasParticipants }: { hasParticipants: boolean }) {
 // Payment editor: Dialog on desktop, bottom sheet on phones ----------------------------------
 
 function EditorHost({ editing, columns, onClose }: { editing: Editing | null; columns: MatrixColumn[]; onClose: () => void }) {
+  const t = useT();
   const { view } = useSnapshot();
   const [dirty, setDirty] = useState(false);
 
@@ -1094,7 +1095,7 @@ function EditorHost({ editing, columns, onClose }: { editing: Editing | null; co
   };
   const onOpenChange = (next: boolean) => {
     if (next) return;
-    if (dirty && !window.confirm("Buang perubahan yang belum disimpan?")) return;
+    if (dirty && !window.confirm(t("collectionDetail.editorHost.discardConfirm"))) return;
     close();
   };
   const editor = cell && <CellEditor cell={cell} onDone={close} onDirtyChange={setDirty} />;
@@ -1103,7 +1104,7 @@ function EditorHost({ editing, columns, onClose }: { editing: Editing | null; co
   return (
     <Dialog open={cell !== null} onOpenChange={onOpenChange}>
       <DialogContent size="md">
-        <ModalHeader icon={ReceiptText} title="Rekod bayaran" description="Rekod bayaran, ubah amaun atau lihat sejarah" />
+        <ModalHeader icon={ReceiptText} title={t("collectionDetail.editorHost.title")} description={t("collectionDetail.editorHost.description")} />
         <ModalBody>{editor}</ModalBody>
       </DialogContent>
     </Dialog>
@@ -1113,6 +1114,7 @@ function EditorHost({ editing, columns, onClose }: { editing: Editing | null; co
 // Add participants ---------------------------------------------------------------------------
 
 function AddParticipantsDialog({ collection, open, onOpenChange }: { collection: Collection; open: boolean; onOpenChange: (open: boolean) => void }) {
+  const t = useT();
   const { data, view } = useSnapshot();
   const { run } = useKelab();
   const voluntary = collection.type === "voluntary";
@@ -1146,7 +1148,7 @@ function AddParticipantsDialog({ collection, open, onOpenChange }: { collection:
   };
 
   const submit = async () => {
-    if (!picked.size) return setError("Pilih sekurang-kurangnya seorang ahli.");
+    if (!picked.size) return setError(t("collectionDetail.addParticipants.pickOne"));
     let override: Sen | null = null;
     if (!voluntary) {
       const parsed = parseMoney(amount);
@@ -1164,7 +1166,7 @@ function AddParticipantsDialog({ collection, open, onOpenChange }: { collection:
           ids.map((memberId) => ({ memberId, amountOverride: override, exempt: false, note: null })),
         ),
       );
-      toast.success(`${ids.length} ahli ditambah ke "${collection.name}".`);
+      toast.success(t("collectionDetail.addParticipants.added", { count: ids.length, name: collection.name }));
       reset();
       onOpenChange(false);
     } catch (cause) {
@@ -1186,30 +1188,29 @@ function AddParticipantsDialog({ collection, open, onOpenChange }: { collection:
       <DialogContent size="md">
         <ModalHeader
           icon={UserPlus}
-          title="Tambah peserta"
+          title={t("collectionDetail.addParticipants.title")}
           description={
             voluntary
-              ? "Ahli yang ditambah dijemput menyumbang. Mereka tidak berhutang apa-apa."
+              ? t("collectionDetail.addParticipants.descVoluntary")
               : isMonthly(collection)
-                ? `Caj dicipta untuk setiap ${months} bulan dalam tempoh kutipan.`
-                : "Caj dicipta untuk setiap ahli yang ditambah."
+                ? t("collectionDetail.addParticipants.descMonthly", { months })
+                : t("collectionDetail.addParticipants.descOnce")
           }
         />
         <ModalBody>
           {candidates.length === 0 ? (
-            <p className="rounded-[10px] bg-primary-tint px-3 py-4 text-center text-sm text-muted-foreground">Semua ahli aktif sudah termasuk dalam kutipan ini.</p>
+            <p className="rounded-[10px] bg-primary-tint px-3 py-4 text-center text-sm text-muted-foreground">{t("collectionDetail.addParticipants.allIncluded")}</p>
           ) : (
             <>
               {!voluntary && (
                 <ModalField
-                  label={isMonthly(collection) ? "Amaun sebulan" : "Amaun perlu dibayar"}
+                  label={isMonthly(collection) ? t("collectionDetail.addParticipants.amountMonthly") : t("collectionDetail.addParticipants.amountOnce")}
                   htmlFor="add-amount"
                   error={amountError}
                   helper={
                     isMonthly(collection) && pastMonths > 0 ? (
                       <span className="text-st-partial">
-                        Perhatian: {pastMonths} bulan sudah berlalu. Caj bulan itu akan terus menjadi Belum Bayar atau Lewat. Jika ahli tidak perlu membayarnya,
-                        pilih bulan itu dan gunakan &ldquo;Kecualikan&rdquo; dalam tab Ubah amaun.
+                        {t("collectionDetail.addParticipants.pastBefore", { count: pastMonths })}
                       </span>
                     ) : undefined
                   }
@@ -1226,10 +1227,10 @@ function AddParticipantsDialog({ collection, open, onOpenChange }: { collection:
                 </ModalField>
               )}
               <div className="grid gap-3">
-                <SearchInput id="add-participant-search" value={query} onChange={setQuery} placeholder="Cari ahli…" className="sm:max-w-none" />
+                <SearchInput id="add-participant-search" value={query} onChange={setQuery} placeholder={t("collectionDetail.addParticipants.search")} className="sm:max-w-none" />
                 <ul className="max-h-72 divide-y divide-border overflow-y-auto overscroll-contain rounded-[10px] border border-border">
                   {visible.length === 0 ? (
-                    <li className="px-3 py-4 text-center text-sm text-muted-foreground">Tiada ahli sepadan.</li>
+                    <li className="px-3 py-4 text-center text-sm text-muted-foreground">{t("collectionDetail.addParticipants.noMatch")}</li>
                   ) : (
                     visible.map((member) => (
                       <li key={member.id}>
@@ -1237,7 +1238,7 @@ function AddParticipantsDialog({ collection, open, onOpenChange }: { collection:
                           <Checkbox checked={picked.has(member.id)} onCheckedChange={(value) => toggle(member.id, value === true)} />
                           <span className="min-w-0 flex-1">
                             <span className="block text-sm font-medium break-words">{member.name}</span>
-                            <span className="block text-xs text-muted-foreground">{member.category ? categoryLabels[member.category] : "Tiada kategori"}</span>
+                            <span className="block text-xs text-muted-foreground">{member.category ? categoryLabels[member.category] : t("collectionDetail.member.noCategory")}</span>
                           </span>
                         </label>
                       </li>
@@ -1251,12 +1252,12 @@ function AddParticipantsDialog({ collection, open, onOpenChange }: { collection:
         </ModalBody>
         <ModalFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>
-            {candidates.length === 0 ? "Tutup" : "Batal"}
+            {candidates.length === 0 ? t("collectionDetail.addParticipants.close") : t("collectionDetail.addParticipants.cancel")}
           </Button>
           {candidates.length > 0 && (
             <Button onClick={() => void submit()} disabled={busy}>
               {busy ? <Spinner className="size-4" /> : <UserPlus />}
-              Tambah {picked.size || ""} ahli
+              {t("collectionDetail.addParticipants.submit", { count: picked.size || "" })}
             </Button>
           )}
         </ModalFooter>

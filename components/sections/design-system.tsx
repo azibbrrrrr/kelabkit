@@ -15,7 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import { cellStatusLabels, overdueLabel, pendingLabel, type CellStatus } from "@/lib/labels";
 import { today } from "@/lib/format";
 import { useT } from "@/lib/i18n/react";
-import { themes, type ThemeId } from "@/lib/themes";
+import { themeLabel, themeMood, themes, type ThemeId } from "@/lib/themes";
 import { cn } from "@/lib/utils";
 import { Check, Inbox, Palette, Plus, Search, Type } from "lucide-react";
 import { useState } from "react";
@@ -209,8 +209,8 @@ export function DesignSystemPage() {
                   {theme === option.id && <Check className="size-4" />}
                 </span>
                 <span className="min-w-0">
-                  <span className="block text-[13px] font-semibold">{option.label}</span>
-                  <span className="block truncate text-[11px] text-muted-foreground">{option.mood}</span>
+                  <span className="block text-[13px] font-semibold">{themeLabel(option.id)}</span>
+                  <span className="block truncate text-[11px] text-muted-foreground">{themeMood(option.id)}</span>
                 </span>
               </ChoiceCard>
             ))}

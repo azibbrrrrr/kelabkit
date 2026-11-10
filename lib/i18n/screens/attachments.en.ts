@@ -16,12 +16,31 @@ export const attachmentsEn: DeepStringify<typeof attachmentsMs> = {
     paste: "Paste image",
     noImage: "There is no image on the clipboard.",
     clipboardFailed: "The clipboard could not be read. Click this box and press Ctrl/⌘ V.",
+    pastedName: "pasted{n}.{ext}",
     dismiss: "Dismiss message for {name}",
   },
   field: {
     title: "Proof of payment (optional)",
     willAttach: "will be attached on save",
     removeFromList: "Remove {name} from the list",
+  },
+  demoNotice: "Files are stored in this browser only (demo).",
+  remove: {
+    description: "will be removed. The file is deleted from the browser; the record and the reason stay in the audit log.",
+    placeholder: "For example: wrong photo, blurry",
+    success: "Attachment removed.",
+  },
+  viewer: {
+    fallbackTitle: "Attachment",
+    meta: "{size} · attached {when}",
+    pdfUnsupported: "This browser cannot preview PDFs. Use Download.",
+    unsupported: "This browser cannot preview this file. Use Download to open it.",
+    alt: "Payment proof: {name}",
+    fit: "Fit to window",
+    zoomIn: "Zoom in",
+    zoomOut: "Zoom out",
+    download: "Download",
+    heicNote: "HEIC is shown if the browser supports it.",
   },
   stagedFailed: "The payment was saved, but the proof could not be attached: {error} Attach it again from the payment history.",
   chip: {
@@ -33,6 +52,9 @@ export const attachmentsEn: DeepStringify<typeof attachmentsMs> = {
   },
   attach: {
     button: "Attach proof",
+    title: "Attach payment proof",
+    description: "Payment of {amount} on {date}. {active} of {max} attachments used.",
+    done: "Done",
     full: "Already {max} attachments. Remove one first.",
   },
   list: {

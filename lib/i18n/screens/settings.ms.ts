@@ -47,6 +47,11 @@ export const settingsMs = {
     description: "Prototaip ini belum bersambung ke pelayan.",
     note: "Semua ahli, kutipan dan bayaran disimpan dalam pelayar ini sahaja. Ia tidak dikongsi dengan peranti lain dan hilang jika data pelayar dipadam.",
     resetNote: "Set semula memadam semua perubahan anda dan memulihkan data contoh asal. Pilihan tema dan hiasan bunga tidak terjejas.",
+    resetDone: "Data demo telah dipulihkan kepada asal.",
+    resetButton: "Set semula data demo",
+    resetTitle: "Set semula data demo?",
+    resetWarning: "Semua ahli, kutipan, bayaran dan log audit yang anda tambah atau ubah dalam pelayar ini akan dipadam dan diganti dengan data contoh asal. Tindakan ini tidak boleh dibatalkan.",
+    resetConfirm: "Ya, set semula",
   },
   audit: {
     title: "Log audit",

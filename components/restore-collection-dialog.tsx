@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Spinner } from "@/components/ui/spinner";
+import { useT } from "@/lib/i18n/react";
 import { messageFor } from "@/lib/errors";
 import { formatMoney } from "@/lib/format";
 import type { Collection } from "@/lib/types";
@@ -57,6 +58,7 @@ export function RestoreCollectionDialog({
 }
 
 function RestoreBody({ collection, onClose }: { collection: Collection; onClose: () => void }) {
+  const t = useT();
   const { run } = useKelab();
   const { view } = useSnapshot();
   const ledgers = (view.chargesByCollection.get(collection.id) ?? []).map((charge) => view.ledgers.get(charge.id)!);
@@ -71,7 +73,7 @@ function RestoreBody({ collection, onClose }: { collection: Collection; onClose:
     setBusy(true);
     try {
       await run((backend) => backend.setCollectionStatus(collection.id, target));
-      toast.success(`"${collection.name}" dipulihkan sebagai ${target === "active" ? "Aktif" : "Selesai"}.`);
+      toast.success(t("dialogs.restore.restored", { name: collection.name, status: target === "active" ? t("dialogs.restore.active") : t("dialogs.restore.completed") }));
       onClose();
     } catch (error) {
       toast.error(messageFor(error));
@@ -85,26 +87,26 @@ function RestoreBody({ collection, onClose }: { collection: Collection; onClose:
       <ModalHeader
         alert
         icon={ArchiveRestore}
-        title={<>Pulihkan &quot;{collection.name}&quot;?</>}
-        description={`${balance > 0 ? `Masih ada baki ${formatMoney(balance)}.` : "Tiada baki tertunggak."} Semua caj dan bayaran kekal seperti sebelum diarkib.`}
+        title={t("dialogs.restore.title", { name: collection.name })}
+        description={`${balance > 0 ? t("dialogs.restore.balance", { amount: formatMoney(balance) }) : t("dialogs.restore.noBalance")} ${t("dialogs.restore.keep")}`}
       />
       <ModalBody>
-        <RadioGroup value={target} onValueChange={(value) => setTarget(value as Target)} aria-label="Status selepas dipulihkan" className="gap-2">
+        <RadioGroup value={target} onValueChange={(value) => setTarget(value as Target)} aria-label={t("dialogs.restore.statusLabel")} className="gap-2">
           <Option
             value="active"
-            title="Aktif"
-            hint={hasMembers ? "Kembali ke Matriks dan menerima bayaran." : "Tambah peserta dahulu untuk mengaktifkan."}
+            title={t("dialogs.restore.active")}
+            hint={hasMembers ? t("dialogs.restore.activeHint") : t("dialogs.restore.activeNeedsMembers")}
             disabled={!hasMembers}
           />
-          <Option value="completed" title="Selesai" hint="Untuk rujukan; bayaran lewat masih boleh direkod." />
+          <Option value="completed" title={t("dialogs.restore.completed")} hint={t("dialogs.restore.completedHint")} />
         </RadioGroup>
       </ModalBody>
       <ModalFooter>
-        <AlertDialogCancel variant="ghost" disabled={busy}>Batal</AlertDialogCancel>
+        <AlertDialogCancel variant="ghost" disabled={busy}>{t("dialogs.restore.cancel")}</AlertDialogCancel>
         {/* A plain button, not AlertDialogAction, so the dialog stays open until the change succeeds. */}
         <Button onClick={() => void restore()} disabled={busy}>
           {busy && <Spinner className="size-4" />}
-          Pulihkan
+          {t("dialogs.restore.submit")}
         </Button>
       </ModalFooter>
     </>

@@ -11,7 +11,6 @@ export const MAX_ACTIVE_ATTACHMENTS = 5;
 export const COMPRESS_ABOVE_BYTES = 1.5 * 1024 * 1024;
 export const MAX_IMAGE_EDGE = 2000;
 
-export const DEMO_FILE_NOTICE = "Fail disimpan dalam pelayar ini sahaja (demo).";
 export const ACCEPT_ATTR = "image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.pdf";
 
 const BY_EXTENSION: Record<string, string> = {

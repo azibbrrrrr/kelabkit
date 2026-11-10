@@ -21,6 +21,9 @@ import { attachmentsMs } from "./screens/attachments.ms";
 import { emojiMs } from "./screens/emoji.ms";
 import { quickFillMs } from "./screens/quickFill.ms";
 import { brandMs } from "./screens/brand.ms";
+import { dialogsMs } from "./screens/dialogs.ms";
+import { bulkAddMs } from "./screens/bulkAdd.ms";
+import { themesMs } from "./screens/themes.ms";
 
 export const ms = {
   common: {
@@ -466,4 +469,7 @@ export const ms = {
   emoji: emojiMs,
   quickFill: quickFillMs,
   brand: brandMs,
+  dialogs: dialogsMs,
+  bulkAdd: bulkAddMs,
+  themes: themesMs,
 } as const;

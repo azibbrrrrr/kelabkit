@@ -7,8 +7,7 @@ import { describe, expect, it } from "vitest";
 // types a new label inline) and nothing subtler.
 //
 // Escape hatches: end the line with `// i18n-ok` for intentional BM (data, sample names, the
-// reminder message template), or add the file to `deferred` while its dialogs await the
-// modal-layout PR.
+// reminder message template).
 
 const root = join(__dirname, "..");
 
@@ -22,27 +21,18 @@ const words = [
 ];
 const wordRe = new RegExp(`(?<![A-Za-z])(?:${words.join("|")})(?![A-Za-z])`);
 
-/**
- * Dialog copy deferred to the modal-layout PR: the number of offending lines each file may still
- * hold. The count may only go down; when the modal PR lands, delete the entry.
- */
-const deferred: Record<string, number> = {
-  "components/sections/ahli-detail.tsx": 14,
-  "components/sections/bayaran.tsx": 1,
-  "components/sections/kutipan-detail.tsx": 18,
-  "components/sections/tetapan.tsx": 2,
-  "components/attachments.tsx": 6,
-};
-
 function files(dir: string): string[] {
   return readdirSync(join(root, dir), { withFileTypes: true }).flatMap((e) => {
     const rel = `${dir}/${e.name}`;
     if (e.isDirectory()) return files(rel);
-    return /\.tsx$/.test(e.name) ? [rel] : [];
+    return /\.tsx?$/.test(e.name) ? [rel] : [];
   });
 }
 
-const targets = [...files("components/sections"), ...files("components/isi-pantas"), "components/attachments.tsx", "components/brand.tsx", "components/emoji-picker.tsx"];
+const targets = [
+  ...files("components").filter((f) => !f.startsWith("components/ui/")),
+  ...["lib/themes.ts", "lib/attachments.ts"],
+];
 
 function offenders(source: string) {
   const out: string[] = [];
@@ -83,8 +73,7 @@ describe("no hard-coded Bahasa Melayu UI copy outside t()", () => {
   for (const file of targets) {
     it(file, () => {
       const found = offenders(readFileSync(join(root, file), "utf8"));
-      const allowed = deferred[file] ?? 0;
-      expect(found.length, `${file} has inline BM; use t() or mark the line // i18n-ok:\n${found.join("\n")}`).toBeLessThanOrEqual(allowed);
+      expect(found.length, `${file} has inline BM; use t() or mark the line // i18n-ok:\n${found.join("\n")}`).toBe(0);
     });
   }
 });

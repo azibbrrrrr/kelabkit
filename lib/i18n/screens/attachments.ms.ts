@@ -13,12 +13,31 @@ export const attachmentsMs = {
     paste: "Tampal gambar",
     noImage: "Tiada gambar dalam papan klip.",
     clipboardFailed: "Papan klip tidak dapat dibaca. Klik kotak ini dan tekan Ctrl/⌘ V.",
+    pastedName: "tampalan{n}.{ext}",
     dismiss: "Tutup mesej untuk {name}",
   },
   field: {
     title: "Bukti bayaran (pilihan)",
     willAttach: "akan dilampirkan semasa simpan",
     removeFromList: "Buang {name} daripada senarai",
+  },
+  demoNotice: "Fail disimpan dalam pelayar ini sahaja (demo).",
+  remove: {
+    description: "akan dibuang. Fail dipadam daripada pelayar; rekod dan sebab pembuangan kekal dalam log audit.",
+    placeholder: "Contoh: gambar salah, kabur",
+    success: "Lampiran dibuang.",
+  },
+  viewer: {
+    fallbackTitle: "Lampiran",
+    meta: "{size} · dilampirkan {when}",
+    pdfUnsupported: "Pratonton PDF tidak disokong dalam pelayar ini. Gunakan Muat turun.",
+    unsupported: "Pratonton tidak disokong dalam pelayar ini. Gunakan Muat turun untuk membukanya.",
+    alt: "Bukti bayaran: {name}",
+    fit: "Muat dalam tetingkap",
+    zoomIn: "Zum masuk",
+    zoomOut: "Zum keluar",
+    download: "Muat turun",
+    heicNote: "Format HEIC dipaparkan jika pelayar menyokongnya.",
   },
   stagedFailed: "Bayaran telah disimpan, tetapi bukti tidak dapat dilampirkan: {error} Lampirkan semula dari Sejarah bayaran.",
   chip: {
@@ -30,6 +49,9 @@ export const attachmentsMs = {
   },
   attach: {
     button: "Lampirkan bukti",
+    title: "Lampirkan bukti bayaran",
+    description: "Bayaran {amount} pada {date}. {active} daripada {max} lampiran digunakan.",
+    done: "Selesai",
     full: "Sudah {max} lampiran. Buang satu dahulu.",
   },
   list: {

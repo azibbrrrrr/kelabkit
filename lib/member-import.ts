@@ -1,4 +1,5 @@
 import { parseCsv } from "@/lib/csv";
+import { t } from "@/lib/i18n";
 import type { MemberCategory } from "@/lib/types";
 
 // Bulk member import from CSV: the template the treasurer downloads and the parser that
@@ -72,10 +73,8 @@ export function phoneDigits(phone: string) {
   return phone.replace(/\D/g, "").length;
 }
 
-export const invalidCategoryMessage = (value: string) =>
-  `Kategori "${value}" tidak dikenali. Guna: ${ACCEPTED_CATEGORIES}. Dibiarkan kosong; pilih kategori di bawah.`;
-export const invalidPhoneMessage = (phone: string) =>
-  `No. telefon "${phone}" terlalu pendek (sekurang-kurangnya ${MIN_PHONE_DIGITS} digit). Contoh: 012-345 6789.`;
+export const invalidCategoryMessage = (value: string) => t("bulkAdd.issue.category", { value, accepted: ACCEPTED_CATEGORIES });
+export const invalidPhoneMessage = (phone: string) => t("bulkAdd.issue.phone", { phone, min: MIN_PHONE_DIGITS });
 
 const normaliseHeader = (cell: string) => cell.trim().toLowerCase().replace(/\s+/g, " ");
 const cleanName = (name: string) => name.replace(/\s+/g, " ").trim();
@@ -87,11 +86,11 @@ function guessDelimiter(text: string) {
 }
 
 const headerError = (message: string): ImportIssue => ({ line: null, kind: "header", level: "error", message });
-const EXPECTED = `Pengepala yang dijangka: nama, kategori, telefon (kategori dan telefon pilihan).`;
+const expected = () => t("bulkAdd.issue.expected");
 
 export function parseMemberCsv(text: string, options: { defaultCategory?: MemberCategory | null } = {}): { rows: MemberImportRow[]; issues: ImportIssue[] } {
   const table = parseCsv(text, guessDelimiter(text));
-  if (!table.length) return { rows: [], issues: [headerError(`Fail CSV kosong. ${EXPECTED}`)] };
+  if (!table.length) return { rows: [], issues: [headerError(t("bulkAdd.issue.empty", { expected: expected() }))] };
 
   const header = table[0].map(normaliseHeader);
   const indexOf = (names: readonly string[]) => header.findIndex((cell) => names.includes(cell));
@@ -101,13 +100,13 @@ export function parseMemberCsv(text: string, options: { defaultCategory?: Member
 
   if (nameAt < 0) {
     const found = table[0].map((cell) => `"${cell.trim()}"`).filter((cell) => cell !== '""').join(", ");
-    return { rows: [], issues: [headerError(`Pengepala tidak dikenali (${found}). ${EXPECTED} Muat turun templat CSV untuk format yang betul.`)] };
+    return { rows: [], issues: [headerError(t("bulkAdd.issue.unknownHeader", { found, expected: expected() }))] };
   }
 
   const issues: ImportIssue[] = [];
   header.forEach((cell, index) => {
     if (cell !== "" && index !== nameAt && index !== categoryAt && index !== phoneAt) {
-      issues.push({ line: 1, kind: "unknown-column", level: "warning", message: `Lajur "${table[0][index].trim()}" tidak dikenali dan diabaikan. ${EXPECTED}` });
+      issues.push({ line: 1, kind: "unknown-column", level: "warning", message: t("bulkAdd.issue.unknownColumn", { column: table[0][index].trim(), expected: expected() }) });
     }
   });
 
@@ -118,11 +117,11 @@ export function parseMemberCsv(text: string, options: { defaultCategory?: Member
     const rawCategory = categoryAt >= 0 ? (cells[categoryAt] ?? "").trim() : "";
     const phone = phoneAt >= 0 ? (cells[phoneAt] ?? "").trim() : "";
     if (!name) {
-      issues.push({ line, kind: "blank-name", level: "skipped", message: `Nama kosong; baris dilangkau${rawCategory || phone ? ` (${[rawCategory, phone].filter(Boolean).join(", ")})` : ""}.` });
+      issues.push({ line, kind: "blank-name", level: "skipped", message: t("bulkAdd.issue.blankName", { extra: rawCategory || phone ? ` (${[rawCategory, phone].filter(Boolean).join(", ")})` : "" }) });
       return;
     }
     if (EXAMPLE_NAMES.has(name.toLowerCase())) {
-      issues.push({ line, kind: "example", level: "skipped", message: `"${name}" ialah baris contoh daripada templat; diabaikan.` });
+      issues.push({ line, kind: "example", level: "skipped", message: t("bulkAdd.issue.example", { name }) });
       rows.push({ line, name, category: null, invalidCategory: null, phone, isExample: true });
       return;
     }
