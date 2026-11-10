@@ -3,6 +3,7 @@
 import { useKelab } from "@/components/data-provider";
 import { Input } from "@/components/ui/input";
 import { collectionTypeLabels } from "@/lib/labels";
+import { useT } from "@/lib/i18n/react";
 import { cn } from "@/lib/utils";
 import { Search, UserRound, WalletCards } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -12,6 +13,7 @@ type Result = { id: string; href: string; title: string; meta: string; kind: "me
 
 /** Top-bar search over members and collections. Arrow keys move, Enter opens. */
 export function GlobalSearch({ className }: { className?: string }) {
+  const t = useT();
   const { data } = useKelab();
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -30,7 +32,7 @@ export function GlobalSearch({ className }: { className?: string }) {
         id: member.id,
         href: `/ahli/${member.id}/`,
         title: member.name,
-        meta: member.active ? "Ahli" : "Ahli · tidak aktif",
+        meta: member.active ? t("shell.searchMember") : t("shell.searchMemberInactive"),
         kind: "member" as const,
       }));
     const collections = data.collections
@@ -40,11 +42,11 @@ export function GlobalSearch({ className }: { className?: string }) {
         id: collection.id,
         href: `/kutipan/${collection.id}/`,
         title: collection.name,
-        meta: `Kutipan · ${collectionTypeLabels[collection.type]}`,
+        meta: t("shell.searchCollection", { type: collectionTypeLabels[collection.type] }),
         kind: "collection" as const,
       }));
     return [...members, ...collections];
-  }, [data, query]);
+  }, [data, query, t]);
 
   useEffect(() => {
     const onDown = (event: MouseEvent) => {
@@ -68,8 +70,8 @@ export function GlobalSearch({ className }: { className?: string }) {
         role="combobox"
         aria-expanded={open && results.length > 0}
         aria-controls={listId}
-        aria-label="Cari ahli atau kutipan"
-        placeholder="Cari ahli, kutipan atau no. telefon…"
+        aria-label={t("shell.searchLabel")}
+        placeholder={t("shell.searchPlaceholder")}
         value={query}
         onChange={(event) => {
           setQuery(event.target.value);
@@ -96,7 +98,7 @@ export function GlobalSearch({ className }: { className?: string }) {
       {open && query.trim() && (
         <div id={listId} role="listbox" className="absolute top-12 right-0 left-0 z-50 overflow-hidden rounded-2xl border bg-popover p-1.5 shadow-xl">
           {results.length === 0 ? (
-            <p className="px-3 py-4 text-center text-sm text-muted-foreground">Tiada padanan untuk “{query.trim()}”.</p>
+            <p className="px-3 py-4 text-center text-sm text-muted-foreground">{t("shell.searchNone", { query: query.trim() })}</p>
           ) : (
             results.map((result, index) => (
               <button

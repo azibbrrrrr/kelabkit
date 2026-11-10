@@ -1,6 +1,7 @@
 // Money is integer sen. These helpers only format for display; amounts are computed in
 // lib/money. Calendar values are Malaysia time.
 
+import { getLocale, type Locale } from "@/lib/i18n";
 import type { Day, Month, Sen } from "@/lib/types";
 
 export const TZ = "Asia/Kuala_Lumpur";
@@ -8,30 +9,23 @@ export const TZ = "Asia/Kuala_Lumpur";
 const currency = new Intl.NumberFormat("ms-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const whole = new Intl.NumberFormat("ms-MY", { maximumFractionDigits: 0 });
 const malaysiaDay = new Intl.DateTimeFormat("en-CA", { timeZone: TZ });
-const dateTimeFmt = new Intl.DateTimeFormat("ms-MY", {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-  timeZone: TZ,
-});
+const dateTimeFormats: Record<Locale, Intl.DateTimeFormat> = {
+  ms: new Intl.DateTimeFormat("ms-MY", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", timeZone: TZ }),
+  en: new Intl.DateTimeFormat("en-MY", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", timeZone: TZ }),
+};
 
-const MONTHS_SHORT = ["Jan", "Feb", "Mac", "Apr", "Mei", "Jun", "Jul", "Ogo", "Sep", "Okt", "Nov", "Dis"];
-const MONTHS_LONG = [
-  "Januari",
-  "Februari",
-  "Mac",
-  "April",
-  "Mei",
-  "Jun",
-  "Julai",
-  "Ogos",
-  "September",
-  "Oktober",
-  "November",
-  "Disember",
-];
+// Month names are fixed tables, not Intl output, so the Malay short names (Mac, Mei, Ogo, Okt, Dis)
+// are the same in every browser. Day and month names follow the locale; "RM" and digits do not.
+const MONTHS: Record<Locale, { short: readonly string[]; long: readonly string[] }> = {
+  ms: {
+    short: ["Jan", "Feb", "Mac", "Apr", "Mei", "Jun", "Jul", "Ogo", "Sep", "Okt", "Nov", "Dis"],
+    long: ["Januari", "Februari", "Mac", "April", "Mei", "Jun", "Julai", "Ogos", "September", "Oktober", "November", "Disember"],
+  },
+  en: {
+    short: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+    long: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+  },
+};
 
 /** "RM 1,250.00" from sen. */
 export const formatMoney = (sen: Sen) => `RM ${currency.format((sen || 0) / 100)}`;
@@ -46,28 +40,29 @@ export const formatPercent = (part: number, total: number) =>
 export function formatDay(day?: Day | null) {
   if (!day) return "—";
   const [y, m, d] = day.split("-").map(Number);
-  return `${d} ${MONTHS_SHORT[m - 1]} ${y}`;
+  return `${d} ${MONTHS[getLocale()].short[m - 1]} ${y}`;
 }
 
 /** "15 Mac" without the year. */
 export function formatDayShort(day?: Day | null) {
   if (!day) return "—";
   const [, m, d] = day.split("-").map(Number);
-  return `${d} ${MONTHS_SHORT[m - 1]}`;
+  return `${d} ${MONTHS[getLocale()].short[m - 1]}`;
 }
 
 /** "Mac 2026" or "Mac" from a month. */
 export function formatMonth(month: Month, withYear = true) {
   const [y, m] = month.split("-").map(Number);
-  return withYear ? `${MONTHS_SHORT[m - 1]} ${y}` : MONTHS_SHORT[m - 1];
+  const name = MONTHS[getLocale()].short[m - 1];
+  return withYear ? `${name} ${y}` : name;
 }
 
 export function formatMonthLong(month: Month) {
   const [y, m] = month.split("-").map(Number);
-  return `${MONTHS_LONG[m - 1]} ${y}`;
+  return `${MONTHS[getLocale()].long[m - 1]} ${y}`;
 }
 
-export const formatDateTime = (iso?: string | null) => (iso ? dateTimeFmt.format(new Date(iso)) : "—");
+export const formatDateTime = (iso?: string | null) => (iso ? dateTimeFormats[getLocale()].format(new Date(iso)) : "—");
 
 /** Today's Malaysian calendar day as `YYYY-MM-DD`. */
 export const today = (): Day => malaysiaDay.format(new Date());
@@ -110,5 +105,5 @@ export function dateToDay(date: Date): Day {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
-/** Malay short month names, January first: for month pickers. */
-export const monthNamesShort: readonly string[] = MONTHS_SHORT;
+/** Short month names in the current locale, January first: for month pickers. */
+export const monthNamesShort = (): readonly string[] => MONTHS[getLocale()].short;

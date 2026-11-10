@@ -27,10 +27,12 @@ import { messageFor } from "@/lib/errors";
 import { formatDateTime, formatPercent } from "@/lib/format";
 import { auditActionLabels } from "@/lib/labels";
 import { sum } from "@/lib/money/amount";
+import { LanguagePill } from "@/components/language-pill";
+import { useT } from "@/lib/i18n/react";
 import { themes, type ThemeId } from "@/lib/themes";
 import type { Club } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { Check, Database, History, Palette, Plus, RotateCcw, School } from "lucide-react";
+import { Check, Database, History, Languages, Palette, Plus, RotateCcw, School } from "lucide-react";
 import Link from "next/link";
 import { RadioGroup as RadioGroupPrimitive } from "radix-ui";
 import { useId, useMemo, useState } from "react";
@@ -47,10 +49,22 @@ export function SettingsPage() {
           <ClubForm key={`${data.club.name}|${data.club.school}|${data.club.session}|${data.club.treasurerName}`} club={data.club} />
           <DemoDataCard />
         </div>
-        <ThemeCard />
+        <div className="grid min-w-0 gap-5">
+          <LanguageCard />
+          <ThemeCard />
+        </div>
       </div>
       <AuditLog />
     </PageShell>
+  );
+}
+
+function LanguageCard() {
+  const t = useT();
+  return (
+    <SectionCard title={t("lang.settingsTitle")} icon={Languages} description={t("lang.settingsDescription")}>
+      <LanguagePill placement="settings" />
+    </SectionCard>
   );
 }
 

@@ -1,3 +1,4 @@
+import { t, type MessageKey } from "@/lib/i18n";
 import {
   Bell,
   FileText,
@@ -12,17 +13,30 @@ import {
 
 export type NavItem = { title: string; href: string; icon: LucideIcon; description: string };
 
-/** The spec's seven sections plus Matriks, the spreadsheet view, after Kutipan. */
-export const navItems: NavItem[] = [
-  { title: "Dashboard", href: "/", icon: House, description: "Ringkasan kutipan semasa" },
-  { title: "Kutipan KGK", href: "/kutipan/", icon: WalletCards, description: "Cipta dan urus kutipan" },
-  { title: "Matriks", href: "/matriks/", icon: Sheet, description: "Jadual ahli × kutipan" },
-  { title: "Ahli", href: "/ahli/", icon: UsersRound, description: "Senarai guru dan kakitangan" },
-  { title: "Rekod Bayaran", href: "/bayaran/", icon: ReceiptText, description: "Rekod dan semak bayaran" },
-  { title: "Peringatan", href: "/peringatan/", icon: Bell, description: "Mesej susulan kepada ahli" },
-  { title: "Laporan", href: "/laporan/", icon: FileText, description: "Ringkasan dan eksport" },
-  { title: "Tetapan", href: "/tetapan/", icon: Settings, description: "Kelab, tema dan paparan" },
+type NavDef = { id: string; href: string; icon: LucideIcon };
+
+const defs: NavDef[] = [
+  { id: "dashboard", href: "/", icon: House },
+  { id: "collections", href: "/kutipan/", icon: WalletCards },
+  { id: "matrix", href: "/matriks/", icon: Sheet },
+  { id: "members", href: "/ahli/", icon: UsersRound },
+  { id: "payments", href: "/bayaran/", icon: ReceiptText },
+  { id: "reminders", href: "/peringatan/", icon: Bell },
+  { id: "reports", href: "/laporan/", icon: FileText },
+  { id: "settings", href: "/tetapan/", icon: Settings },
 ];
+
+/** The spec's seven sections plus Matriks, the spreadsheet view, after Kutipan. Titles follow the locale. */
+export const navItems: NavItem[] = defs.map((def) => ({
+  href: def.href,
+  icon: def.icon,
+  get title() {
+    return t(`nav.${def.id}` as MessageKey);
+  },
+  get description() {
+    return t(`nav.${def.id}Hint` as MessageKey);
+  },
+}));
 
 export function isActive(pathname: string, href: string) {
   const path = pathname.endsWith("/") ? pathname : `${pathname}/`;

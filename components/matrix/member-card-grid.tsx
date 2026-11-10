@@ -14,7 +14,9 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { formatMoney, formatMoneyShort, formatMonthLong, initials } from "@/lib/format";
-import { categoryLabels, overdueLabel, pendingLabel } from "@/lib/labels";
+import { useT } from "@/lib/i18n/react";
+import { categoryLabels, cellStatusLabels, overdueLabel, pendingLabel } from "@/lib/labels";
+import type { TFunction } from "@/lib/i18n/react";
 import type { Member } from "@/lib/types";
 import type { MatrixCell, MatrixColumn, View } from "@/lib/view";
 import { cn } from "@/lib/utils";
@@ -50,24 +52,25 @@ function lineFacts(view: View, member: Member, group: CollectionGroup, ghostFor:
   return { cells, participates: live.length > 0, paid, required, overdue, pending, suggested };
 }
 
-function describeLine(name: string, cell: MatrixCell, suggested: number) {
+function describeLine(t: TFunction, name: string, cell: MatrixCell, suggested: number) {
   const base =
     cell.kind === "na"
-      ? "Tidak Berkaitan"
+      ? cellStatusLabels.na[0]
       : cell.kind === "voluntary"
-        ? `sumbangan ${formatMoney(cell.received)}`
+        ? t("matrix.contributionLower", { amount: formatMoney(cell.received) })
         : cell.status === "exempt"
-          ? "dikecualikan"
-          : `${formatMoney(cell.ledger.confirmed)} daripada ${formatMoney(cell.ledger.required)}`;
-  return `${name}: ${base}${suggested > 0 ? `, cadangan Isi Pantas +${formatMoney(suggested)}` : ""}`;
+          ? cellStatusLabels.exempt[0].toLowerCase()
+          : t("matrix.paidOfRequired", { paid: formatMoney(cell.ledger.confirmed), required: formatMoney(cell.ledger.required) });
+  return `${name}: ${base}${suggested > 0 ? t("card.suggestion", { amount: formatMoney(suggested) }) : ""}`;
 }
 
 function ProgressRing({ value }: { value: number }) {
+  const t = useT();
   const r = 15;
   const c = 2 * Math.PI * r;
   const done = value >= 1;
   return (
-    <span aria-hidden className="relative grid size-10 shrink-0 place-items-center" title={`${Math.round(value * 100)}% daripada bayaran semasa disahkan`}>
+    <span aria-hidden className="relative grid size-10 shrink-0 place-items-center" title={t("card.progressTitle", { percent: Math.round(value * 100) })}>
       <svg viewBox="0 0 40 40" className="absolute inset-0 -rotate-90">
         <circle cx="20" cy="20" r={r} fill="none" strokeWidth="4" className="stroke-border" />
         <circle
@@ -88,6 +91,7 @@ function ProgressRing({ value }: { value: number }) {
 }
 
 export const MemberCardGrid = memo(function MemberCardGrid({ rows, columns }: { rows: Member[]; columns: MatrixColumn[] }) {
+  const t = useT();
   const { view } = useSnapshot();
   const ghostFor = useGhost();
   const groups = useMemo(() => groupColumns(columns), [columns]);
@@ -126,7 +130,7 @@ export const MemberCardGrid = memo(function MemberCardGrid({ rows, columns }: { 
           const summary = summarizeMember(view, member, columns);
           const ratio = summary.requiredNow > 0 ? summary.confirmedNow / summary.requiredNow : 1;
           const hidden = groups.filter((group) => !lineFacts(view, member, group, ghostFor).participates).length;
-          const label = `${member.name}, ${summary.dueNow > 0 ? `baki ${formatMoney(summary.dueNow)}` : "selesai"}${member.active ? "" : ", tidak aktif"}`;
+          const label = `${member.name}, ${summary.dueNow > 0 ? t("card.dueLabel", { amount: formatMoney(summary.dueNow) }) : t("card.settledLabel")}${member.active ? "" : `, ${t("card.inactiveLabel")}`}`;
           return (
             <li
               key={member.id}
@@ -153,9 +157,9 @@ export const MemberCardGrid = memo(function MemberCardGrid({ rows, columns }: { 
                     {member.name}
                   </button>
                   <p aria-hidden className={cn("text-xs tabular-nums", summary.dueNow > 0 ? "font-semibold text-st-unpaid" : "font-semibold text-st-paid")}>
-                    {summary.dueNow > 0 ? `Baki ${formatMoney(summary.dueNow)}` : "Selesai"}
+                    {summary.dueNow > 0 ? t("matrix.balance", { amount: formatMoney(summary.dueNow) }) : t("matrix.settled")}
                   </p>
-                  {!member.active && <span className="mt-0.5 inline-block rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">Tidak aktif</span>}
+                  {!member.active && <span className="mt-0.5 inline-block rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{t("matrix.inactive")}</span>}
                 </div>
                 <ProgressRing value={ratio} />
               </div>
@@ -189,7 +193,7 @@ export const MemberCardGrid = memo(function MemberCardGrid({ rows, columns }: { 
                     <button
                       key={collection.id}
                       type="button"
-                      aria-label={describeLine(collection.name, cell, facts.suggested)}
+                      aria-label={describeLine(t, collection.name, cell, facts.suggested)}
                       onClick={(event) => {
                         event.stopPropagation();
                         openQuick(member, cell.column, event.currentTarget);
@@ -202,9 +206,9 @@ export const MemberCardGrid = memo(function MemberCardGrid({ rows, columns }: { 
                         <span className="flex items-center gap-1.5 text-xs text-muted-foreground tabular-nums">
                           <span className="whitespace-nowrap">
                             {cell.kind === "voluntary"
-                              ? `Sumbangan ${formatMoney(cell.received)}`
+                              ? t("matrix.contribution", { amount: formatMoney(cell.received) })
                               : cell.kind === "charge" && cell.status === "exempt"
-                                ? "Tiada caj"
+                                ? t("matrix.noCharge")
                                 : `${formatMoney(facts.paid)} / ${formatMoney(facts.required)}`}
                           </span>
                           {facts.suggested > 0 && <GhostBadge amountSen={facts.suggested} />}
@@ -215,14 +219,14 @@ export const MemberCardGrid = memo(function MemberCardGrid({ rows, columns }: { 
                   );
                 })}
               </div>
-              {hidden > 0 && <p className="text-xs text-muted-foreground">+{hidden} tidak berkaitan</p>}
+              {hidden > 0 && <p className="text-xs text-muted-foreground">{t("card.notApplicableCount", { count: hidden })}</p>}
             </li>
           );
         })}
       </ul>
       {rows.length > limit && (
         <Button variant="outline" className="self-center" onClick={() => setLimit(limit + PAGE)}>
-          Tunjuk lagi ({rows.length - limit})
+          {t("matrix.showMore", { count: rows.length - limit })}
         </Button>
       )}
 
@@ -234,7 +238,7 @@ export const MemberCardGrid = memo(function MemberCardGrid({ rows, columns }: { 
           sideOffset={6}
           collisionPadding={12}
           className="max-h-[calc(100svh-24px)] w-[360px] overflow-y-auto rounded-2xl border-border p-4 shadow-[0_24px_48px_-20px_color-mix(in_srgb,var(--primary)_35%,transparent)]"
-          aria-label={quickCell ? `Ubah sel: ${quickCell.member.name}, ${quickCell.column.label}` : "Ubah sel"}
+          aria-label={quickCell ? t("editor.cellLabel", { member: quickCell.member.name, column: quickCell.column.label }) : undefined}
           onOpenAutoFocus={(event) => {
             event.preventDefault();
             focusEditorStart(event.currentTarget as HTMLElement);
@@ -295,6 +299,7 @@ function MemberPanel({
   onNavigate: (memberId: string) => void;
   fallbackFocus: RefObject<HTMLElement | null>;
 }) {
+  const t = useT();
   const { view } = useSnapshot();
   const ghostFor = useGhost();
   const member = memberId ? (view.membersById.get(memberId) ?? null) : null;
@@ -386,43 +391,43 @@ function MemberPanel({
                   <div className="min-w-0">
                     <SheetTitle className="truncate text-lg font-semibold">{member.name}</SheetTitle>
                     <SheetDescription className="flex flex-wrap items-center gap-x-2 text-xs">
-                      <span>{member.category ? categoryLabels[member.category] : "Tiada kategori"}</span>
+                      <span>{member.category ? categoryLabels[member.category] : t("card.noCategory")}</span>
                       {member.phone && (
                         <span className="inline-flex items-center gap-1">
                           <Phone className="size-3" aria-hidden />
                           {member.phone}
                         </span>
                       )}
-                      {!member.active && <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium">Tidak aktif</span>}
+                      {!member.active && <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium">{t("matrix.inactive")}</span>}
                     </SheetDescription>
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Button variant="outline" size="sm" disabled={!previous} onClick={() => go(previous)} title="Ahli sebelum (↑)">
-                    <ChevronUp /> Sebelum
+                  <Button variant="outline" size="sm" disabled={!previous} onClick={() => go(previous)} title={t("card.previousTitle")}>
+                    <ChevronUp /> {t("card.previous")}
                     {previous && <span className="sr-only">: {previous.name}</span>}
                   </Button>
-                  <Button variant="outline" size="sm" disabled={!next} onClick={() => go(next)} title="Ahli seterusnya (↓)">
-                    <ChevronDown /> Seterusnya
+                  <Button variant="outline" size="sm" disabled={!next} onClick={() => go(next)} title={t("card.nextTitle")}>
+                    <ChevronDown /> {t("card.next")}
                     {next && <span className="sr-only">: {next.name}</span>}
                   </Button>
                   <span aria-live="polite" className="text-xs text-muted-foreground tabular-nums">
-                    {index >= 0 ? `${index + 1} / ${rows.length}` : "Tidak dalam senarai"}
+                    {index >= 0 ? `${index + 1} / ${rows.length}` : t("card.notInList")}
                   </span>
                   <Link href={`/ahli/${member.id}/`} className="ml-auto inline-flex items-center gap-1 rounded text-xs font-medium text-primary-strong underline-offset-2 hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
-                    Profil penuh <ExternalLink className="size-3" aria-hidden />
+                    {t("card.fullProfile")} <ExternalLink className="size-3" aria-hidden />
                   </Link>
                 </div>
               </SheetHeader>
               <div key={member.id} className="flex-1 overflow-y-auto p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
                 <dl className="grid grid-cols-2 gap-2">
-                  <Total label="Perlu bayar semasa" value={formatMoney(summary.requiredNow)} />
-                  <Total label="Diterima" value={formatMoney(summary.received)} />
-                  <Total label="Baki" value={summary.dueNow > 0 ? formatMoney(summary.dueNow) : "Selesai"} tone={summary.dueNow > 0 ? "text-st-unpaid" : "text-st-paid"} />
-                  <Total label="Menunggu semakan" value={formatMoney(summary.pending)} tone={summary.pending > 0 ? "text-st-pending" : undefined} />
+                  <Total label={t("card.dueNow")} value={formatMoney(summary.requiredNow)} />
+                  <Total label={t("card.received")} value={formatMoney(summary.received)} />
+                  <Total label={t("card.balance")} value={summary.dueNow > 0 ? formatMoney(summary.dueNow) : t("matrix.settled")} tone={summary.dueNow > 0 ? "text-st-unpaid" : "text-st-paid"} />
+                  <Total label={pendingLabel[0]} value={formatMoney(summary.pending)} tone={summary.pending > 0 ? "text-st-pending" : undefined} />
                 </dl>
 
-                <h3 className="mt-5 mb-2 text-sm font-semibold">Kutipan</h3>
+                <h3 className="mt-5 mb-2 text-sm font-semibold">{t("card.collections")}</h3>
                 <ul className="grid grid-cols-[minmax(0,1fr)] gap-2">
                   {lines
                     .filter(({ facts }) => facts.participates)
@@ -432,7 +437,7 @@ function MemberPanel({
                 </ul>
                 {lines.some(({ facts }) => !facts.participates) && (
                   <>
-                    <h3 className="mt-5 mb-2 text-sm font-semibold text-muted-foreground">Tidak berkaitan</h3>
+                    <h3 className="mt-5 mb-2 text-sm font-semibold text-muted-foreground">{cellStatusLabels.na[0]}</h3>
                     <ul className="grid grid-cols-[minmax(0,1fr)] gap-2">
                       {lines
                         .filter(({ facts }) => !facts.participates)
@@ -453,11 +458,11 @@ function MemberPanel({
                   </>
                 )}
 
-                <h3 className="mt-5 mb-2 text-sm font-semibold">Sejarah bayaran</h3>
-                <PaymentList payments={shownPayments} empty="Belum ada bayaran." />
+                <h3 className="mt-5 mb-2 text-sm font-semibold">{t("card.history")}</h3>
+                <PaymentList payments={shownPayments} />
                 {payments.length > 6 && (
                   <Button variant="ghost" size="sm" className="mt-2" onClick={() => setShowAllPayments(!showAllPayments)}>
-                    {showAllPayments ? "Tunjuk kurang" : `Tunjuk semua (${payments.length})`}
+                    {showAllPayments ? t("card.showLess") : t("card.showAll", { count: payments.length })}
                   </Button>
                 )}
               </div>
@@ -560,6 +565,7 @@ function PanelLine({
   onDone: () => void;
   onDirtyChange: (dirty: boolean) => void;
 }) {
+  const t = useT();
   const { view } = useSnapshot();
   const key = cell.column.key;
   const open = expanded === key;
@@ -575,7 +581,7 @@ function PanelLine({
         type="button"
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
-        aria-label={describeLine(name, live, suggested)}
+        aria-label={describeLine(t, name, live, suggested)}
         onClick={() => onToggle(key)}
         className="flex min-h-11 w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left transition-colors duration-100 hover:bg-primary-tint focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
       >
@@ -584,11 +590,11 @@ function PanelLine({
           <span className="block truncate text-[13px] font-medium">{name}</span>
           <span className="flex items-center gap-1.5 text-xs text-muted-foreground tabular-nums">
             {live.kind === "na"
-              ? "Tidak berkaitan, klik untuk masukkan"
+              ? t("card.includeHint")
               : live.kind === "voluntary"
-                ? `Sumbangan ${formatMoney(live.received)}`
+                ? t("matrix.contribution", { amount: formatMoney(live.received) })
                 : live.status === "exempt"
-                  ? "Tiada caj"
+                  ? t("matrix.noCharge")
                   : `${formatMoney(live.ledger.confirmed)} / ${formatMoney(live.ledger.required)}`}
             {suggested > 0 && <GhostBadge amountSen={suggested} />}
           </span>

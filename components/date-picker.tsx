@@ -8,7 +8,8 @@ import type { Day } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { CalendarDays } from "lucide-react";
 import { useId, useState } from "react";
-import { ms } from "react-day-picker/locale";
+import { enGB, ms } from "react-day-picker/locale";
+import { useLocale, useT } from "@/lib/i18n/react";
 
 /** Shared look for picker triggers so they read as form fields (border ≥3:1, focus ring). */
 export const fieldTriggerClass =
@@ -26,8 +27,8 @@ export function DatePicker({
   min,
   max,
   clearable = false,
-  emptyLabel = "Pilih tarikh",
-  clearLabel = "Tiada tarikh",
+  emptyLabel,
+  clearLabel,
   invalid,
   disabled,
   className,
@@ -53,6 +54,8 @@ export function DatePicker({
   "aria-label"?: string;
   "aria-describedby"?: string;
 }) {
+  const t = useT();
+  const locale = useLocale();
   const [open, setOpen] = useState(false);
   const valueId = useId();
   const now = malaysiaToday();
@@ -82,7 +85,7 @@ export function DatePicker({
         >
           <CalendarDays className="text-muted-foreground" aria-hidden />
           <span id={valueId} className={cn("truncate tabular-nums", !value && "text-muted-foreground")}>
-            {value ? formatDay(value) : emptyLabel}
+            {value ? formatDay(value) : (emptyLabel ?? t("picker.pickDate"))}
           </span>
         </Button>
       </PopoverTrigger>
@@ -96,7 +99,7 @@ export function DatePicker({
           mode="single"
           required
           autoFocus
-          locale={ms}
+          locale={locale === "en" ? enGB : ms}
           today={dayToDate(now)}
           selected={selected}
           defaultMonth={dayToDate(focusDay)}
@@ -110,14 +113,14 @@ export function DatePicker({
           <div className="flex flex-wrap justify-between gap-2 border-t border-border px-1 pt-2">
             {todayAllowed ? (
               <Button type="button" variant="ghost" size="sm" onClick={() => pick(now)}>
-                Hari ini
+                {t("picker.today")}
               </Button>
             ) : (
               <span />
             )}
             {clearable && (
               <Button type="button" variant="ghost" size="sm" onClick={() => pick("")} disabled={!value}>
-                {clearLabel}
+                {clearLabel ?? t("picker.noDate")}
               </Button>
             )}
           </div>

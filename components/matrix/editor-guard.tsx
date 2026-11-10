@@ -10,6 +10,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/lib/i18n/react";
 import { useRef } from "react";
 
 // Focus hand-back and the unsaved-input guard shared by every editor surface of the matrix
@@ -56,6 +57,7 @@ export function DiscardDialog({
   /** Puts focus back on the field being edited; the outside click that opened this moved it away. */
   restoreFocus: () => void;
 }) {
+  const t = useT();
   const discarded = useRef(false);
   return (
     <AlertDialog open={open} onOpenChange={(next) => !next && onKeep()}>
@@ -71,11 +73,11 @@ export function DiscardDialog({
         }}
       >
         <AlertDialogHeader>
-          <AlertDialogTitle>Buang perubahan?</AlertDialogTitle>
-          <AlertDialogDescription>Perubahan yang belum disimpan dalam editor ini akan hilang.</AlertDialogDescription>
+          <AlertDialogTitle>{t("editor.discardTitle")}</AlertDialogTitle>
+          <AlertDialogDescription>{t("editor.discardDescription")}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Teruskan edit</AlertDialogCancel>
+          <AlertDialogCancel>{t("editor.keepEditing")}</AlertDialogCancel>
           <Button
             variant="destructive"
             onClick={() => {
@@ -83,7 +85,7 @@ export function DiscardDialog({
               onDiscard();
             }}
           >
-            Buang
+            {t("editor.discard")}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
