@@ -1,3 +1,4 @@
+import { AccountPrefs } from "@/components/shell/account-prefs";
 import { NoClubGuard } from "@/components/shell/no-club-guard";
 import { Workspace } from "@/components/shell/workspace";
 import { ShellSkeleton } from "@/components/skeletons/shell";
@@ -24,6 +25,16 @@ async function Shell({ children }: { children: ReactNode }) {
   if (context.mode === "demo") return <Workspace>{children}</Workspace>;
   const { name, email, image } = context.user;
   // First sign-in: no club yet, so only /mula (club creation) renders, without the data shell.
-  if (!context.hasClub) return <NoClubGuard>{children}</NoClubGuard>;
-  return <Workspace user={{ name, email, image }}>{children}</Workspace>;
+  if (!context.hasClub) {
+    return (
+      <AccountPrefs prefs={context.prefs}>
+        <NoClubGuard>{children}</NoClubGuard>
+      </AccountPrefs>
+    );
+  }
+  return (
+    <AccountPrefs prefs={context.prefs}>
+      <Workspace user={{ name, email, image }}>{children}</Workspace>
+    </AccountPrefs>
+  );
 }

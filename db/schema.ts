@@ -313,3 +313,14 @@ export const auditLogs = pgTable(
   },
   (t) => [index("audit_logs_club_at_idx").on(t.clubId, t.at), index("audit_logs_entity_idx").on(t.entityId)],
 );
+
+/**
+ * Display preferences of one person (theme, language, matrix layout). Per user, not per club, so
+ * there is no club_id. The app role has no privileges on this table: it is read and written only
+ * through kk_get_prefs() / kk_save_prefs() (migration 0005), which key every row on the session user.
+ */
+export const userPrefs = pgTable("user_prefs", {
+  userId: uuid("user_id").primaryKey(),
+  prefs: jsonb("prefs").notNull().default(sql`'{}'::jsonb`),
+  updatedAt: instant("updated_at").notNull().defaultNow(),
+});

@@ -29,6 +29,7 @@ import { KelabError } from "@/lib/errors";
 import { today } from "@/lib/format";
 import { dueDateFor, isMonth, monthsBetween } from "@/lib/money/months";
 import { normaliseName } from "@/lib/names";
+import { isEmptyPrefs, MAX_PREFS_BYTES, parsePrefs, prefsBytes, type StoredPrefs } from "@/lib/prefs";
 import { deleteObject, headObject, presignDownload, presignUpload } from "@/lib/server/storage";
 import { loadSnapshot } from "@/lib/server/snapshot";
 import type { AuditAction, CollectionStatus, Sen, Snapshot } from "@/lib/types";
@@ -51,6 +52,32 @@ export async function listClubs(userId: string): Promise<ClubSummary[]> {
     const { rows } = await tx.query("select id, name, session, school, treasurer_name, role from kk_my_clubs()");
     return rows.map((r) => ({ id: r.id, name: r.name, session: r.session, school: r.school, treasurerName: r.treasurer_name, role: r.role }));
   }, { label: "my_clubs" });
+}
+
+type ClubRow = { id: string; name: string; session: string; school: string | null; treasurer_name: string | null; role: ClubSummary["role"] };
+const toClub = (r: ClubRow): ClubSummary => ({ id: r.id, name: r.name, session: r.session, school: r.school, treasurerName: r.treasurer_name, role: r.role });
+
+/**
+ * What the shell needs on every page load: the user's clubs and their saved preferences, read by
+ * one statement batch (simple protocol, two statements) in the one transaction listClubs already
+ * used, so preferences add no round trip. `prefs` is null when the user never saved any.
+ */
+export async function loadShellContext(userId: string): Promise<{ clubs: ClubSummary[]; prefs: StoredPrefs | null }> {
+  return withUser(userId, async (tx) => {
+    const results = (await tx.query("select id, name, session, school, treasurer_name, role from kk_my_clubs(); select kk_get_prefs() as prefs")) as unknown as { rows: Record<string, unknown>[] }[];
+    const stored = results[1]?.rows[0]?.prefs;
+    return { clubs: (results[0]?.rows ?? []).map((r) => toClub(r as ClubRow)), prefs: stored == null ? null : parsePrefs(stored) };
+  }, { label: "shell" });
+}
+
+/** Merges a validated patch into the user's preferences (per key, last write wins). Own row only. */
+export async function savePrefs(userId: string, patch: unknown): Promise<void> {
+  if (prefsBytes(patch) > MAX_PREFS_BYTES) throw new KelabError("PREFS_INVALID");
+  const clean = parsePrefs(patch);
+  if (isEmptyPrefs(clean)) return;
+  await withUser(userId, async (tx) => {
+    await tx.query("select kk_save_prefs($1::jsonb)", [JSON.stringify(clean)]);
+  }, { label: "save_prefs" });
 }
 
 export async function createClub(

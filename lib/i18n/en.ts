@@ -178,6 +178,7 @@ export const en: Messages = {
     NO_CLUB: "You do not have a club yet. Create one first.",
     SESSION_REQUIRED: "Enter the session, for example 2026.",
     CLUB_LIMIT: "You have reached the limit of five clubs.",
+    PREFS_INVALID: "Those preferences could not be saved.",
     INTERNAL: "Something went wrong. Try again.",
     NOT_AVAILABLE: "This action is not available for real accounts.",
   },

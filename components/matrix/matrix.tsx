@@ -9,21 +9,19 @@ import { CellEditor, focusEditorStart } from "@/components/matrix/cell-editor";
 import { DiscardDialog, useLastFocus, useOpener } from "@/components/matrix/editor-guard";
 import {
   BALANCE_W,
-  browserStorage,
   clampWidth,
   layoutWidths,
   MEMBER_KEY,
-  readWidths,
   WIDTH_LIMITS,
   WIDTH_STEP,
-  writeWidths,
   type WidthKind,
   type WidthPreset,
   type Widths,
 } from "@/components/matrix/column-widths";
 import { MemberCardGrid } from "@/components/matrix/member-card-grid";
 import { MonthTile } from "@/components/matrix/month-tile";
-import { readLayout, writeLayout, type MatrixLayout } from "@/components/matrix/view-pref";
+import type { MatrixLayout } from "@/components/matrix/view-pref";
+import { usePrefs } from "@/components/prefs-provider";
 import { ModalBody, ModalFooter, ModalHeader, ModalText } from "@/components/modal";
 import { RestoreCollectionDialog } from "@/components/restore-collection-dialog";
 import { ChargeStatusChips, EmptyState, FilterPills, PageHeader, PageShell, SearchInput, StatusChip, Toolbar } from "@/components/shared";
@@ -126,13 +124,10 @@ export function MatrixPage() {
   const [showCompleted, setShowCompleted] = useState(false);
   const [showInactive, setShowInactive] = useState(false);
   const [sort, setSort] = useState<Sort>("name");
-  // null = no saved choice: Jadual on desktop, Kad on phones. Read after mount (storage is client-only).
-  const [layout, setLayout] = useState<MatrixLayout | null>(null);
-  useEffect(() => setLayout(readLayout(browserStorage())), []);
-  const chooseLayout = (next: MatrixLayout) => {
-    setLayout(next);
-    writeLayout(browserStorage(), next);
-  };
+  // null = no saved choice: Jadual on desktop, Kad on phones. Kept with the other display preferences
+  // (this browser in the demo, the account when signed in).
+  const { matrixLayout: layout, setPrefs } = usePrefs();
+  const chooseLayout = (next: MatrixLayout) => setPrefs({ matrixLayout: next });
   const [addMember, setAddMember] = useState(false);
   const [addColumn, setAddColumn] = useState(false);
   const [restoring, setRestoring] = useState<Collection | null>(null);
@@ -377,8 +372,10 @@ const Grid = memo(function Grid({
   // The month row sticks directly under the group row; measured so no body cell shows
   // through a gap when the group labels wrap or grow.
   const [groupRowH, setGroupRowH] = useState(41);
-  // Column widths: a per-browser display preference (see column-widths.ts), never part of the data.
-  const [widths, setWidths] = useState<Widths>(() => readWidths(browserStorage()));
+  // Column widths: a display preference (see column-widths.ts), never part of the data. Local state
+  // follows the drag; the preference is written once the drag ends.
+  const { matrixWidths: savedWidths, setPrefs } = usePrefs();
+  const [widths, setWidths] = useState<Widths>(() => savedWidths);
   const [available, setAvailable] = useState(0);
   const [resizing, setResizing] = useState<string | null>(null);
   const frame = useRef<HTMLDivElement>(null);
@@ -396,8 +393,8 @@ const Grid = memo(function Grid({
 
   // Saved once a drag ends (not on every pointer move), and after every key, menu or fit change.
   useEffect(() => {
-    if (!resizing) writeWidths(browserStorage(), widths);
-  }, [widths, resizing]);
+    if (!resizing) setPrefs({ matrixWidths: widths });
+  }, [widths, resizing, setPrefs]);
 
   // While dragging: the accent guide follows the column's right edge, and the whole page shows the
   // resize cursor without selecting text.
