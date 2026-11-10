@@ -559,7 +559,7 @@ function EditPicker({ item, data, view }: { item: Item; data: Snapshot; view: Vi
           Ubah
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-[300px] rounded-2xl p-3.5" aria-label="Ubah cadangan">
+      <PopoverContent align="start" className="w-[300px] p-3.5" aria-label="Ubah cadangan">
         <p className="mb-2.5 text-[13px] font-semibold">Ubah cadangan · {formatMoney(s.amountSen)}</p>
         <label className="mb-1 block text-xs font-medium" htmlFor={`isi-member-${s.id}`}>
           Ahli

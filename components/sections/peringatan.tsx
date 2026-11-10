@@ -360,10 +360,10 @@ export function RemindersPage() {
                     setPeriodId("all");
                   }}
                 >
-                  <SelectTrigger id="rem-collection" className="h-10 w-full rounded-xl bg-card">
+                  <SelectTrigger id="rem-collection" className="w-full">
                     <SelectValue placeholder="Pilih kutipan" />
                   </SelectTrigger>
-                  <SelectContent position="popper">
+                  <SelectContent>
                     {mandatory.map((c) => (
                       <SelectItem key={c.id} value={c.id}>
                         <CollectionName collection={c} />
@@ -376,10 +376,10 @@ export function RemindersPage() {
                 <div className="grid min-w-0 gap-1.5 sm:w-56">
                   <Label htmlFor="rem-month">Bulan</Label>
                   <Select value={period?.id ?? "all"} onValueChange={setPeriodId}>
-                    <SelectTrigger id="rem-month" className="h-10 w-full rounded-xl bg-card">
+                    <SelectTrigger id="rem-month" className="w-full">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent position="popper">
+                    <SelectContent>
                       <SelectItem value="all">Semua bulan setakat ini</SelectItem>
                       {periodOptions.map((p) => (
                         <SelectItem key={p.id} value={p.id}>
