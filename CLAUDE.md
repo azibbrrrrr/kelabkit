@@ -35,6 +35,12 @@ npm run dev        # http://localhost:3000
 npm run typecheck
 npm test           # vitest: lib/money
 npm run build
+npm run db:generate   # drizzle-kit: schema change -> new SQL migration (db/schema.ts)
+npm run db:migrate    # apply migrations to DATABASE_URL_UNPOOLED
+npm run db:seed       # demo club on the dev branch (needs KELABKIT_DB_ENV=dev)
+npm run db:test       # money + tenancy tests against the dev database (not part of npm test)
 ```
+
+Phase 2 database: `db/schema.ts`, `db/migrations/`, `docs/design/phase-2-backend.md`. Copy `.env.example` to `.env.local`.
 
 Commits: Conventional Commits.
