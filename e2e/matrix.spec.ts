@@ -23,6 +23,9 @@ test("5. matrix inline: add a member and a collection, type amounts into the cel
   const cell = page.getByRole("gridcell", { name: /^Cikgu Ujian Matriks, Lajur Uji/ });
   await expect(cell).toHaveAccessibleName(/RM0 \/ RM25 Belum Bayar/);
 
+  const storedPayments = () => page.evaluate(() => (JSON.parse(localStorage.getItem("kelabkit-demo-v1") ?? "{}").payments ?? []).length as number);
+  const paymentsBefore = await storedPayments();
+
   // Type 10 straight into the focused cell: partial, RM15 still owing.
   await cell.focus();
   await page.keyboard.type("10");
@@ -41,9 +44,7 @@ test("5. matrix inline: add a member and a collection, type amounts into the cel
   await expect(cell).toHaveAccessibleName(/RM25 \/ RM25 Dibayar/);
 
   // Persisted: both payments are in storage, and the cell is still paid after a reload.
-  await expect
-    .poll(() => page.evaluate(() => (JSON.parse(localStorage.getItem("kelabkit-demo-v1") ?? "{}").payments ?? []).filter((p: { amount: number }) => p.amount === 1000 || p.amount === 1500).length))
-    .toBe(2);
+  await expect.poll(storedPayments).toBe(paymentsBefore + 2);
   await page.reload();
   await expect(page.getByRole("gridcell", { name: /^Cikgu Ujian Matriks, Lajur Uji/ })).toHaveAccessibleName(/RM25 \/ RM25 Dibayar/);
 
