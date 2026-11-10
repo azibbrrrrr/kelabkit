@@ -183,7 +183,7 @@ export function ProgressBar({ value, max, className, label }: { value: number; m
       aria-label={label}
       className={cn("h-2 w-full overflow-hidden rounded-full bg-primary-light", className)}
     >
-      <div className="brand-gradient h-full rounded-full transition-[width] duration-500" style={{ width: `${pct}%` }} />
+      <div className="brand-gradient h-full rounded-full transition-[width] duration-500 motion-reduce:transition-none" style={{ width: `${pct}%` }} />
     </div>
   );
 }
@@ -229,7 +229,7 @@ export function StatusChip({ label, tone, className, compact }: { label: string;
         className,
       )}
     >
-      {Icon && <Icon className={cn("size-3.5", compact && "size-3")} aria-hidden strokeWidth={2.4} />}
+      {Icon && <Icon className={cn("size-3.5", compact && "size-3")} aria-hidden strokeWidth={2} />}
       {label}
     </span>
   );
