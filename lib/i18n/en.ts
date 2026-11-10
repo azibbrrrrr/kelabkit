@@ -26,6 +26,7 @@ export const en: Messages = {
     close: "Close",
     save: "Save",
     saving: "Saving…",
+    saved: "Saved",
     back: "Back",
     loading: "Loading",
     search: "Search…",

@@ -3,6 +3,7 @@
 import { AddCollectionDialog } from "@/components/add-collection-dialog";
 import { AddMemberDialog } from "@/components/add-member-dialog";
 import { useKelab, useSnapshot } from "@/components/data-provider";
+import { voluntaryKey } from "@/lib/optimistic";
 import { describeGhost, GhostValue, useGhost } from "@/components/isi-pantas/ghost";
 import { CellEditor, focusEditorStart } from "@/components/matrix/cell-editor";
 import { DiscardDialog, useLastFocus, useOpener } from "@/components/matrix/editor-guard";
@@ -946,6 +947,20 @@ function describeCell(t: TFunction, cell: MatrixCell) {
  * width. The root is [data-fit] at its natural width, which is what auto-fit measures.
  */
 function CellView({ cell }: { cell: MatrixCell }) {
+  const t = useT();
+  const { pending } = useKelab();
+  // A payment on its way: the new value is already shown, dimmed and labelled until the server confirms it.
+  const saving = cell.kind === "charge" ? pending.has(cell.ledger.charge.id) : cell.kind === "voluntary" && pending.has(voluntaryKey(cell.member.id, cell.column.collection.id));
+  if (!saving) return <CellBody cell={cell} />;
+  return (
+    <div aria-busy="true" title={t("common.saving")} className="w-max max-w-full opacity-60 motion-safe:animate-pulse">
+      <CellBody cell={cell} />
+      <span className="sr-only">{t("common.saving")}</span>
+    </div>
+  );
+}
+
+function CellBody({ cell }: { cell: MatrixCell }) {
   const t = useT();
   if (cell.kind === "na")
     return (

@@ -13,45 +13,74 @@ const AUDIT_LIMIT = 1000;
 
 type Row = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 
-export async function loadSnapshot(tx: Tx, userName: string): Promise<Snapshot> {
-  const q = async (sql: string, params: unknown[] = []) => (await tx.query(sql, params)).rows as Row[];
+// The whole snapshot is ONE statement: a json_build_object of one json_agg per table. One round
+// trip, and one statement snapshot, so it is consistent even inside a READ COMMITTED transaction
+// (a mutation can return the fresh snapshot from the transaction that made the change). Row order
+// is explicit in each aggregate; RLS scopes every table to the club set on the transaction.
+const snapshotSql = (withNames: boolean) => `
+select json_build_object(
+  'club', (select row_to_json(t) from (select id, name, session, school, treasurer_name, created_at from clubs) t),
+  'members', (select coalesce(json_agg(t order by t.name, t.id), '[]'::json) from (
+    select id, name, category, phone, notes, active, joined_on::text as joined_on, created_at, updated_at from members) t),
+  'collections', (select coalesce(json_agg(t order by t.created_at, t.id), '[]'::json) from (
+    select id, name, type, status, icon, description, notes, default_amount, due_date::text as due_date,
+           start_month::text as start_month, end_month::text as end_month, due_day, created_at, updated_at from collections) t),
+  'periods', (select coalesce(json_agg(t order by t.month, t.id), '[]'::json) from (
+    select id, collection_id, month::text as month, due_date::text as due_date from collection_periods) t),
+  'participants', (select coalesce(json_agg(t order by t.created_at, t.id), '[]'::json) from (
+    select id, collection_id, member_id, amount_override, exempt, note, created_at from participants) t),
+  'charges', (select coalesce(json_agg(t order by t.created_at, t.id), '[]'::json) from (
+    select id, collection_id, period_id, member_id, amount, exempt, exempt_reason, due_date::text as due_date, note, created_at from charges) t),
+  'payments', (select coalesce(json_agg(t order by t.created_at, t.id), '[]'::json) from (
+    select id, idempotency_key, member_id, collection_id, amount, method, paid_on::text as paid_on, reference, note, state,
+           created_at, confirmed_at, reversed_at, reversal_reason from payments) t),
+  'allocations', (select coalesce(json_agg(t order by t.id), '[]'::json) from (
+    select id, payment_id, charge_id, amount from payment_allocations) t),
+  'attachments', (select coalesce(json_agg(t order by t.created_at, t.id), '[]'::json) from (
+    select id, payment_id, file_name, mime_type, size_bytes, sha256, created_at, removed_at, removed_reason from attachments) t),
+  'audit', (select coalesce(json_agg(t order by t.at desc, t.id desc), '[]'::json) from (
+    select id, at, actor_user_id, actor_label, action, entity_id, summary, reason from audit_logs order by at desc, id desc limit ${AUDIT_LIMIT}) t)${
+      withNames
+        ? `,
+  'names', (select coalesce(json_agg(json_build_object('user_id', n.user_id, 'name', n.name)), '[]'::json) from kk_actor_names((select id from clubs)) n)`
+        : ""
+    }
+) as snapshot`;
 
-  const [club] = await q("select id, name, session, school, treasurer_name, created_at from clubs");
-  if (!club) throw new Error("club not visible");
-  const members = await q("select id, name, category, phone, notes, active, joined_on::text as joined_on, created_at, updated_at from members order by name, id");
-  const collections = await q(
-    `select id, name, type, status, icon, description, notes, default_amount, due_date::text as due_date,
-            start_month::text as start_month, end_month::text as end_month, due_day, created_at, updated_at
-     from collections order by created_at, id`,
-  );
-  const periods = await q("select id, collection_id, month::text as month, due_date::text as due_date from collection_periods order by month, id");
-  const participants = await q("select collection_id, member_id, amount_override, exempt, note from participants order by created_at, id");
-  const charges = await q(
-    "select id, collection_id, period_id, member_id, amount, exempt, exempt_reason, due_date::text as due_date, note from charges order by created_at, id",
-  );
-  const payments = await q(
-    `select id, idempotency_key, member_id, collection_id, amount, method, paid_on::text as paid_on, reference, note, state,
-            created_at, confirmed_at, reversed_at, reversal_reason
-     from payments order by created_at, id`,
-  );
-  const allocations = await q("select id, payment_id, charge_id, amount from payment_allocations order by id");
-  const attachments = await q(
-    `select id, payment_id, file_name, mime_type, size_bytes, sha256, created_at, removed_at, removed_reason
-     from attachments order by created_at, id`,
-  );
-  const audit = await q(
-    "select id, at, actor_user_id, actor_label, action, entity_id, summary, reason from audit_logs order by at desc, id desc limit $1",
-    [AUDIT_LIMIT],
-  );
-  // Display names are a nicety: a failure here (e.g. neon_auth unreachable) must not abort the load.
-  const names = new Map<string, string>();
-  await tx.query("savepoint actor_names");
+/** Runs the snapshot statement inside a savepoint (one round trip), leaving the transaction usable if it fails. */
+async function fetchSnapshot(tx: Tx, withNames: boolean): Promise<Row[]> {
   try {
-    for (const r of await q("select user_id, name from kk_actor_names($1)", [club.id])) names.set(r.user_id, r.name);
-    await tx.query("release savepoint actor_names");
-  } catch {
-    await tx.query("rollback to savepoint actor_names");
+    const results = (await tx.query(`savepoint kk_snapshot; ${snapshotSql(withNames)}; release savepoint kk_snapshot`)) as unknown as { rows: Row[] }[];
+    return results[1].rows;
+  } catch (error) {
+    await tx.query("rollback to savepoint kk_snapshot; release savepoint kk_snapshot");
+    throw error;
   }
+}
+
+export async function loadSnapshot(tx: Tx, userName: string): Promise<Snapshot> {
+  // Display names (audit actors) are a nicety: if kk_actor_names fails (e.g. neon_auth unreachable)
+  // the load must not, so a failure costs one more round trip and drops the names.
+  let rows: Row[];
+  try {
+    rows = await fetchSnapshot(tx, true);
+  } catch {
+    rows = await fetchSnapshot(tx, false);
+  }
+  const raw = rows[0]?.snapshot as Record<string, Row[] | Row | null> | undefined;
+  const club = raw?.club as Row | null | undefined;
+  if (!raw || !club) throw new Error("club not visible");
+  const members = raw.members as Row[];
+  const collections = raw.collections as Row[];
+  const periods = raw.periods as Row[];
+  const participants = raw.participants as Row[];
+  const charges = raw.charges as Row[];
+  const payments = raw.payments as Row[];
+  const allocations = raw.allocations as Row[];
+  const attachments = raw.attachments as Row[];
+  const audit = raw.audit as Row[];
+
+  const names = new Map<string, string>((raw.names as Row[] | undefined ?? []).map((r) => [r.user_id, r.name]));
 
   return {
     club: {

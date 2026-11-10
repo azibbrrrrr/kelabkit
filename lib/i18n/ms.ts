@@ -28,6 +28,7 @@ export const ms = {
     close: "Tutup",
     save: "Simpan",
     saving: "Menyimpan…",
+    saved: "Disimpan",
     back: "Kembali",
     loading: "Memuatkan",
     search: "Cari…",

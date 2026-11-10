@@ -10,7 +10,7 @@ import { chargeLedger, indexLedger } from "@/lib/money/ledger";
 import { buildView } from "@/lib/view";
 import { createPool } from "../client";
 
-type Current = { userId: string; clubId: string | null; name: string } | null;
+type Current = { userId: string; clubId: string | null; name: string; fromCookie?: boolean } | null;
 const state = vi.hoisted(() => ({ current: null as Current }));
 
 vi.mock("next/headers", () => ({ cookies: async () => ({ set: () => undefined, get: () => undefined }) }));
@@ -25,12 +25,20 @@ vi.mock("@/lib/server/session", async () => {
     requireCtx: async () => {
       if (!state.current) throw new KelabError("UNAUTHENTICATED");
       if (!state.current.clubId) throw new KelabError("NO_CLUB");
-      return { userId: state.current.userId, clubId: state.current.clubId, userName: state.current.name };
+      return { userId: state.current.userId, clubId: state.current.clubId, userName: state.current.name, fromCookie: state.current.fromCookie };
     },
+    // What the real resolveClub does, minus the cookie write: the user's oldest club from the database.
+    resolveClub: async (user: { id: string; name: string }) => {
+      const { listClubs } = await import("@/lib/server/service");
+      const [club] = await listClubs(user.id);
+      if (!club) throw new KelabError("NO_CLUB");
+      return { userId: user.id, clubId: club.id, userName: user.name };
+    },
+    setClubCookie: async () => undefined,
   };
 });
 
-const { neonBackend: backend } = await import("@/lib/backend/neon");
+const { neonBackend: backend, setSnapshotSink } = await import("@/lib/backend/neon");
 const { createClub } = await import("@/app/actions/club");
 const { closePool } = await import("@/lib/db/with-club");
 
@@ -40,7 +48,7 @@ let clubA: string;
 let clubB: string;
 let admin: ReturnType<typeof createPool>;
 
-const as = (userId: string | null, clubId: string | null, name = "Bendahari Ujian") => (state.current = userId ? { userId, clubId, name } : null);
+const as = (userId: string | null, clubId: string | null, name = "Bendahari Ujian", fromCookie = false) => (state.current = userId ? { userId, clubId, name, fromCookie } : null);
 const codeOf = async (promise: Promise<unknown>) => {
   try {
     await promise;
@@ -266,5 +274,47 @@ describe("cross-club isolation through the action layer", () => {
     // B's data is untouched.
     as(userB, clubB);
     expect((await backend.load()).payments.find((p) => p.id === payB)).toMatchObject({ state: "pending", amount: 500 });
+  });
+});
+
+describe("one transaction per action", () => {
+  it("a change returns the snapshot its own transaction read, and the load is the same single transaction", async () => {
+    as(userA, clubA);
+    const seen: { payments: number; members: number }[] = [];
+    setSnapshotSink((snapshot) => seen.push({ payments: snapshot.payments.length, members: snapshot.members.length }));
+    try {
+      const before = await backend.load();
+      expect(seen).toHaveLength(0); // a plain load returns its value, not a pushed snapshot
+      await backend.addMembers([{ name: `Ahli Segera ${randomUUID().slice(0, 6)}`, category: null, phone: null, notes: null }]);
+      expect(seen).toEqual([{ payments: before.payments.length, members: before.members.length + 1 }]);
+      const after = await backend.load();
+      expect(after.members).toHaveLength(before.members.length + 1);
+    } finally {
+      setSnapshotSink(null);
+    }
+  });
+
+  it("a refused change pushes no snapshot", async () => {
+    as(userA, clubA);
+    let pushed = 0;
+    setSnapshotSink(() => (pushed += 1));
+    try {
+      expect(await codeOf(backend.addMembers([{ name: "  ", category: null, phone: null, notes: null }]))).not.toBe("");
+      expect(pushed).toBe(0);
+    } finally {
+      setSnapshotSink(null);
+    }
+  });
+
+  it("a club id from the cookie that is not the user's is checked in the transaction and replaced", async () => {
+    // userA's cookie names club B: the membership check refuses it, act() looks up A's own club.
+    as(userA, clubB, "Bendahari Ujian", true);
+    const snap = await backend.load();
+    expect(snap.club.id).toBe(clubA);
+  });
+
+  it("a cookie club the user does belong to is used without a lookup", async () => {
+    as(userB, clubB, "Bendahari Ujian", true);
+    expect((await backend.load()).club.id).toBe(clubB);
   });
 });

@@ -6,6 +6,7 @@ import { IsiPantasProvider } from "@/components/isi-pantas/provider";
 import { IsiPantasButton, IsiPantasPill, IsiPantasSheet } from "@/components/isi-pantas/sheet";
 import { AppSidebar } from "@/components/shell/app-sidebar";
 import { GlobalSearch } from "@/components/shell/global-search";
+import { RouteSkeleton } from "@/components/skeletons/pages";
 import { LanguagePill } from "@/components/language-pill";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -20,7 +21,6 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import { SidebarInset, SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
-import { Spinner } from "@/components/ui/spinner";
 import { authClient } from "@/lib/auth/client";
 import { leaveDemo } from "@/lib/auth/mode";
 import { formatDay, formatMoney, initials } from "@/lib/format";
@@ -30,7 +30,7 @@ import { cn } from "@/lib/utils";
 import { Bell, ChevronDown, House, LogOut, Menu, Plus, Settings, Sheet, TriangleAlert, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useLayoutEffect, useRef, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 
 export type ShellUser = { name: string; email: string; image: string | null };
 
@@ -77,6 +77,31 @@ function RestoreCollapsedSidebar() {
   return null;
 }
 
+/** "Menyimpan…" while a change is on its way, "Disimpan" for a moment after. Fixed width: never moves the bar. */
+function SaveStatus() {
+  const t = useT();
+  const { saving } = useKelab();
+  const [saved, setSaved] = useState(false);
+  const was = useRef(false);
+  useEffect(() => {
+    if (saving) {
+      was.current = true;
+      setSaved(false);
+      return;
+    }
+    if (!was.current) return;
+    was.current = false;
+    setSaved(true);
+    const timer = setTimeout(() => setSaved(false), 2000);
+    return () => clearTimeout(timer);
+  }, [saving]);
+  return (
+    <span role="status" aria-live="polite" className="hidden min-w-[5.5rem] text-right text-xs text-muted-foreground md:inline-block">
+      {saving ? t("common.saving") : saved ? t("common.saved") : ""}
+    </span>
+  );
+}
+
 function TopBar({ user }: { user?: ShellUser }) {
   const t = useT();
   const { demo, data } = useKelab();
@@ -102,6 +127,7 @@ function TopBar({ user }: { user?: ShellUser }) {
         </span>
       )}
       <div className="ml-auto flex items-center gap-1.5">
+        <SaveStatus />
         <IsiPantasButton />
         <LanguagePill placement="topbar" className="hidden md:flex" />
         <PendingBell />
@@ -253,12 +279,8 @@ function DataGate({ children }: { children: ReactNode }) {
         </div>
       </div>
     );
-  if (loading)
-    return (
-      <div className="grid flex-1 place-items-center p-6">
-        <Spinner className="size-6 text-primary" />
-      </div>
-    );
+  // Page-shaped skeleton, so the content that replaces it lands where it was.
+  if (loading) return <RouteSkeleton />;
   // Keyed by locale: screens that have not been moved onto useT() still read the current locale at
   // render time, so re-mounting the page is what makes them follow a language switch. Data stays loaded.
   return (

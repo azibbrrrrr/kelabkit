@@ -26,7 +26,21 @@ export type Tx = PoolClient;
 type Options = {
   /** One consistent snapshot for reads that span several queries. Never use for money writes (READ COMMITTED). */
   readOnlySnapshot?: boolean;
+  /** Names this transaction in timing logs (e.g. "load"). */
+  label?: string;
 };
+
+// Round trips and wall time per transaction, so "is it slow" is a number. Logged in `next dev`
+// or when KELABKIT_TIMING=1; also pushed to globalThis.__kelabTimings for tests. Never logs SQL or values.
+export type TxTiming = { label: string; roundTrips: number; connectMs: number; totalMs: number };
+const timingOn = () => process.env.KELABKIT_TIMING === "1" || process.env.NODE_ENV === "development";
+
+function record(timing: TxTiming) {
+  const g = globalThis as unknown as { __kelabTimings?: TxTiming[] };
+  (g.__kelabTimings ??= []).push(timing);
+  if (g.__kelabTimings.length > 200) g.__kelabTimings.shift();
+  console.log(`[kk-timing] ${timing.label} roundTrips=${timing.roundTrips} connect=${timing.connectMs.toFixed(0)}ms total=${timing.totalMs.toFixed(0)}ms`);
+}
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -41,21 +55,46 @@ export function mapDbError(error: unknown): unknown {
 
 async function run<T>(userId: string, clubId: string | null, fn: (tx: Tx) => Promise<T>, options: Options): Promise<T> {
   if (!UUID.test(userId) || (clubId !== null && !UUID.test(clubId))) throw new KelabError("FORBIDDEN");
+  const timing = timingOn() ? { started: performance.now(), roundTrips: 0, connectMs: 0 } : null;
   const client = await pool().connect();
+  if (timing) timing.connectMs = performance.now() - timing.started;
+  // Counts every statement sent on this connection (the transaction's round trips).
+  const tx: Tx = timing
+    ? new Proxy(client, {
+        get(target, prop) {
+          if (prop === "query") {
+            return (...args: unknown[]) => {
+              timing.roundTrips += 1;
+              return (target.query as (...a: unknown[]) => unknown)(...args);
+            };
+          }
+          const value = Reflect.get(target, prop, target);
+          return typeof value === "function" ? value.bind(target) : value;
+        },
+      })
+    : client;
   try {
-    await client.query(options.readOnlySnapshot ? "begin isolation level repeatable read read only" : "begin");
-    await client.query("set local role kelabkit_app");
-    await client.query("select set_config('app.user_id', $1, true), set_config('app.club_id', $2, true)", [userId, clubId ?? ""]);
-    // A club id from a cookie or request is never trusted: membership first.
-    if (clubId) await client.query("select kk_assert_member($1)", [clubId]);
-    const result = await fn(client);
-    await client.query("commit");
+    // One round trip for the whole preamble (simple protocol, several statements). The ids are
+    // validated UUIDs above, so inlining them is safe; a non-member makes kk_assert_member raise,
+    // which aborts the batch and lands in the rollback below. A club id from a cookie or request is
+    // never trusted: membership is checked in this same batch, before anything else runs.
+    await tx.query(
+      [
+        options.readOnlySnapshot ? "begin isolation level repeatable read read only" : "begin",
+        "set local role kelabkit_app",
+        `select set_config('app.user_id', '${userId}', true), set_config('app.club_id', '${clubId ?? ""}', true)`,
+        clubId ? `select kk_assert_member('${clubId}'::uuid)` : "select 1",
+      ].join("; "),
+    );
+    const result = await fn(tx);
+    await tx.query("commit");
     return result;
   } catch (error) {
     await client.query("rollback").catch(() => undefined);
     throw mapDbError(error);
   } finally {
     client.release();
+    if (timing) record({ label: options.label ?? "tx", roundTrips: timing.roundTrips, connectMs: timing.connectMs, totalMs: performance.now() - timing.started });
   }
 }
 
