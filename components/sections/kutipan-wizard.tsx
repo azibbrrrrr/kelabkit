@@ -3,7 +3,7 @@
 import { useKelab, useSnapshot } from "@/components/data-provider";
 import { MoneyInput, parseMoney } from "@/components/money-input";
 import { collectionTypeIcons } from "@/components/sections/kutipan";
-import { DetailList, FilterPills, Money, PageHeader, PageShell, SearchInput, SectionCard, StatusChip } from "@/components/shared";
+import { DetailList, FilterPills, Money, PageHeader, PageShell, SearchInput, SectionCard, StatusChip, Toolbar } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -743,10 +743,10 @@ function MembersStep({
           )}
         </div>
 
-        <div className="grid gap-2.5">
-          <SearchInput id="wz-member-search" value={query} onChange={setQuery} placeholder="Cari ahli…" className="sm:max-w-sm" />
-          <FilterPills label="Tapis kategori" value={category} onChange={setCategory} options={categories} />
-        </div>
+        <Toolbar
+          search={<SearchInput id="wz-member-search" value={query} onChange={setQuery} placeholder="Cari ahli…" />}
+          tabs={<FilterPills label="Tapis kategori" value={category} onChange={setCategory} options={categories} />}
+        />
 
         {!voluntary && (
           <div className="grid gap-1.5 rounded-xl border border-dashed border-border p-3">

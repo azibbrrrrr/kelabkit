@@ -13,6 +13,7 @@ import {
   SearchInput,
   StatCard,
   StatusChip,
+  Toolbar,
   type Column,
 } from "@/components/shared";
 import { Button } from "@/components/ui/button";
@@ -171,20 +172,22 @@ export function AhliPage() {
             />
           </div>
 
-          <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
-            <SearchInput id="member-search" value={query} onChange={setQuery} placeholder="Cari nama atau telefon…" />
-            <FilterPills
-              label="Tapis ahli"
-              value={filter}
-              onChange={setFilter}
-              options={[
-                { value: "all", label: "Semua", count: counts.all },
-                { value: "active", label: "Aktif", count: counts.active },
-                { value: "inactive", label: "Tidak aktif", count: counts.inactive },
-                { value: "owing", label: "Ada baki", count: counts.owing },
-              ]}
-            />
-          </div>
+          <Toolbar
+            search={<SearchInput id="member-search" value={query} onChange={setQuery} placeholder="Cari nama atau telefon…" />}
+            tabs={
+              <FilterPills
+                label="Tapis ahli"
+                value={filter}
+                onChange={setFilter}
+                options={[
+                  { value: "all", label: "Semua", count: counts.all },
+                  { value: "active", label: "Aktif", count: counts.active },
+                  { value: "inactive", label: "Tidak aktif", count: counts.inactive },
+                  { value: "owing", label: "Ada baki", count: counts.owing },
+                ]}
+              />
+            }
+          />
 
           <DataTable
             rows={rows}
