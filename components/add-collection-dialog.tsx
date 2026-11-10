@@ -13,6 +13,7 @@ import { RadioGroup } from "@/components/ui/radio-group";
 import { Spinner } from "@/components/ui/spinner";
 import { messageFor } from "@/lib/errors";
 import { formatMoney, today } from "@/lib/format";
+import { suggestIcon } from "@/lib/collection-icon";
 import { collectionTypeLabels } from "@/lib/labels";
 import { monthsBetween } from "@/lib/money/months";
 import type { CollectionType, Sen } from "@/lib/types";
@@ -72,6 +73,8 @@ export function AddCollectionDialog({
       const id = await run((backend) =>
         backend.createCollection({
           name,
+          // Same default as the wizard: an icon suggested from the name, changeable later.
+          icon: suggestIcon(name),
           type,
           defaultAmount,
           description: null,
