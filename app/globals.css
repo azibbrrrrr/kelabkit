@@ -126,11 +126,14 @@
   --chart-3: #f8bbd0;
   --chart-4: #fce4ec;
   --chart-5: #c2185b;
-  --sidebar: #ffffff;
+  /* The shell surface behind the inset content panel: one soft accent tint shared by the
+     sidebar and the frame around the panel. Derived, so every accent theme follows. */
+  --sidebar: color-mix(in srgb, var(--primary-light) 55%, var(--background));
   --sidebar-foreground: #374151;
   --sidebar-primary: #e75480;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #fff1f6;
+  /* Hover on the tinted sidebar: one step deeper than the surface. */
+  --sidebar-accent: var(--primary-light);
   --sidebar-accent-foreground: #b0234f;
   --sidebar-border: #f5d6df;
   --sidebar-ring: var(--primary-fill);
@@ -187,7 +190,6 @@
   --chart-4: #ede7fb;
   --chart-5: #6340b5;
   --sidebar-primary: #8e6bd8;
-  --sidebar-accent: #f6f2fe;
   --sidebar-accent-foreground: #5b3aa8;
   --sidebar-border: #e2d9f7;
   --page-glow: #ece4fc;
@@ -213,7 +215,6 @@
   --chart-4: #d7f2ee;
   --chart-5: #0f6e64;
   --sidebar-primary: #1e9e91;
-  --sidebar-accent: #effaf8;
   --sidebar-accent-foreground: #0f6e64;
   --sidebar-border: #cdebe6;
   --page-glow: #d9f3ef;
@@ -239,7 +240,6 @@
   --chart-4: #fde5d8;
   --chart-5: #b4501f;
   --sidebar-primary: #ee8455;
-  --sidebar-accent: #fff3ec;
   --sidebar-accent-foreground: #a3461a;
   --sidebar-border: #f8dacb;
   --page-glow: #fde3d4;
@@ -265,7 +265,6 @@
   --chart-4: #e2eee2;
   --chart-5: #456f4e;
   --sidebar-primary: #6e9e78;
-  --sidebar-accent: #f2f7f1;
   --sidebar-accent-foreground: #3f6647;
   --sidebar-border: #d8e6d6;
   --page-glow: #e1eee0;
@@ -333,8 +332,27 @@
   filter: hue-rotate(-150deg) saturate(0.45);
 }
 
+/* Collapsed sidebar before hydration (see RestoreCollapsedSidebar in components/shell/workspace.tsx):
+   the prerendered page is expanded, so until React applies the saved state the rail takes its
+   collapsed geometry (gap = icon + 1rem, panel margin 0.5rem) and hides its expanded contents.
+   Matching the hydrated geometry exactly means the hand-over moves nothing. */
+html[data-sidebar-boot="collapsed"] [data-slot="sidebar-wrapper"]:has([data-slot="sidebar"][data-state="expanded"]) {
+  --sidebar-width: calc(var(--sidebar-width-icon) + 1rem) !important;
+}
+html[data-sidebar-boot="collapsed"] [data-slot="sidebar"][data-state="expanded"] [data-slot="sidebar-inner"] {
+  visibility: hidden;
+}
+@media (min-width: 48rem) {
+  html[data-sidebar-boot="collapsed"] [data-slot="sidebar"][data-state="expanded"] ~ [data-slot="sidebar-inset"] {
+    margin-left: 0.5rem;
+  }
+}
+
 /* Laporan "Cetak / PDF": print the report only. */
 @media print {
+  [data-slot="sidebar-wrapper"] {
+    background: var(--card);
+  }
   [data-slot="sidebar-gap"],
   [data-slot="sidebar-container"],
   .floral {
@@ -376,5 +394,11 @@
     --tw-exit-rotate: 0 !important;
     --tw-enter-blur: 0 !important;
     --tw-exit-blur: 0 !important;
+  }
+  /* The sidebar snaps between expanded and the icon rail instead of sliding. */
+  [data-slot="sidebar-gap"],
+  [data-slot="sidebar-container"],
+  [data-slot="sidebar-menu-button"] {
+    transition: none !important;
   }
 }

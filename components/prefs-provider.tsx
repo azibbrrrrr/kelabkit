@@ -34,8 +34,8 @@ function apply(prefs: Preferences) {
   requestAnimationFrame(() => freeze.remove());
 }
 
-/** Runs before paint (inlined in the root layout) so the saved theme never flashes. */
-export const prefsBootScript = `(function(){try{var p=JSON.parse(localStorage.getItem(${JSON.stringify(PREFS_KEY)})||"{}");var r=document.documentElement;if(p.theme)r.dataset.accent=p.theme;if(p.floral===false)r.dataset.floral="off";}catch(e){}})();`;
+/** Runs before paint (inlined in the root layout) so the saved theme and a collapsed sidebar never flash. */
+export const prefsBootScript = `(function(){try{var p=JSON.parse(localStorage.getItem(${JSON.stringify(PREFS_KEY)})||"{}");var r=document.documentElement;if(p.theme)r.dataset.accent=p.theme;if(p.floral===false)r.dataset.floral="off";}catch(e){}if(/(?:^|; )sidebar_state=false(?:;|$)/.test(document.cookie))document.documentElement.dataset.sidebarBoot="collapsed";})();`;
 
 export function PrefsProvider({ children }: { children: ReactNode }) {
   const [prefs, setState] = useState<Preferences>(defaultPreferences);

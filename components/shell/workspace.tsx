@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Separator } from "@/components/ui/separator";
 import { SidebarInset, SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { Spinner } from "@/components/ui/spinner";
 import { formatDay, formatMoney, initials } from "@/lib/format";
@@ -23,14 +24,15 @@ import { cn } from "@/lib/utils";
 import { Bell, ChevronDown, House, Menu, Plus, Settings, Sheet, TriangleAlert, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, type CSSProperties, type ReactNode } from "react";
 
 export function Workspace({ children }: { children: ReactNode }) {
   return (
     <KelabDataProvider>
-      <SidebarProvider>
+      <SidebarProvider style={{ "--sidebar-width-icon": "3.5rem" } as CSSProperties}>
+        <RestoreCollapsedSidebar />
         <AppSidebar />
-        <SidebarInset className="page-glow relative min-w-0 overflow-x-clip">
+        <SidebarInset className="page-glow relative min-w-0 overflow-x-clip md:peer-data-[variant=inset]:overflow-clip md:peer-data-[variant=inset]:rounded-2xl md:peer-data-[variant=inset]:border md:peer-data-[variant=inset]:border-border/70 md:peer-data-[variant=inset]:shadow-[0_1px_2px_color-mix(in_srgb,var(--foreground)_4%,transparent),0_8px_24px_-16px_color-mix(in_srgb,var(--primary)_22%,transparent)] print:m-0! print:rounded-none! print:border-0! print:shadow-none!">
           <Floral asset="corner-top-right" className="top-0 right-0 z-0 hidden w-[260px] opacity-80 lg:block" />
           <TopBar />
           <main className="relative z-10 flex flex-1 flex-col pb-24 md:pb-0 print:pb-0">
@@ -43,12 +45,34 @@ export function Workspace({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * The page is prerendered expanded, so a collapsed choice (shadcn's sidebar_state cookie) is
+ * applied after hydration. The boot script marks <html data-sidebar-boot="collapsed"> before
+ * paint and globals.css draws the rail at collapsed width until this hands over to React state.
+ */
+function RestoreCollapsedSidebar() {
+  const { setOpen, state } = useSidebar();
+  const restored = useRef(false);
+  useLayoutEffect(() => {
+    if (restored.current) return;
+    restored.current = true;
+    if (document.documentElement.dataset.sidebarBoot === "collapsed") setOpen(false);
+  }, [setOpen]);
+  useEffect(() => {
+    if (state === "collapsed") delete document.documentElement.dataset.sidebarBoot;
+  }, [state]);
+  return null;
+}
+
 function TopBar() {
   const { demo, data } = useKelab();
+  const { isMobile, state } = useSidebar();
   const treasurer = data?.club.treasurerName ?? "Bendahari";
+  const toggleLabel = isMobile ? "Buka menu" : state === "collapsed" ? "Kembangkan menu sisi" : "Kecilkan menu sisi";
   return (
-    <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b border-border/70 bg-background/80 px-3 backdrop-blur-xl md:px-6 print:hidden">
-      <SidebarTrigger className="md:hidden" aria-label="Buka menu" />
+    <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b border-border/70 bg-background/80 px-3 backdrop-blur-xl md:rounded-t-2xl md:px-6 print:hidden">
+      <SidebarTrigger className="-ml-1 size-9 rounded-xl [&_svg]:size-[18px]" aria-label={toggleLabel} title={isMobile ? undefined : `${toggleLabel} (Ctrl/⌘ B)`} />
+      <Separator orientation="vertical" className="hidden data-vertical:h-5 data-vertical:self-center md:block" />
       <GlobalSearch className="hidden sm:block" />
       <div className="sm:hidden">
         <span className="font-display text-[17px] font-bold">KelabKit</span>

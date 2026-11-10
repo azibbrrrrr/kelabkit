@@ -1,6 +1,6 @@
 "use client";
 
-import { Brand } from "@/components/brand";
+import { Brand, BrandMark } from "@/components/brand";
 import { useKelab } from "@/components/data-provider";
 import { Floral } from "@/components/floral";
 import {
@@ -14,8 +14,10 @@ import {
   SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarRail,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { isActive, navItems } from "@/lib/nav";
 import { ChevronsUpDown, School } from "lucide-react";
 import Link from "next/link";
@@ -23,17 +25,29 @@ import { usePathname } from "next/navigation";
 
 export function AppSidebar() {
   const pathname = usePathname();
-  const { setOpenMobile } = useSidebar();
+  const { setOpenMobile, state, isMobile } = useSidebar();
   const { data } = useKelab();
   const pendingCount = data?.payments.filter((payment) => payment.state === "pending").length ?? 0;
   const close = () => setOpenMobile(false);
+  const clubName = data?.club.name ?? "Kelab KGK";
+  const session = data?.club.session ?? "—";
+  const railLabel = state === "collapsed" ? "Kembangkan menu sisi" : "Kecilkan menu sisi";
 
   return (
-    <Sidebar collapsible="offcanvas" className="border-r border-sidebar-border">
-      <SidebarHeader className="h-16 justify-center px-5">
-        <Brand />
+    <Sidebar collapsible="icon" variant="inset">
+      <SidebarHeader className="h-16 justify-center px-3 group-data-[collapsible=icon]:px-2.5">
+        <div className="group-data-[collapsible=icon]:hidden">
+          <Brand />
+        </div>
+        <Link
+          href="/"
+          aria-label="KelabKit, ke Dashboard"
+          className="hidden rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar group-data-[collapsible=icon]:grid"
+        >
+          <BrandMark />
+        </Link>
       </SidebarHeader>
-      <SidebarContent className="relative px-3 pt-3">
+      <SidebarContent className="relative px-1 pt-3 group-data-[collapsible=icon]:px-2.5">
         <SidebarGroup className="p-0">
           <SidebarGroupContent>
             <SidebarMenu className="gap-1.5">
@@ -45,7 +59,8 @@ export function AppSidebar() {
                     <SidebarMenuButton
                       asChild
                       isActive={active}
-                      className="h-11 gap-3 rounded-xl px-4 text-[14px] font-medium text-sidebar-foreground data-active:brand-gradient data-active:font-semibold data-active:text-white data-active:shadow-[0_10px_20px_-12px_var(--primary)] [&_svg]:size-[18px]"
+                      tooltip={count > 0 ? `${item.title} · ${count} menunggu semakan` : item.title}
+                      className="h-11 gap-3 rounded-xl px-4 group-data-[collapsible=icon]:size-9! group-data-[collapsible=icon]:rounded-lg group-data-[collapsible=icon]:p-[9px]! text-[14px] font-medium text-sidebar-foreground data-active:brand-gradient data-active:font-semibold data-active:text-white data-active:shadow-[0_10px_20px_-12px_var(--primary)] [&_svg]:size-[18px]"
                     >
                       <Link href={item.href} onClick={close}>
                         <item.icon />
@@ -54,7 +69,7 @@ export function AppSidebar() {
                     </SidebarMenuButton>
                     {count > 0 && (
                       <SidebarMenuBadge
-                        className="top-3 right-2 rounded-full bg-st-pending-bg text-st-pending peer-data-active/menu-button:bg-white peer-data-active/menu-button:text-primary-strong"
+                        className="top-3 right-2 rounded-full bg-st-pending-bg text-st-pending peer-data-active/menu-button:bg-white peer-data-active/menu-button:text-primary-strong group-data-[collapsible=icon]:-top-1 group-data-[collapsible=icon]:-right-1 group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:h-4 group-data-[collapsible=icon]:min-w-4 group-data-[collapsible=icon]:px-1 group-data-[collapsible=icon]:text-[10px] group-data-[collapsible=icon]:ring-2 group-data-[collapsible=icon]:ring-sidebar"
                         aria-label={`${count} bayaran menunggu semakan`}
                       >
                         {count}
@@ -67,24 +82,32 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
         <div className="min-h-40 flex-1" />
-        <Floral asset="sidebar-sprig" className="bottom-0 -left-6 w-[230px] opacity-90" />
+        <Floral asset="sidebar-sprig" className="bottom-0 -left-6 w-[230px] opacity-90 group-data-[collapsible=icon]:hidden" />
       </SidebarContent>
-      <SidebarFooter className="relative z-10 px-3 pb-4">
-        <Link
-          href="/tetapan/"
-          onClick={close}
-          className="flex items-center gap-3 rounded-2xl border border-sidebar-border bg-card/90 px-3 py-2.5 backdrop-blur transition-colors hover:bg-primary-tint"
-        >
-          <span className="grid size-9 place-items-center rounded-xl bg-primary-light text-primary-strong">
-            <School className="size-[18px]" />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-[13px] font-semibold">{data?.club.name ?? "Kelab KGK"}</span>
-            <span className="block text-xs text-muted-foreground">Sesi {data?.club.session ?? "—"}</span>
-          </span>
-          <ChevronsUpDown className="size-4 text-muted-foreground" />
-        </Link>
+      <SidebarFooter className="relative z-10 px-1 pb-2 group-data-[collapsible=icon]:px-2.5">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Link
+              href="/tetapan/"
+              onClick={close}
+              className="flex items-center gap-3 rounded-2xl border border-sidebar-border bg-card/90 px-3 py-2.5 backdrop-blur transition-colors hover:bg-primary-tint group-data-[collapsible=icon]:rounded-xl group-data-[collapsible=icon]:border-0 group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:p-0"
+            >
+              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary-light text-primary-strong">
+                <School className="size-[18px]" />
+              </span>
+              <span className="min-w-0 flex-1 group-data-[collapsible=icon]:sr-only">
+                <span className="block truncate text-[13px] font-semibold">{clubName}</span>
+                <span className="block text-xs text-muted-foreground">Sesi {session}</span>
+              </span>
+              <ChevronsUpDown className="size-4 text-muted-foreground group-data-[collapsible=icon]:hidden" />
+            </Link>
+          </TooltipTrigger>
+          <TooltipContent side="right" align="center" hidden={state !== "collapsed" || isMobile}>
+            {clubName} · Sesi {session}
+          </TooltipContent>
+        </Tooltip>
       </SidebarFooter>
+      <SidebarRail aria-label={railLabel} title={railLabel} />
     </Sidebar>
   );
 }
