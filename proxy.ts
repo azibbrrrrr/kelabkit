@@ -8,6 +8,10 @@ import { MODE_COOKIE } from "@/lib/auth/mode";
 // action re-checks the session, so this redirect is navigation, not the security boundary.
 
 export default function proxy(request: NextRequest) {
+  // Health checks and cron routes carry no session: /api/health is public and says nothing about data,
+  // /api/cron/* authenticates itself with CRON_SECRET.
+  const { pathname: path } = request.nextUrl;
+  if (path === "/api/health" || path.startsWith("/api/health/") || path.startsWith("/api/cron/")) return NextResponse.next();
   // Server actions authenticate themselves and must not receive an HTML redirect.
   if (request.headers.has("Next-Action")) return NextResponse.next();
   // Returning from Google carries a verifier that the auth middleware must exchange, even with a stale demo cookie.

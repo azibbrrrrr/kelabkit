@@ -5,7 +5,7 @@ import "server-only";
 // without the variables every call answers ATTACHMENT_STORAGE_UNAVAILABLE. Keys are built by
 // attachmentKey() from the session's club; nothing here accepts a key from a client.
 
-import { DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, GetObjectCommand, HeadBucketCommand, HeadObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { PRESIGN_SECONDS } from "@/lib/attachments";
 import { KelabError } from "@/lib/errors";
@@ -65,4 +65,23 @@ export async function headObject(key: string): Promise<{ sizeBytes: number; cont
 export async function deleteObject(key: string): Promise<void> {
   const { client, bucket } = storage();
   await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+}
+
+/** Health probe: resolves when the bucket answers HEAD with these credentials, rejects otherwise. Throws ATTACHMENT_STORAGE_UNAVAILABLE when not configured. */
+export async function pingStorage(signal?: AbortSignal): Promise<void> {
+  const { client, bucket } = storage();
+  await client.send(new HeadBucketCommand({ Bucket: bucket }), { abortSignal: signal });
+}
+
+/** Keys (with size) under a prefix, oldest page first. Ops and test tooling only; never called with a client-supplied prefix. */
+export async function listObjects(prefix: string, maxKeys?: number): Promise<{ key: string; sizeBytes: number; lastModified: Date | null }[]> {
+  const { client, bucket } = storage();
+  const out: { key: string; sizeBytes: number; lastModified: Date | null }[] = [];
+  let token: string | undefined;
+  do {
+    const page = await client.send(new ListObjectsV2Command({ Bucket: bucket, Prefix: prefix, MaxKeys: maxKeys, ContinuationToken: token }));
+    for (const o of page.Contents ?? []) if (o.Key) out.push({ key: o.Key, sizeBytes: o.Size ?? 0, lastModified: o.LastModified ?? null });
+    token = maxKeys === undefined ? page.NextContinuationToken : undefined;
+  } while (token);
+  return out;
 }
