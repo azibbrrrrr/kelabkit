@@ -180,6 +180,8 @@ export const en: Messages = {
     google: "Sign in with Google",
     or: "or",
     tryDemo: "Try the demo",
+    notConfiguredTitle: "Sign-in is not configured",
+    notConfiguredBody: "This server is not set up for account sign-in yet. You can still try the demo without an account.",
     demoNote: "The demo uses sample data stored in this browser only. No account needed.",
     googleFailed: "Google sign-in could not be started. Try again in a moment.",
     createClubTitle: "Create your club",

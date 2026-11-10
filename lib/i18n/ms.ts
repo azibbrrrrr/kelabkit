@@ -182,6 +182,8 @@ export const ms = {
     google: "Log masuk dengan Google",
     or: "atau",
     tryDemo: "Cuba demo",
+    notConfiguredTitle: "Log masuk belum dikonfigurasi",
+    notConfiguredBody: "Pelayan ini belum disediakan untuk log masuk akaun. Anda masih boleh mencuba demo tanpa akaun.",
     demoNote: "Demo menggunakan data contoh yang disimpan dalam pelayar ini sahaja. Tiada akaun diperlukan.",
     googleFailed: "Log masuk Google tidak dapat dimulakan. Cuba lagi sebentar lagi.",
     createClubTitle: "Cipta kelab anda",

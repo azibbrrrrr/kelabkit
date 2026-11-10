@@ -20,7 +20,7 @@ function GoogleMark() {
   );
 }
 
-export function SignInPage() {
+export function SignInPage({ configured = true }: { configured?: boolean }) {
   const t = useT();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,10 +57,17 @@ export function SignInPage() {
         </div>
 
         <div className="mt-7 grid gap-3">
-          <Button type="button" variant="outline" size="lg" onClick={() => void google()} disabled={busy} className="h-11 w-full gap-2.5 rounded-xl text-[15px] font-semibold">
-            {busy ? <Spinner className="size-4" /> : <GoogleMark />}
-            {t("auth.google")}
-          </Button>
+          {configured ? (
+            <Button type="button" variant="outline" size="lg" onClick={() => void google()} disabled={busy} className="h-11 w-full gap-2.5 rounded-xl text-[15px] font-semibold">
+              {busy ? <Spinner className="size-4" /> : <GoogleMark />}
+              {t("auth.google")}
+            </Button>
+          ) : (
+            <div role="status" className="rounded-xl border border-border bg-muted/50 p-4 text-center">
+              <p className="text-[15px] font-semibold">{t("auth.notConfiguredTitle")}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{t("auth.notConfiguredBody")}</p>
+            </div>
+          )}
           {error && (
             <p role="alert" className="text-center text-xs font-medium text-st-unpaid">
               {error}

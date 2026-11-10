@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 export default async function KelabLayout({ children }: { children: ReactNode }) {
   const context = await getAppContext();
-  if (context.mode === "signed-out") redirect("/masuk/");
+  if (context.mode === "signed-out" || context.mode === "unconfigured") redirect("/masuk/");
   if (context.mode === "demo") return <Workspace>{children}</Workspace>;
   const { name, email, image } = context.user;
   // First sign-in: no club yet, so only /mula (club creation) renders, without the data shell.
