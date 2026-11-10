@@ -210,7 +210,6 @@ export const ms = {
     homeLink: "KelabKit, ke Papan Pemuka",
     pendingTooltip: "{title} · {count} menunggu semakan",
     pendingBadge: "Bayaran menunggu semakan: {count}",
-    quickFill: "Isi Pantas",
     clubFallback: "Kelab KGK",
     session: "Sesi {session}",
     treasurer: "Bendahari",
