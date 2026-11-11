@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { formatDateTime, formatDay, formatMoney, formatMonth, today as todayDay } from "@/lib/format";
+import { formatDateTime, formatDay, formatMoney, formatMoneyShort, formatMonth, today as todayDay } from "@/lib/format";
 import {
   categoryLabels,
   cellStatusLabels,
@@ -23,6 +23,7 @@ import {
 import { useLocale, useT, type TFunction } from "@/lib/i18n/react";
 import { senToInput, sum } from "@/lib/money/amount";
 import { totalsOf, voluntaryReceived, type ChargeLedger } from "@/lib/money/ledger";
+import { buildPaymentList, buildSheet, DEFAULT_SHEET_OPTIONS, type Sheet, type SheetOptions } from "@/lib/payment-list";
 import type { Allocation, Collection, Payment, PaymentState, Sen, Snapshot } from "@/lib/types";
 import { cellStatus, sortCollections, type View } from "@/lib/view";
 import { cn } from "@/lib/utils";
@@ -30,12 +31,13 @@ import { Download, FileText, Printer } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { toast } from "sonner";
+import { SenaraiControls, SenaraiView, senaraiTexts } from "./senarai-bayaran";
 
 // Reports. Each report is built once as a plain model (columns, rows, totals, summary)
 // from lib/view and lib/money, and both the on-screen table and the CSV are rendered
 // from that same model, so an export always equals what the treasurer sees.
 
-type ReportKind = "kutipan" | "ahli" | "belum" | "bulanan" | "sejarah";
+type ReportKind = "kutipan" | "ahli" | "belum" | "bulanan" | "senarai" | "sejarah";
 type ColKind = "text" | "money" | "count" | "status";
 type Chip = [string, Tone];
 type Value = string | number | Chip[] | null;
@@ -53,6 +55,7 @@ type Report = {
 };
 
 const reportOptions = (t: TFunction): { value: ReportKind; label: string }[] => [
+  { value: "senarai", label: t("reports.kinds.senarai") },
   { value: "kutipan", label: t("reports.kinds.kutipan") },
   { value: "ahli", label: t("reports.kinds.ahli") },
   { value: "belum", label: t("reports.kinds.belum") },
@@ -99,6 +102,8 @@ function buildCsv(report: Report, header: [string, string][]) {
   // A byte-order mark makes Excel read the file as UTF-8, so Malay text and "—" survive.
   return `﻿${lines.join("\r\n")}\r\n`;
 }
+
+const slugOf = (name: string) => name.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "kutipan";
 
 function download(filename: string, content: string) {
   const blob = new Blob([content], { type: "text/csv;charset=utf-8" });
@@ -515,28 +520,58 @@ function historyReport(
   };
 }
 
+/** The Senarai bayaran sheet as a plain table for the CSV: name, one column per month, total. */
+function senaraiReport(t: TFunction, sheet: Sheet, scope: string): Report {
+  const monthKey = (i: number) => `m${i}`;
+  const columns: Col[] = [
+    text("name", sheet.nameHeader),
+    ...sheet.columns.map((column, i) => text(monthKey(i), column.label)),
+    ...(sheet.showTotal ? [money("total", sheet.totalHeader)] : []),
+  ];
+  return {
+    title: t("reports.kinds.senarai"),
+    scope,
+    columns,
+    rows: sheet.groups.flatMap((group) =>
+      group.rows.map((row) => ({
+        key: row.key,
+        values: {
+          name: row.name,
+          ...Object.fromEntries(row.cells.map((cell, i) => [monthKey(i), cell.text || null])),
+          total: row.totalSen,
+        } as Record<string, Value>,
+      })),
+    ),
+    totals: null,
+    summary: [],
+    empty: t("reports.senarai.noMembers"),
+  };
+}
+
 // Page ------------------------------------------------------------------------------------
 
 export function ReportsPage() {
   const t = useT();
   const locale = useLocale();
   const { data, view } = useSnapshot();
-  const [kind, setKind] = useState<ReportKind>("kutipan");
+  // The payment list opens first, but a club with no monthly collection has nothing to list there.
+  const [kind, setKind] = useState<ReportKind>(() => (data.collections.some((c) => c.type === "monthly") ? "senarai" : "kutipan"));
   const [pick, setPick] = useState<string>(ALL);
   const [periodPick, setPeriodPick] = useState<string>(ALL);
   const [from, setFrom] = useState(() => `${todayDay().slice(0, 4)}-01-01`);
   const [to, setTo] = useState(() => todayDay());
   const [stateFilter, setStateFilter] = useState<PaymentState | typeof ALL>(ALL);
+  const [senaraiOptions, setSenaraiOptions] = useState<SheetOptions>(DEFAULT_SHEET_OPTIONS);
   const [stamp, setStamp] = useState(() => new Date().toISOString());
 
   const sorted = useMemo(() => sortCollections(data.collections), [data.collections]);
   const collectionOptions = useMemo(() => {
     if (kind === "belum") return sorted.filter((c) => c.type !== "voluntary" && c.status !== "draft");
-    if (kind === "bulanan") return sorted.filter((c) => c.type === "monthly");
+    if (kind === "bulanan" || kind === "senarai") return sorted.filter((c) => c.type === "monthly");
     if (kind === "ahli") return sorted.filter((c) => c.type !== "voluntary");
     return sorted;
   }, [kind, sorted]);
-  const allowAll = kind !== "belum" && kind !== "bulanan";
+  const allowAll = kind !== "belum" && kind !== "bulanan" && kind !== "senarai";
   const collection = collectionOptions.find((c) => c.id === pick) ?? (allowAll ? null : collectionOptions[0] ?? null);
   const thisMonth = view.today.slice(0, 7);
   const periodOptions =
@@ -545,6 +580,14 @@ export function ReportsPage() {
       : [];
   const period = periodOptions.find((p) => p.id === periodPick) ?? null;
   const rangeInvalid = kind === "sejarah" && (!from || !to || from > to);
+
+  const senaraiSheet = useMemo<Sheet | null>(() => {
+    if (kind !== "senarai" || !collection) return null;
+    const list = buildPaymentList(view, collection, view.today, (member) =>
+      member.active ? member.name : t("reports.member.inactive", { name: member.name }),
+    );
+    return buildSheet(list, senaraiOptions, view.today, senaraiTexts(t, collection.name, formatDay(view.today), senaraiOptions), formatMoneyShort);
+  }, [kind, collection, view, senaraiOptions, t, locale]);
 
   const report = useMemo<Report | null>(() => {
     switch (kind) {
@@ -556,10 +599,12 @@ export function ReportsPage() {
         return collection ? owingReport(t, data, view, collection, period?.id ?? null) : null;
       case "bulanan":
         return collection ? monthlyReport(t, view, collection) : null;
+      case "senarai":
+        return senaraiSheet && collection ? senaraiReport(t, senaraiSheet, collection.name) : null;
       case "sejarah":
         return rangeInvalid ? null : historyReport(t, data, view, collection?.id ?? null, from, to, stateFilter);
     }
-  }, [kind, data, view, collection, period, from, to, stateFilter, rangeInvalid, t, locale]);
+  }, [kind, data, view, collection, period, from, to, stateFilter, rangeInvalid, senaraiSheet, t, locale]);
 
   const headerFields = (at: string): [string, string][] => [
     [t("reports.header.club"), data.club.name],
@@ -588,7 +633,8 @@ export function ReportsPage() {
     window.print();
   };
 
-  const missingCollection = (kind === "belum" || kind === "bulanan") && !collection;
+  const monthlyKind = kind === "bulanan" || kind === "senarai";
+  const missingCollection = (kind === "belum" || monthlyKind) && !collection;
 
   return (
     <PageShell className="print:max-w-none print:gap-3 print:p-0">
@@ -621,7 +667,7 @@ export function ReportsPage() {
         />
         <div className="grid gap-3 sm:flex sm:flex-wrap sm:items-end">
           <div className="grid min-w-0 gap-1.5 sm:w-72">
-            <Label htmlFor="rpt-collection">{kind === "bulanan" ? t("reports.filters.monthlyCollection") : t("reports.filters.collection")}</Label>
+            <Label htmlFor="rpt-collection">{monthlyKind ? t("reports.filters.monthlyCollection") : t("reports.filters.collection")}</Label>
             <Select
               value={collection?.id ?? ALL}
               onValueChange={(value) => {
@@ -687,15 +733,18 @@ export function ReportsPage() {
             ]}
           />
         )}
+        {kind === "senarai" && collection && <SenaraiControls options={senaraiOptions} onChange={setSenaraiOptions} />}
         {rangeInvalid && <p className="text-xs font-medium text-st-unpaid">{t("reports.rangeInvalid")}</p>}
       </div>
 
       {missingCollection ? (
         <EmptyState
           icon={FileText}
-          title={kind === "bulanan" ? t("reports.missing.monthlyTitle") : t("reports.missing.compulsoryTitle")}
-          description={kind === "bulanan" ? t("reports.missing.monthlyDescription") : t("reports.missing.compulsoryDescription")}
+          title={monthlyKind ? t("reports.missing.monthlyTitle") : t("reports.missing.compulsoryTitle")}
+          description={monthlyKind ? t("reports.missing.monthlyDescription") : t("reports.missing.compulsoryDescription")}
         />
+      ) : kind === "senarai" && senaraiSheet && collection ? (
+        <SenaraiView sheet={senaraiSheet} fileStem={`senarai-bayaran-${slugOf(collection.name)}-${todayDay()}`} />
       ) : report ? (
         <ReportView report={report} header={headerFields(stamp)} />
       ) : null}
