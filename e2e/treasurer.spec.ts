@@ -135,8 +135,12 @@ test.describe("treasurer flows (demo backend)", () => {
 
     // The payments ledger lists it under Dibatalkan with its reason; the audit log has the entry.
     await page.goto("/bayaran/");
-    await page.getByRole("tab", { name: /^Dibatalkan/ }).click();
+    await page.getByRole("tab", { name: /^Semua/ }).click();
+    await page.getByRole("combobox", { name: "Tapis status" }).click();
+    await page.getByRole("option", { name: "Dibatalkan" }).click();
     await expect(page.getByRole("main")).toContainText("Cikgu Aina Sofea");
+    await page.getByRole("row", { name: /Cikgu Aina Sofea/ }).click();
+    await expect(page.getByText(/Silap amaun/).first()).toBeVisible();
     await page.goto("/tetapan/");
     await expect(page.getByRole("heading", { name: "Log audit" })).toBeVisible();
     const audit = page.getByRole("main");
