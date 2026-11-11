@@ -149,9 +149,10 @@ export const reportsEn: DeepStringify<typeof reportsMs> = {
     actions: {
       share: "Share image",
       download: "Download",
-      image: "Download image",
-      pdf: "Download PDF",
-      excel: "Download Excel",
+      image: "Image (PNG)",
+      pdf: "PDF",
+      excel: "Excel (.xlsx)",
+      csv: "CSV",
     },
     sheetName: "Payment list",
     preparing: "Preparing the image…",

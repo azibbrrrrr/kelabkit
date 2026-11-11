@@ -103,7 +103,11 @@ function saveBlob(filename: string, blob: Blob) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export function SenaraiView({ sheet, fileStem }: { sheet: Sheet; fileStem: string }) {
+/**
+ * The exports of one sheet: image (also shared), PDF and Excel. The PNG is drawn ahead of the tap
+ * so the share call can run inside the click. Pass `null` while there is no sheet to export.
+ */
+export function useSenaraiExport(sheet: Sheet | null, fileStem: string) {
   const t = useT();
   const [png, setPng] = useState<Blob | null>(null);
 
@@ -112,6 +116,7 @@ export function SenaraiView({ sheet, fileStem }: { sheet: Sheet; fileStem: strin
   useEffect(() => {
     let live = true;
     setPng(null);
+    if (!sheet) return;
     (async () => {
       await document.fonts?.ready;
       const blob = await canvasBlob(drawSheet(sheet, readSheetTheme()), "image/png");
@@ -126,7 +131,7 @@ export function SenaraiView({ sheet, fileStem }: { sheet: Sheet; fileStem: strin
   const pngFile = png ? new File([png], `${fileStem}.png`, { type: "image/png" }) : null;
 
   const share = () => {
-    if (!pngFile) return;
+    if (!sheet || !pngFile) return;
     if (navigator.canShare?.({ files: [pngFile] })) {
       navigator.share({ files: [pngFile], title: sheet.title }).catch((error: unknown) => {
         if ((error as { name?: string })?.name !== "AbortError") failed();
@@ -144,6 +149,7 @@ export function SenaraiView({ sheet, fileStem }: { sheet: Sheet; fileStem: strin
   };
 
   const downloadPdf = async () => {
+    if (!sheet) return;
     try {
       await document.fonts?.ready;
       const canvas = drawSheet(sheet, readSheetTheme());
@@ -156,6 +162,7 @@ export function SenaraiView({ sheet, fileStem }: { sheet: Sheet; fileStem: strin
   };
 
   const downloadExcel = async () => {
+    if (!sheet) return;
     try {
       // Loaded on click only: the writer adds nothing to the Laporan page's first load.
       const { default: writeXlsxFile } = await import("write-excel-file/browser");
@@ -172,6 +179,53 @@ export function SenaraiView({ sheet, fileStem }: { sheet: Sheet; fileStem: strin
     }
   };
 
+  return {
+    ready: Boolean(sheet && sheet.groups.length > 0),
+    imageReady: Boolean(pngFile),
+    share,
+    downloadImage,
+    downloadPdf,
+    downloadExcel,
+  };
+}
+
+export type SenaraiExport = ReturnType<typeof useSenaraiExport>;
+
+/** The page header's actions for this report: one primary Share, one Download menu with every format. */
+export function SenaraiActions({ exporter, onCsv, csvReady }: { exporter: SenaraiExport; onCsv: () => void; csvReady: boolean }) {
+  const t = useT();
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" disabled={!exporter.ready}>
+            <Download /> {t("reports.senarai.actions.download")} <ChevronDown />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onSelect={exporter.downloadImage} disabled={!exporter.imageReady}>
+            <FileImage /> {t("reports.senarai.actions.image")}
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => void exporter.downloadPdf()}>
+            <FileText /> {t("reports.senarai.actions.pdf")}
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => void exporter.downloadExcel()}>
+            <FileSpreadsheet /> {t("reports.senarai.actions.excel")}
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={onCsv} disabled={!csvReady}>
+            <FileText /> {t("reports.senarai.actions.csv")}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <Button onClick={exporter.share} disabled={!exporter.ready || !exporter.imageReady}>
+        <Share2 /> {exporter.imageReady || !exporter.ready ? t("reports.senarai.actions.share") : t("reports.senarai.preparing")}
+      </Button>
+    </>
+  );
+}
+
+export function SenaraiView({ sheet }: { sheet: Sheet }) {
+  const t = useT();
   const empty = sheet.groups.length === 0;
   const colWidth = sheet.month ? "w-full min-w-[576px] max-w-[720px]" : "w-full min-w-[996px]";
   const cellBase = "h-[30px] border border-border px-0.5 text-center whitespace-nowrap tabular-nums";
@@ -179,32 +233,6 @@ export function SenaraiView({ sheet, fileStem }: { sheet: Sheet; fileStem: strin
   return (
     <SectionCard className="print:rounded-none print:border-0 print:shadow-none" contentClassName="print:px-0">
       <div className="grid gap-4">
-        <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
-          <div className="flex flex-wrap gap-2">
-            <Button onClick={share} disabled={!pngFile || empty}>
-              <Share2 /> {png ? t("reports.senarai.actions.share") : t("reports.senarai.preparing")}
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" disabled={empty}>
-                  <Download /> {t("reports.senarai.actions.download")} <ChevronDown />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                <DropdownMenuItem onSelect={downloadImage} disabled={!pngFile}>
-                  <FileImage /> {t("reports.senarai.actions.image")}
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => void downloadPdf()}>
-                  <FileText /> {t("reports.senarai.actions.pdf")}
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => void downloadExcel()}>
-                  <FileSpreadsheet /> {t("reports.senarai.actions.excel")}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
           <h2 className="min-w-0 font-display text-h2 break-words">{sheet.title}</h2>
           <p className="text-small whitespace-nowrap text-muted-foreground tabular-nums">{sheet.asOf}</p>
