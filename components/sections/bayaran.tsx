@@ -17,16 +17,20 @@ import { methodLabels, paymentStateLabels } from "@/lib/labels";
 import { monthOf } from "@/lib/money/months";
 import type { Payment, PaymentMethod, PaymentState, Snapshot } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { BadgeCheck, FilterX, Hourglass, Plus, ReceiptText, Undo2, UserRound } from "lucide-react";
+import { BadgeCheck, FilterX, Hourglass, Plus, ReceiptText, UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useDeferredValue, useMemo, useState } from "react";
+import { resolvePaymentTab, type PaymentTab } from "@/lib/payment-tabs";
+import { RecordPanel } from "@/components/record-payment/panel";
+import { useMinWidth } from "@/hooks/use-min-width";
 
 // Every payment transaction, with the review queue for payments recorded before the money
 // was confirmed. Nothing here edits a payment: confirm and reverse go through PaymentList.
 
-type Tab = "semua" | "semakan" | "dibatalkan";
-const TABS: Tab[] = ["semua", "semakan", "dibatalkan"];
+type Tab = PaymentTab;
+/** Wide enough for the table and the record panel side by side (sidebar open, table keeps about 575px). */
+const PANEL_MIN_WIDTH = 1280;
 const PAGE = 40;
 
 /** "Yuran KGK 2026 (Jan, Feb)" or "Jamuan Akhir Tahun" — what a payment was for. */
@@ -67,25 +71,25 @@ export function BayaranPage() {
   const params = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
+  const panelOn = useMinWidth(PANEL_MIN_WIDTH);
   const raw = params.get("tab");
-  const tab: Tab = TABS.includes(raw as Tab) ? (raw as Tab) : "semua";
+  const legacyReversed = raw === "dibatalkan"; // see resolvePaymentTab
 
   const [query, setQuery] = useState("");
   // The heavy filter/render follows the keystroke at lower priority, so typing never waits on it.
   const deferredQuery = useDeferredValue(query);
   const [method, setMethod] = useState<PaymentMethod | "all">("all");
-  const [state, setState] = useState<PaymentState | "all">("all");
+  const [state, setState] = useState<PaymentState | "all">(legacyReversed ? "reversed" : "all");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [limit, setLimit] = useState(PAGE);
   const [selected, setSelected] = useState<string | null>(null);
 
+  // Always written to the URL: with something to review the default is Perlu semakan, so Semua has to be explicit.
   const setTab = (next: Tab) => {
     const search = new URLSearchParams(params.toString());
-    if (next === "semua") search.delete("tab");
-    else search.set("tab", next);
-    const qs = search.toString();
-    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    search.set("tab", next);
+    router.replace(`${pathname}?${search.toString()}`, { scroll: false });
     setLimit(PAGE);
   };
 
@@ -95,7 +99,8 @@ export function BayaranPage() {
     [data.payments],
   );
   const pending = sorted.filter((payment) => payment.state === "pending");
-  const reversed = sorted.filter((payment) => payment.state === "reversed");
+  const confirmed = sorted.filter((payment) => payment.state === "confirmed");
+  const { tab } = resolvePaymentTab(raw, pending.length);
 
   const thisMonth = monthOf(view.today);
   const monthRows = data.payments.filter((payment) => monthOf(payment.paidOn) === thisMonth);
@@ -113,7 +118,7 @@ export function BayaranPage() {
   };
 
   const rows = useMemo(() => {
-    const base = tab === "semua" ? sorted : reversed;
+    const base = tab === "semua" ? sorted : confirmed;
     const q = deferredQuery.trim().toLowerCase();
     return base.filter((payment) => {
       if (method !== "all" && payment.method !== method) return false;
@@ -127,7 +132,7 @@ export function BayaranPage() {
       }
       return true;
     });
-  }, [tab, sorted, reversed, deferredQuery, method, state, from, to, view.membersById]);
+  }, [tab, sorted, confirmed, deferredQuery, method, state, from, to, view.membersById]);
 
   const selectedPayment = selected ? data.payments.find((payment) => payment.id === selected) ?? null : null;
 
@@ -136,12 +141,18 @@ export function BayaranPage() {
     {
       key: "member",
       header: t("paymentsPage.columns.member"),
-      cell: (payment) => <span className="block max-w-[220px] truncate font-medium">{view.membersById.get(payment.memberId)?.name ?? t("paymentsPage.memberFallback")}</span>,
+      cell: (payment) => (
+        <>
+          <span className="block max-w-[220px] truncate font-medium">{view.membersById.get(payment.memberId)?.name ?? t("paymentsPage.memberFallback")}</span>
+          {/* Beside the record panel the Kutipan column is gone; what it was for moves under the name. */}
+          {panelOn && <span className="block max-w-[220px] truncate text-xs text-muted-foreground 2xl:hidden">{targetOf(payment)}</span>}
+        </>
+      ),
     },
     {
       key: "target",
       header: t("paymentsPage.columns.collection"),
-      hideBelow: "lg",
+      hideBelow: panelOn ? "2xl" : "lg",
       cell: (payment) => <span className="line-clamp-2 max-w-[280px] text-muted-foreground">{targetOf(payment)}</span>,
     },
     {
@@ -154,7 +165,7 @@ export function BayaranPage() {
         </span>
       ),
     },
-    { key: "method", header: t("paymentsPage.columns.method"), hideBelow: "lg", cell: (payment) => <span className="text-muted-foreground">{methodLabels[payment.method]}</span> },
+    { key: "method", header: t("paymentsPage.columns.method"), hideBelow: panelOn ? "2xl" : "lg", cell: (payment) => <span className="text-muted-foreground">{methodLabels[payment.method]}</span> },
     { key: "state", header: t("paymentsPage.columns.status"), cell: (payment) => <LabelChip entry={paymentStateLabels[payment.state]} compact /> },
   ];
 
@@ -164,11 +175,14 @@ export function BayaranPage() {
         title={t("paymentsPage.header.title")}
         description={t("paymentsPage.header.description")}
         actions={
-          <Button asChild>
-            <Link href="/bayaran/baru/">
-              <Plus /> {t("paymentsPage.header.record")}
-            </Link>
-          </Button>
+          // With the panel beside the table, the button would only repeat it.
+          panelOn ? undefined : (
+            <Button asChild>
+              <Link href="/bayaran/baru/">
+                <Plus /> {t("paymentsPage.header.record")}
+              </Link>
+            </Button>
+          )
         }
       />
 
@@ -191,18 +205,20 @@ export function BayaranPage() {
         <StatCard label={t("paymentsPage.stats.countLabel")} value={formatNumber(monthCount)} icon={ReceiptText} hint={t("paymentsPage.stats.countHint")} />
       </div>
 
+      <div className={cn("grid gap-5 md:gap-6", panelOn && "grid-cols-[minmax(0,1fr)_384px] items-start")}>
+      <div className="grid min-w-0 gap-5 md:gap-6">
       <Tabs value={tab} onValueChange={(value) => setTab(value as Tab)} className="contents">
         {/* Three tabs fit at 320px: the long label shortens below sm, and the triggers tighten. */}
         <TabsList className="h-10! w-full rounded-xl bg-primary-tint p-1 sm:w-fit">
-          <TabsTrigger value="semua" className="gap-1 rounded-lg px-2 text-small sm:gap-1.5 sm:px-3 sm:text-sm">
-            {t("paymentsPage.tabs.all")} <span className="text-muted-foreground tabular-nums">{data.payments.length}</span>
-          </TabsTrigger>
           <TabsTrigger value="semakan" className="gap-1 rounded-lg px-2 text-small sm:gap-1.5 sm:px-3 sm:text-sm">
-            <span className="hidden sm:inline">{t("paymentsPage.tabs.reviewLong")}</span>
+            <span className="hidden sm:inline">{t("paymentsPage.tabs.review")}</span>
             <span className="sm:hidden">{t("paymentsPage.tabs.reviewShort")}</span> <span className="text-muted-foreground tabular-nums">{pending.length}</span>
           </TabsTrigger>
-          <TabsTrigger value="dibatalkan" className="gap-1 rounded-lg px-2 text-small sm:gap-1.5 sm:px-3 sm:text-sm">
-            {t("paymentsPage.tabs.reversed")} <span className="text-muted-foreground tabular-nums">{reversed.length}</span>
+          <TabsTrigger value="disahkan" className="gap-1 rounded-lg px-2 text-small sm:gap-1.5 sm:px-3 sm:text-sm">
+            {t("paymentsPage.tabs.confirmed")} <span className="text-muted-foreground tabular-nums">{confirmed.length}</span>
+          </TabsTrigger>
+          <TabsTrigger value="semua" className="gap-1 rounded-lg px-2 text-small sm:gap-1.5 sm:px-3 sm:text-sm">
+            {t("paymentsPage.tabs.all")} <span className="text-muted-foreground tabular-nums">{data.payments.length}</span>
           </TabsTrigger>
         </TabsList>
         {/* The one panel every trigger controls; it re-labels itself as the tab changes. */}
@@ -294,8 +310,8 @@ export function BayaranPage() {
                   </Button>
                 }
               />
-            ) : tab === "dibatalkan" && reversed.length === 0 ? (
-              <EmptyState icon={Undo2} title={t("paymentsPage.empty.reversedTitle")} description={t("paymentsPage.empty.reversedDescription")} />
+            ) : tab === "disahkan" && confirmed.length === 0 ? (
+              <EmptyState icon={BadgeCheck} title={t("paymentsPage.empty.confirmedTitle")} description={t("paymentsPage.empty.confirmedDescription")} />
             ) : (
               <>
                 <DataTable
@@ -342,6 +358,13 @@ export function BayaranPage() {
         )}
         </TabsContent>
       </Tabs>
+      </div>
+      {panelOn && (
+        <div className="sticky top-20 -mx-1 max-h-[calc(100svh-6rem)] overflow-y-auto px-1 pb-1">
+          <RecordPanel />
+        </div>
+      )}
+      </div>
 
       <Dialog open={selectedPayment !== null} onOpenChange={(open) => !open && setSelected(null)}>
         <DialogContent size="md">
