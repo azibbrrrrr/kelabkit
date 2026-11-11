@@ -147,9 +147,10 @@ export const reportsMs = {
     actions: {
       share: "Kongsi gambar",
       download: "Muat turun",
-      image: "Muat turun gambar",
-      pdf: "Muat turun PDF",
-      excel: "Muat turun Excel",
+      image: "Gambar (PNG)",
+      pdf: "PDF",
+      excel: "Excel (.xlsx)",
+      csv: "CSV",
     },
     sheetName: "Senarai bayaran",
     preparing: "Menyediakan gambar…",

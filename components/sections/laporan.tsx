@@ -31,7 +31,7 @@ import { Download, FileText, Printer } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { toast } from "sonner";
-import { SenaraiControls, SenaraiView, senaraiTexts } from "./senarai-bayaran";
+import { SenaraiActions, SenaraiControls, SenaraiView, senaraiTexts, useSenaraiExport } from "./senarai-bayaran";
 
 // Reports. Each report is built once as a plain model (columns, rows, totals, summary)
 // from lib/view and lib/money, and both the on-screen table and the CSV are rendered
@@ -633,6 +633,7 @@ export function ReportsPage() {
     window.print();
   };
 
+  const senaraiExport = useSenaraiExport(senaraiSheet, `senarai-bayaran-${slugOf(collection?.name ?? "")}-${todayDay()}`);
   const monthlyKind = kind === "bulanan" || kind === "senarai";
   const missingCollection = (kind === "belum" || monthlyKind) && !collection;
 
@@ -643,14 +644,18 @@ export function ReportsPage() {
           title={t("reports.title")}
           description={t("reports.description")}
           actions={
-            <>
-              <Button variant="outline" onClick={exportCsv} disabled={!report}>
-                <Download /> {t("reports.actions.csv")}
-              </Button>
-              <Button onClick={print} disabled={!report}>
-                <Printer /> {t("reports.actions.print")}
-              </Button>
-            </>
+            kind === "senarai" ? (
+              <SenaraiActions exporter={senaraiExport} onCsv={exportCsv} csvReady={Boolean(report)} />
+            ) : (
+              <>
+                <Button variant="outline" onClick={exportCsv} disabled={!report}>
+                  <Download /> {t("reports.actions.csv")}
+                </Button>
+                <Button onClick={print} disabled={!report}>
+                  <Printer /> {t("reports.actions.print")}
+                </Button>
+              </>
+            )
           }
         />
       </div>
@@ -744,7 +749,7 @@ export function ReportsPage() {
           description={monthlyKind ? t("reports.missing.monthlyDescription") : t("reports.missing.compulsoryDescription")}
         />
       ) : kind === "senarai" && senaraiSheet && collection ? (
-        <SenaraiView sheet={senaraiSheet} fileStem={`senarai-bayaran-${slugOf(collection.name)}-${todayDay()}`} />
+        <SenaraiView sheet={senaraiSheet} />
       ) : report ? (
         <ReportView report={report} header={headerFields(stamp)} />
       ) : null}
