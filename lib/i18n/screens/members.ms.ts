@@ -2,7 +2,16 @@
 export const membersMs = {
   title: "Ahli",
   description: "Senarai guru dan kakitangan kelab. Klik nama untuk melihat penyertaan kutipan dan sejarah bayaran.",
-  addBulk: "Tambah pukal",
+  import: "Import CSV",
+  export: "Eksport senarai (CSV)",
+  exported: "{count} ahli dieksport",
+  count: "{count} ahli",
+  sort: {
+    label: "Isih",
+    baki: "Baki tertunggak",
+    nama: "Nama (A-Z)",
+    "kemas-kini": "Terbaru dikemas kini",
+  },
   addOne: "Tambah ahli",
   addFirst: "Tambah ahli pertama",
   empty: {

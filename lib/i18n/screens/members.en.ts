@@ -5,7 +5,16 @@ import type { membersMs } from "./members.ms";
 export const membersEn: DeepStringify<typeof membersMs> = {
   title: "Members",
   description: "The club's teachers and staff. Click a name to see their collections and payment history.",
-  addBulk: "Add in bulk",
+  import: "Import CSV",
+  export: "Export list (CSV)",
+  exported: "{count} members exported",
+  count: "{count} members",
+  sort: {
+    label: "Sort",
+    baki: "Outstanding balance",
+    nama: "Name (A-Z)",
+    "kemas-kini": "Recently updated",
+  },
   addOne: "Add member",
   addFirst: "Add first member",
   empty: {

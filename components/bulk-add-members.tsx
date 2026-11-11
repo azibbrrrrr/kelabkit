@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/lib/i18n/react";
 import { messageFor } from "@/lib/errors";
 import { categoryLabels } from "@/lib/labels";
+import { downloadTextFile } from "@/lib/download";
 import { ACCEPTED_CATEGORIES, buildMemberTemplate, invalidPhoneMessage, invalidCategoryMessage, MIN_PHONE_DIGITS, parseMemberCsv, phoneDigits, TEMPLATE_FILENAME, type ImportIssue } from "@/lib/member-import";
 import { normaliseName } from "@/lib/names";
 import type { MemberCategory } from "@/lib/types";
@@ -161,16 +162,7 @@ export function BulkAddMembersDialog({
   const duplicateCount = flags.filter((flag) => flag.duplicate).length;
   const warningCount = flags.filter((flag) => flag.warnings.length > 0).length;
 
-  const downloadTemplate = () => {
-    const url = URL.createObjectURL(new Blob([buildMemberTemplate()], { type: "text/csv;charset=utf-8" }));
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = TEMPLATE_FILENAME;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  };
+  const downloadTemplate = () => downloadTextFile(TEMPLATE_FILENAME, buildMemberTemplate());
 
   const update = (key: string, patch: Partial<Row>) => {
     setRows((current) => current.map((row) => (row.key === key ? { ...row, ...patch } : row)));
