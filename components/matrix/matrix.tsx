@@ -20,7 +20,7 @@ import {
 } from "@/components/matrix/column-widths";
 import { MemberCardGrid } from "@/components/matrix/member-card-grid";
 import { MonthTile } from "@/components/matrix/month-tile";
-import type { MatrixLayout } from "@/components/matrix/view-pref";
+import type { MatrixDensity, MatrixLayout } from "@/components/matrix/view-pref";
 import { usePrefs } from "@/components/prefs-provider";
 import { ModalBody, ModalFooter, ModalHeader, ModalText } from "@/components/modal";
 import { RestoreCollectionDialog } from "@/components/restore-collection-dialog";
@@ -38,6 +38,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
@@ -59,6 +61,8 @@ import { useT, type TFunction } from "@/lib/i18n/react";
 import { cellStatusLabels, collectionStatusLabels, overdueLabel, pendingLabel } from "@/lib/labels";
 import { monthOf } from "@/lib/money/months";
 import type { Collection, CollectionStatus, Member } from "@/lib/types";
+import { summariseColumn, type ColumnSummary } from "@/lib/matrix-summary";
+import { MATRIX_SUMMARIES, type MatrixSummary } from "@/lib/prefs";
 import { sortCollections, type MatrixCell, type MatrixColumn } from "@/lib/view";
 import { cn } from "@/lib/utils";
 import { getCoreRowModel, useReactTable, type ColumnDef } from "@tanstack/react-table";
@@ -66,21 +70,24 @@ import {
   ArrowDownUp,
   Archive,
   ArchiveRestore,
+  ChevronDown,
   Columns3,
   EllipsisVertical,
   ExternalLink,
   EyeOff,
+  Funnel,
   LayoutGrid,
   MoveHorizontal,
   Pencil,
   Smile,
   Plus,
   Rows3,
+  RotateCcw,
   Sheet as SheetIcon,
   UserPlus,
 } from "lucide-react";
 import Link from "next/link";
-import { memo, useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from "react";
+import { memo, useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from "react";
 import { flushSync } from "react-dom";
 import { toast } from "sonner";
 
@@ -97,6 +104,24 @@ type Active = { r: number; c: number };
 /** Storage key of a resizable column: its period for a month, else its collection. */
 const widthKey = (column: MatrixColumn) => column.period?.id ?? column.collection.id;
 const widthKind = (column: MatrixColumn): WidthKind => (column.period ? "month" : "single");
+
+// A toolbar control whose setting differs from the default: tinted, and always paired with a count or
+// the setting's name in words, so the state never rests on colour alone.
+const ACTIVE_CONTROL = "border-primary bg-primary-light text-primary-strong hover:bg-primary-light";
+const DENSITY_ITEM =
+  "h-8 rounded-[7px]! px-2.5 pointer-coarse:h-11 pointer-coarse:min-w-11 text-xs font-normal hover:bg-primary-tint data-[state=on]:bg-primary-light data-[state=on]:font-semibold data-[state=on]:text-primary-strong";
+
+// Padat: the chip keeps its icon and its word (status never rests on colour) but loses a few pixels,
+// so amount + chip fit a 40px row.
+const DENSE_CHIP = "h-4 px-1.5";
+
+function ActiveChip({ icon: Icon, children }: { icon: typeof Funnel; children: ReactNode }) {
+  return (
+    <span className="inline-flex h-6 items-center gap-1 rounded-full bg-primary-light px-2.5 text-xs font-medium text-primary-strong">
+      <Icon className="size-3" aria-hidden /> {children}
+    </span>
+  );
+}
 
 // Frozen-column edges. The scroller carries data-at-start / data-at-end (set from its scroll
 // position, not React state, so scrolling never re-renders the grid); each edge shadow shows
@@ -201,6 +226,24 @@ export function MatrixPage() {
 
   const showGrid = (layout ?? (isMobile ? "cards" : "grid")) === "grid";
 
+  // What differs from the default view, so it can be read (count + words) and undone in one click.
+  // Filters narrow rows or columns; hidden columns are counted apart because they are not rows.
+  const hiddenCount = collections.filter((collection) => hidden[collection.id]).length;
+  const filterCount = [rowFilter !== "all", query.trim() !== "", monthScope !== "all", showCompleted, showInactive].filter(Boolean).length;
+  const sortActive = sort !== "name";
+  const viewChanged = filterCount > 0 || hiddenCount > 0 || sortActive;
+  const resetView = () => {
+    setQuery("");
+    setRowFilter("all");
+    setMonthScope("all");
+    setHidden({});
+    setShowCompleted(false);
+    setShowInactive(false);
+    setSort("name");
+    // The reset button disappears with the strip; hand focus to a control that stays.
+    requestAnimationFrame(() => columnsButton.current?.focus());
+  };
+
   return (
     <PageShell className="max-w-none lg:px-6">
       {/* One line, no description: the grid is the page. Totals live in the grid's footer row and the
@@ -221,7 +264,15 @@ export function MatrixPage() {
       />
 
       <Toolbar
-        search={<SearchInput id="matrix-search" value={query} onChange={setQuery} placeholder={t("matrix.searchMembers")} />}
+        search={
+          <SearchInput
+            id="matrix-search"
+            value={query}
+            onChange={setQuery}
+            placeholder={t("matrix.searchMembers")}
+            className={cn(query.trim() && "[&_input]:border-primary [&_input]:bg-primary-light")}
+          />
+        }
         tabs={
           <FilterPills
             label={t("matrix.filterRows")}
@@ -240,9 +291,14 @@ export function MatrixPage() {
           <>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button ref={columnsButton} variant="outline" size="sm" className="pointer-coarse:h-11">
+                <Button ref={columnsButton} variant="outline" size="sm" className={cn("pointer-coarse:h-11", hiddenCount > 0 && ACTIVE_CONTROL)}>
                   <Columns3 /> {t("matrix.columns")}
-                  {Object.values(hidden).some(Boolean) && <span className="text-primary-strong">•</span>}
+                  {hiddenCount > 0 && (
+                    <span className="min-w-5 rounded-full bg-primary px-1.5 text-caption font-semibold text-primary-foreground tabular-nums">
+                      {hiddenCount}
+                      <span className="sr-only">{t("matrix.hiddenSr")}</span>
+                    </span>
+                  )}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="max-h-[min(70svh,var(--radix-dropdown-menu-content-available-height))] w-64 overflow-y-auto">
@@ -284,7 +340,7 @@ export function MatrixPage() {
               </DropdownMenuContent>
             </DropdownMenu>
             {/* Accessible name leads with the visible text (label in name). */}
-            <Button variant="outline" size="sm" className="pointer-coarse:h-11" onClick={() => setSort(sort === "name" ? "owing" : "name")}>
+            <Button variant="outline" size="sm" className={cn("pointer-coarse:h-11", sortActive && ACTIVE_CONTROL)} onClick={() => setSort(sort === "name" ? "owing" : "name")}>
               <ArrowDownUp /> {sort === "name" ? t("matrix.sortName") : t("matrix.sortBalance")}
               <span className="sr-only">{t("matrix.sortChange")}</span>
             </Button>
@@ -306,6 +362,21 @@ export function MatrixPage() {
           </>
         }
       />
+
+      {viewChanged && (
+        <div role="group" aria-label={t("matrix.activeView")} className="flex min-w-0 flex-wrap items-center gap-2">
+          {filterCount > 0 && (
+            <ActiveChip icon={Funnel}>{t(filterCount === 1 ? "matrix.filtersOne" : "matrix.filtersMany", { count: filterCount })}</ActiveChip>
+          )}
+          {hiddenCount > 0 && (
+            <ActiveChip icon={EyeOff}>{t(hiddenCount === 1 ? "matrix.hiddenOne" : "matrix.hiddenMany", { count: hiddenCount })}</ActiveChip>
+          )}
+          {sortActive && <ActiveChip icon={ArrowDownUp}>{t("matrix.sortedBy", { by: t("matrix.sortBalance") })}</ActiveChip>}
+          <Button variant="ghost" size="sm" className="pointer-coarse:h-11" onClick={resetView}>
+            <RotateCcw /> {t("matrix.resetView")}
+          </Button>
+        </div>
+      )}
 
       {data.members.length === 0 ? (
         <EmptyState
@@ -374,7 +445,8 @@ const Grid = memo(function Grid({
   const [groupRowH, setGroupRowH] = useState(41);
   // Column widths: a display preference (see column-widths.ts), never part of the data. Local state
   // follows the drag; the preference is written once the drag ends.
-  const { matrixWidths: savedWidths, setPrefs } = usePrefs();
+  const { matrixWidths: savedWidths, matrixDensity, matrixSummary, setPrefs } = usePrefs();
+  const dense = matrixDensity === "compact";
   const [widths, setWidths] = useState<Widths>(() => savedWidths);
   const [available, setAvailable] = useState(0);
   const [resizing, setResizing] = useState<string | null>(null);
@@ -584,19 +656,6 @@ const Grid = memo(function Grid({
     return dueNow;
   };
 
-  const columnTotal = (column: MatrixColumn) => {
-    let expected = 0;
-    let received = 0;
-    for (const member of rows) {
-      const cell = view.cell(member, column);
-      if (cell.kind === "charge") {
-        expected += cell.ledger.required;
-        received += cell.ledger.confirmed;
-      } else if (cell.kind === "voluntary") received += cell.received;
-    }
-    return { expected, received, voluntary: column.collection.type === "voluntary" };
-  };
-
   return (
     <div ref={frame} className="relative min-w-0 rounded-2xl border border-border bg-card shadow-[0_1px_2px_rgba(0,0,0,.03)]">
       {/* Accent guide on the edge being dragged; its height is the scroller's, so it stops above the hints bar. */}
@@ -716,7 +775,8 @@ const Grid = memo(function Grid({
                     scope="row"
                     data-fit-col={MEMBER_KEY}
                     className={cn(
-                      "sticky left-0 z-10 border-r border-b border-border bg-grid-frozen px-4 py-2 text-left font-medium group-hover/row:shadow-[inset_3px_0_0_var(--primary)]",
+                      "sticky left-0 z-10 border-r border-b border-border bg-grid-frozen px-4 text-left font-medium group-hover/row:shadow-[inset_3px_0_0_var(--primary)]",
+                      dense ? "py-1" : "py-2",
                       LEFT_EDGE,
                       ROW_FADE,
                       highlight,
@@ -724,7 +784,7 @@ const Grid = memo(function Grid({
                     )}
                   >
                     <div data-fit className="flex w-max max-w-full min-w-0 items-center gap-2.5">
-                      <Avatar className="size-7 after:hidden" aria-hidden>
+                      <Avatar className={cn("after:hidden", dense ? "size-6" : "size-7")} aria-hidden>
                         <AvatarFallback className="bg-primary-light text-caption font-semibold text-primary-strong">{initials(member.name)}</AvatarFallback>
                       </Avatar>
                       <div className="min-w-0">
@@ -760,7 +820,8 @@ const Grid = memo(function Grid({
                         }}
                         onFocus={(event) => own(event) && (ri !== r || ci !== c) && setActive({ r: ri, c: ci })}
                         className={cn(
-                          "relative h-[58px] cursor-cell border-b border-l border-border px-2.5 align-middle outline-none",
+                          "relative cursor-cell border-b border-l border-border px-2.5 align-middle outline-none",
+                          dense ? "h-10" : "h-[58px]",
                           ROW_FADE,
                           // The active cell is only marked while it has focus or its editor is open, so an
                           // untouched grid shows no ring at 0:0.
@@ -773,7 +834,7 @@ const Grid = memo(function Grid({
                           highlight,
                         )}
                       >
-                        <CellView cell={cell} />
+                        <CellView cell={cell} dense={dense} />
                         {ghost && <GhostValue ghost={ghost} />}
                         {isActive && (
                           <Popover open={editing !== null} onOpenChange={(open) => !open && close()}>
@@ -824,21 +885,18 @@ const Grid = memo(function Grid({
                 data-fit-col={MEMBER_KEY}
                 className={cn("sticky bottom-0 left-0 z-30 border-t border-r border-border bg-primary-light px-4 py-2.5 text-left text-xs font-semibold", LEFT_EDGE)}
               >
-                <div data-fit className="w-max max-w-full truncate">
-                  {t("matrix.totalReceived")}
-                </div>
+                <SummaryPicker value={matrixSummary} onChange={(next) => setPrefs({ matrixSummary: next })} />
               </th>
               {columns.map((column) => {
-                const total = columnTotal(column);
-                const text = total.voluntary ? formatMoneyShort(total.received) : `${formatMoneyShort(total.received)} / ${formatMoneyShort(total.expected)}`;
+                const summary = summariseColumn(
+                  matrixSummary,
+                  rows.map((member) => view.cell(member, column)),
+                );
                 // One line at any width: a narrow month truncates (full figure in the title) instead
                 // of wrapping the footer row taller.
                 return (
                   <td key={column.key} data-fit-col={widthKey(column)} className="sticky bottom-0 z-10 border-t border-l border-border bg-primary-light px-2.5 py-2 text-xs tabular-nums">
-                    <div data-fit title={text} className="w-max max-w-full truncate">
-                      <span className="font-semibold">{formatMoneyShort(total.received)}</span>
-                      {!total.voluntary && <span className="text-muted-foreground"> / {formatMoneyShort(total.expected)}</span>}
-                    </div>
+                    <SummaryValue summary={summary} />
                   </td>
                 );
               })}
@@ -853,7 +911,22 @@ const Grid = memo(function Grid({
           <kbd className="rounded border border-border px-1">Esc</kbd> {t("matrix.hintCancel")} · <kbd className="rounded border border-border px-1">← ↑ → ↓</kbd> /{" "}
           <kbd className="rounded border border-border px-1">Home</kbd> / <kbd className="rounded border border-border px-1">End</kbd> {t("matrix.hintMove")}
         </span>
-        <span className="ml-auto">{t("matrix.legend")}</span>
+        <ToggleGroup
+          type="single"
+          value={matrixDensity}
+          onValueChange={(next) => next && setPrefs({ matrixDensity: next as MatrixDensity })}
+          aria-label={t("matrix.densityLabel")}
+          spacing={0}
+          className="gap-0 rounded-[10px] border border-border bg-card p-0.5 sm:ml-auto"
+        >
+          <ToggleGroupItem value="comfortable" className={DENSITY_ITEM}>
+            {t("matrix.densityComfortable")}
+          </ToggleGroupItem>
+          <ToggleGroupItem value="compact" className={DENSITY_ITEM}>
+            {t("matrix.densityCompact")}
+          </ToggleGroupItem>
+        </ToggleGroup>
+        <span className="w-full sm:w-auto">{t("matrix.legend")}</span>
       </div>
       <DiscardDialog open={guard} onKeep={() => setGuard(false)} onDiscard={close} restoreFocus={lastFocus.restore} />
       <ArchiveDialog
@@ -963,21 +1036,21 @@ function describeCell(t: TFunction, cell: MatrixCell) {
  * line truncates (full text in its title), so every body row keeps the same height at any column
  * width. The root is [data-fit] at its natural width, which is what auto-fit measures.
  */
-function CellView({ cell }: { cell: MatrixCell }) {
+function CellView({ cell, dense }: { cell: MatrixCell; dense: boolean }) {
   const t = useT();
   const { pending } = useKelab();
   // A payment on its way: the new value is already shown, dimmed and labelled until the server confirms it.
   const saving = cell.kind === "charge" ? pending.has(cell.ledger.charge.id) : cell.kind === "voluntary" && pending.has(voluntaryKey(cell.member.id, cell.column.collection.id));
-  if (!saving) return <CellBody cell={cell} />;
+  if (!saving) return <CellBody cell={cell} dense={dense} />;
   return (
     <div aria-busy="true" title={t("common.saving")} className="w-max max-w-full opacity-60 motion-safe:animate-pulse">
-      <CellBody cell={cell} />
+      <CellBody cell={cell} dense={dense} />
       <span className="sr-only">{t("common.saving")}</span>
     </div>
   );
 }
 
-function CellBody({ cell }: { cell: MatrixCell }) {
+function CellBody({ cell, dense }: { cell: MatrixCell; dense: boolean }) {
   const t = useT();
   if (cell.kind === "na")
     return (
@@ -988,16 +1061,16 @@ function CellBody({ cell }: { cell: MatrixCell }) {
   if (cell.kind === "voluntary") {
     const sub = cell.count > 0 ? t(cell.count === 1 ? "matrix.contributionsOne" : "matrix.contributionsMany", { count: cell.count }) : t("matrix.voluntary");
     return (
-      <div data-fit className="grid w-max max-w-full gap-0.5">
+      <div data-fit className={cn("grid w-max max-w-full", !dense && "gap-0.5")}>
         <span
           title={cell.received > 0 ? formatMoneyShort(cell.received) : undefined}
-          className={cn("truncate text-small font-semibold tabular-nums", cell.received === 0 && "font-normal text-muted-foreground")}
+          className={cn("truncate font-semibold tabular-nums", dense ? "text-xs leading-4" : "text-small", cell.received === 0 && "font-normal text-muted-foreground")}
         >
           {cell.received > 0 ? formatMoneyShort(cell.received) : "—"}
         </span>{" "}
         {cell.pending > 0 ? (
           <span title={pendingLabel[0]} className="flex min-w-0">
-            <StatusChip label={pendingLabel[0]} tone="pending" compact className="min-w-0 shrink" />
+            <StatusChip label={pendingLabel[0]} tone="pending" compact className={cn("min-w-0 shrink", dense && DENSE_CHIP)} />
           </span>
         ) : (
           <span title={sub} className="truncate text-caption text-muted-foreground">
@@ -1011,20 +1084,102 @@ function CellBody({ cell }: { cell: MatrixCell }) {
   if (status === "exempt")
     return (
       <span data-fit title={cellStatusLabels.exempt[0]} className="flex w-max max-w-full">
-        <StatusChip label={cellStatusLabels.exempt[0]} tone="exempt" compact className="min-w-0 shrink" />
+        <StatusChip label={cellStatusLabels.exempt[0]} tone="exempt" compact className={cn("min-w-0 shrink", dense && DENSE_CHIP)} />
       </span>
     );
   const amounts = `${formatMoneyShort(ledger.confirmed)} / ${formatMoneyShort(ledger.required)}`;
   const chip = chipOf(cell);
   return (
-    <div data-fit className="grid w-max max-w-full gap-0.5">
-      <span title={amounts} className="truncate text-small tabular-nums">
+    <div data-fit className={cn("grid w-max max-w-full", !dense && "gap-0.5")}>
+      <span title={amounts} className={cn("truncate tabular-nums", dense ? "text-xs leading-4" : "text-small")}>
         <b className={cn("font-semibold", ledger.confirmed === 0 && "font-normal text-muted-foreground")}>{formatMoneyShort(ledger.confirmed)}</b>
         <span className="text-muted-foreground"> / {formatMoneyShort(ledger.required)}</span>
       </span>{" "}
       <span title={chip[0]} className="flex min-w-0">
-        <StatusChip label={chip[0]} tone={chip[1]} compact className="min-w-0 shrink" />
+        <StatusChip label={chip[0]} tone={chip[1]} compact className={cn("min-w-0 shrink", dense && DENSE_CHIP)} />
       </span>
+    </div>
+  );
+}
+
+/** The footer row's label: a menu that picks which aggregate the row shows. A display preference only. */
+function SummaryPicker({ value, onChange }: { value: MatrixSummary; onChange: (next: MatrixSummary) => void }) {
+  const t = useT();
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          data-fit
+          className="-ml-1.5 inline-flex h-7 w-max max-w-full items-center gap-1 rounded-md px-1.5 text-left text-xs font-semibold hover:bg-primary-tint focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none pointer-coarse:h-11"
+        >
+          <span className="truncate">{summaryLabel(t, value)}</span>
+          <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+          <span className="sr-only">{t("matrix.summaryChange")}</span>
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" side="top" className="w-72">
+        <DropdownMenuLabel>{t("matrix.summaryMenu")}</DropdownMenuLabel>
+        <DropdownMenuRadioGroup value={value} onValueChange={(next) => onChange(next as MatrixSummary)}>
+          {MATRIX_SUMMARIES.map((kind) => (
+            <DropdownMenuRadioItem key={kind} value={kind} className="h-auto flex-col items-start gap-0 py-1.5">
+              <span>{summaryLabel(t, kind)}</span>
+              <span className="text-caption text-muted-foreground">{summaryHint(t, kind)}</span>
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+const summaryLabel = (t: TFunction, kind: MatrixSummary) =>
+  t(({ received: "matrix.totalReceived", overdue: "matrix.summaryOverdue", percent: "matrix.summaryPercent", paidCount: "matrix.summaryPaidCount" } as const)[kind]);
+const summaryHint = (t: TFunction, kind: MatrixSummary) =>
+  t(({ received: "matrix.summaryReceivedHint", overdue: "matrix.summaryOverdueHint", percent: "matrix.summaryPercentHint", paidCount: "matrix.summaryPaidCountHint" } as const)[kind]);
+
+/** One footer figure. Every variant is one line (full text in the title) and says in words what it is. */
+function SummaryValue({ summary }: { summary: ColumnSummary }) {
+  const t = useT();
+  const dash = (
+    <span data-fit title={t("matrix.summaryNotApplicable")} className="text-muted-foreground">
+      —
+    </span>
+  );
+  if (summary.kind === "received") {
+    const text = summary.voluntary ? formatMoneyShort(summary.received) : `${formatMoneyShort(summary.received)} / ${formatMoneyShort(summary.expected)}`;
+    return (
+      <div data-fit title={text} className="w-max max-w-full truncate">
+        <span className="font-semibold">{formatMoneyShort(summary.received)}</span>
+        {!summary.voluntary && <span className="text-muted-foreground"> / {formatMoneyShort(summary.expected)}</span>}
+      </div>
+    );
+  }
+  if (summary.kind === "overdue") {
+    if (!summary.applicable) return dash;
+    const text = summary.count > 0 ? `${formatMoneyShort(summary.amount)} · ${t("matrix.summaryOverdueCount", { count: summary.count })}` : formatMoneyShort(0);
+    return (
+      <div data-fit title={text} className="w-max max-w-full truncate">
+        <span className={cn("font-semibold", summary.amount > 0 && "text-st-unpaid")}>{formatMoneyShort(summary.amount)}</span>
+        {summary.count > 0 && <span className="text-muted-foreground"> · {t("matrix.summaryOverdueCount", { count: summary.count })}</span>}
+      </div>
+    );
+  }
+  if (summary.kind === "percent") {
+    if (summary.percent === null) return dash;
+    const detail = `${summary.settled}/${summary.total}`;
+    return (
+      <div data-fit title={`${summary.percent}% (${detail})`} className="w-max max-w-full truncate">
+        <span className="font-semibold">{summary.percent}%</span>
+        <span className="text-muted-foreground"> · {detail}</span>
+      </div>
+    );
+  }
+  const text = summary.total === null ? String(summary.paid) : `${summary.paid} / ${summary.total}`;
+  return (
+    <div data-fit title={text} className="w-max max-w-full truncate">
+      <span className="font-semibold">{summary.paid}</span>
+      {summary.total !== null && <span className="text-muted-foreground"> / {summary.total}</span>}
     </div>
   );
 }

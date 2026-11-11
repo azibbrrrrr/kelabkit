@@ -12,6 +12,11 @@ describe("parsePrefs", () => {
     expect(parsePrefs("theme")).toEqual({});
     expect(parsePrefs([{ theme: "rose" }])).toEqual({});
   });
+  it("validates density and footer summary (the jsonb column needs no migration: kk_save_prefs merges any top-level key)", () => {
+    expect(parsePrefs({ matrixDensity: "compact", matrixSummary: "paidCount" })).toEqual({ matrixDensity: "compact", matrixSummary: "paidCount" });
+    expect(parsePrefs({ matrixDensity: "tight", matrixSummary: "median" })).toEqual({});
+    expect(samePrefs({ matrixDensity: "compact" }, { matrixDensity: "comfortable" })).toBe(false);
+  });
   it("filters bad widths and caps their number", () => {
     const widths = parsePrefs({ matrixWidths: { ok: 200, neg: -1, zero: 0, nan: Number.NaN, inf: Infinity, str: "9", huge: 99999, [`k${"x".repeat(50)}`]: 150, "": 150 } }).matrixWidths;
     expect(widths).toEqual({ ok: 200 });

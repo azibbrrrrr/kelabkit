@@ -6,6 +6,10 @@ import { isLocale, type Locale } from "@/lib/i18n";
 import { isThemeId, type ThemeId } from "@/lib/themes";
 
 export type MatrixLayout = "cards" | "grid";
+/** Row height of the Jadual grid: Selesa (comfortable, the default) or Padat (compact). */
+export type MatrixDensity = "comfortable" | "compact";
+/** What the grid's footer row shows per column. */
+export type MatrixSummary = "received" | "overdue" | "percent" | "paidCount";
 export type Widths = Record<string, number>;
 
 export type StoredPrefs = {
@@ -13,6 +17,8 @@ export type StoredPrefs = {
   floral?: boolean;
   locale?: Locale;
   matrixLayout?: MatrixLayout;
+  matrixDensity?: MatrixDensity;
+  matrixSummary?: MatrixSummary;
   /** Keys: "ahli", a collection id or a period id. */
   matrixWidths?: Widths;
 };
@@ -24,6 +30,10 @@ const MAX_WIDTH_KEY = 40;
 const MAX_WIDTH_PX = 2000;
 
 export const isMatrixLayout = (value: unknown): value is MatrixLayout => value === "cards" || value === "grid";
+
+export const isMatrixDensity = (value: unknown): value is MatrixDensity => value === "comfortable" || value === "compact";
+export const MATRIX_SUMMARIES = ["received", "overdue", "percent", "paidCount"] as const satisfies readonly MatrixSummary[];
+export const isMatrixSummary = (value: unknown): value is MatrixSummary => MATRIX_SUMMARIES.includes(value as MatrixSummary);
 
 /** Keeps only plausible entries: a short key and a finite pixel width. */
 export function sanitizeWidths(value: unknown): Widths {
@@ -49,6 +59,8 @@ export function parsePrefs(input: unknown): StoredPrefs {
   if (typeof raw.floral === "boolean") out.floral = raw.floral;
   if (isLocale(raw.locale)) out.locale = raw.locale;
   if (isMatrixLayout(raw.matrixLayout)) out.matrixLayout = raw.matrixLayout;
+  if (isMatrixDensity(raw.matrixDensity)) out.matrixDensity = raw.matrixDensity;
+  if (isMatrixSummary(raw.matrixSummary)) out.matrixSummary = raw.matrixSummary;
   if ("matrixWidths" in raw) out.matrixWidths = sanitizeWidths(raw.matrixWidths);
   return out;
 }
