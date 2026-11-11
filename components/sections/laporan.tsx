@@ -55,11 +55,11 @@ type Report = {
 };
 
 const reportOptions = (t: TFunction): { value: ReportKind; label: string }[] => [
+  { value: "senarai", label: t("reports.kinds.senarai") },
   { value: "kutipan", label: t("reports.kinds.kutipan") },
   { value: "ahli", label: t("reports.kinds.ahli") },
   { value: "belum", label: t("reports.kinds.belum") },
   { value: "bulanan", label: t("reports.kinds.bulanan") },
-  { value: "senarai", label: t("reports.kinds.senarai") },
   { value: "sejarah", label: t("reports.kinds.sejarah") },
 ];
 
@@ -554,7 +554,8 @@ export function ReportsPage() {
   const t = useT();
   const locale = useLocale();
   const { data, view } = useSnapshot();
-  const [kind, setKind] = useState<ReportKind>("kutipan");
+  // The payment list opens first, but a club with no monthly collection has nothing to list there.
+  const [kind, setKind] = useState<ReportKind>(() => (data.collections.some((c) => c.type === "monthly") ? "senarai" : "kutipan"));
   const [pick, setPick] = useState<string>(ALL);
   const [periodPick, setPeriodPick] = useState<string>(ALL);
   const [from, setFrom] = useState(() => `${todayDay().slice(0, 4)}-01-01`);
