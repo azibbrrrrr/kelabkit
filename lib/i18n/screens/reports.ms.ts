@@ -120,6 +120,7 @@ export const reportsMs = {
   senarai: {
     nameHeader: "Nama",
     totalHeader: "Jumlah",
+    balanceHeader: "Baki",
     asOf: "Setakat {date}",
     monthTitle: "{name} · {month}",
     partial: "Separa",
@@ -140,9 +141,11 @@ export const reportsMs = {
       period: "Tempoh",
       periodYear: "Setahun",
       periodMonth: "Bulan ini",
-      total: "Jumlah RM",
-      totalShow: "Tunjuk",
-      totalHide: "Sorok",
+      amounts: "Lajur RM",
+      amountsBoth: "Jumlah & Baki",
+      amountsPaid: "Jumlah",
+      amountsBalance: "Baki",
+      amountsNone: "Sorok",
     },
     actions: {
       share: "Kongsi gambar",

@@ -114,6 +114,22 @@ describe("payment list cells", () => {
     expect(row("partial").total).toBe(400);
     expect(row("prepaid").total).toBe(1000);
   });
+  it("owes every unpaid month as Baki, future months included", () => {
+    const { row } = fixture();
+    // Six months of RM10 each. Baki is the whole collection, not only what is due by today.
+    expect(row("lump").balance).toBe(3000);
+    expect(row("several").balance).toBe(5000);
+    expect(row("partial").balance).toBe(5600);
+    expect(row("prepaid").balance).toBe(5000);
+  });
+  it("keeps pending and reversed money in Baki", () => {
+    const { row } = fixture();
+    expect(row("pending").balance).toBe(6000);
+    expect(row("reversed").balance).toBe(6000);
+  });
+  it("has no Baki for an exempt-only member", () => {
+    expect(fixture().row("exempt").balance).toBeNull();
+  });
   it("lists only members who have a charge in the collection", () => {
     expect(fixture().list.rows.map((r) => r.memberId)).not.toContain("outsider");
   });
@@ -140,6 +156,7 @@ const texts: SheetTexts = {
   asOf: "Setakat 15 Mac 2026",
   nameHeader: "Nama",
   totalHeader: "Jumlah",
+  balanceHeader: "Baki",
   partial: "Separa",
   exempt: "Kecuali",
   tick: "✓",
@@ -167,13 +184,22 @@ describe("payment list sheet", () => {
     expect(find(date, "Cikgu lump").cells[0].text).toBe("10 Feb");
     expect(find(date, "Cikgu partial").cells[0].text).toBe("Separa");
     expect(find(date, "Cikgu exempt").cells[0].text).toBe("Kecuali");
-    expect(find(date, "Cikgu exempt").total).toBeNull();
-    expect(find(date, "Cikgu lump").total).toBe("RM30");
-    const tick = buildSheet(list, { ...DEFAULT_SHEET_OPTIONS, cell: "tick", span: "month", total: "hide" }, TODAY, texts, formatMoneyShort);
+    expect(date.amountColumns).toEqual([{ kind: "paid", header: "Jumlah" }, { kind: "balance", header: "Baki" }]);
+    expect(find(date, "Cikgu exempt").amounts).toEqual([{ text: null, sen: null }, { text: null, sen: null }]);
+    expect(find(date, "Cikgu lump").amounts).toEqual([{ text: "RM30", sen: 3000 }, { text: "RM30", sen: 3000 }]);
+    const tick = buildSheet(list, { ...DEFAULT_SHEET_OPTIONS, cell: "tick", span: "month", amounts: "none" }, TODAY, texts, formatMoneyShort);
     expect(tick.columns).toEqual([{ label: "MAC", future: false }]);
     expect(tick.title).toBe("yuran · Mac 2026");
-    expect(tick.showTotal).toBe(false);
+    expect(tick.amountColumns).toEqual([]);
+    expect(find(tick, "Cikgu lump").amounts).toEqual([]);
     expect(find(tick, "Cikgu lump").cells.map((c) => c.text)).toEqual(["✓"]);
+  });
+  it("shows only Baki when the treasurer picks it, still over the whole collection in the month view", () => {
+    const { list } = fixture();
+    const sheet = buildSheet(list, { ...DEFAULT_SHEET_OPTIONS, span: "month", amounts: "balance" }, TODAY, texts, formatMoneyShort);
+    const partial = sheet.groups.flatMap((g) => g.rows).find((r) => r.name === "Cikgu partial")!;
+    expect(sheet.amountColumns).toEqual([{ kind: "balance", header: "Baki" }]);
+    expect(partial.amounts).toEqual([{ text: "RM56", sen: 5600 }]);
   });
   it("carries no phone, note, reference or exemption reason", () => {
     const { list } = fixture();
@@ -198,8 +224,9 @@ describe("xlsx rows", () => {
     expect(cell(1, 0).value).toBe("Setakat 15 Mac 2026");
     expect(cell(2, 0).value).toBe("Nama");
     expect(cell(2, 7).value).toBe("Jumlah");
+    expect(cell(2, 8).value).toBe("Baki");
     expect(built.stickyRowsCount).toBe(3);
-    expect(built.columns).toHaveLength(8);
+    expect(built.columns).toHaveLength(9);
   });
   it("writes group rows and one row per member", () => {
     expect(built.data).toHaveLength(3 + 2 + 8);
@@ -214,14 +241,20 @@ describe("xlsx rows", () => {
     const exempt = built.data.findIndex((r) => (r[0] as Record<string, unknown>)?.value === "Cikgu exempt");
     expect(cell(exempt, 1)).toMatchObject({ value: "Kecuali", backgroundColor: "#ede9fe" });
   });
-  it("writes Jumlah as a number in ringgit from integer sen, and a dash when exempt only", () => {
-    const lump = built.data.findIndex((r) => (r[0] as Record<string, unknown>)?.value === "Cikgu lump");
-    expect(cell(lump, 7)).toMatchObject({ value: 30, format: RM_FORMAT, type: Number });
+  it("writes Jumlah and Baki as numbers in ringgit from integer sen, and a dash when exempt only", () => {
+    const partial = built.data.findIndex((r) => (r[0] as Record<string, unknown>)?.value === "Cikgu partial");
+    expect(cell(partial, 7)).toMatchObject({ value: 4, format: RM_FORMAT, type: Number });
+    expect(cell(partial, 8)).toMatchObject({ value: 56, format: RM_FORMAT, type: Number });
     const exempt = built.data.findIndex((r) => (r[0] as Record<string, unknown>)?.value === "Cikgu exempt");
     expect(cell(exempt, 7).value).toBe("—");
+    expect(cell(exempt, 8).value).toBe("—");
   });
-  it("drops the Jumlah column when hidden", () => {
-    const hidden = buildXlsxRows(buildSheet(list, { ...DEFAULT_SHEET_OPTIONS, total: "hide" }, TODAY, texts, formatMoneyShort), colors);
-    expect(hidden.columns).toHaveLength(7);
+  it("drops the money columns that are not picked", () => {
+    const only = (amounts: "paid" | "balance" | "none") =>
+      buildXlsxRows(buildSheet(list, { ...DEFAULT_SHEET_OPTIONS, amounts }, TODAY, texts, formatMoneyShort), colors);
+    expect(only("none").columns).toHaveLength(7);
+    expect(only("balance").columns).toHaveLength(8);
+    expect((only("balance").data[2][7] as Record<string, unknown>).value).toBe("Baki");
+    expect((only("paid").data[2][7] as Record<string, unknown>).value).toBe("Jumlah");
   });
 });
