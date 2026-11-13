@@ -520,13 +520,13 @@ function historyReport(
   };
 }
 
-/** The Senarai bayaran sheet as a plain table for the CSV: name, one column per month, total. */
+/** The Senarai bayaran sheet as a plain table for the CSV: name, one column per month, then Jumlah and/or Baki. */
 function senaraiReport(t: TFunction, sheet: Sheet, scope: string): Report {
   const monthKey = (i: number) => `m${i}`;
   const columns: Col[] = [
     text("name", sheet.nameHeader),
     ...sheet.columns.map((column, i) => text(monthKey(i), column.label)),
-    ...(sheet.showTotal ? [money("total", sheet.totalHeader)] : []),
+    ...sheet.amountColumns.map((column) => money(column.kind, column.header)),
   ];
   return {
     title: t("reports.kinds.senarai"),
@@ -538,7 +538,7 @@ function senaraiReport(t: TFunction, sheet: Sheet, scope: string): Report {
         values: {
           name: row.name,
           ...Object.fromEntries(row.cells.map((cell, i) => [monthKey(i), cell.text || null])),
-          total: row.totalSen,
+          ...Object.fromEntries(row.amounts.map((amount, j) => [sheet.amountColumns[j].kind, amount.sen])),
         } as Record<string, Value>,
       })),
     ),

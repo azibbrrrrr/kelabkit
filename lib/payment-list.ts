@@ -28,6 +28,11 @@ export type ListRow = {
   cells: ListCell[];
   /** Confirmed money allocated to this collection's charges; null when every charge is exempt. */
   total: Sen | null;
+  /**
+   * What is still owed across every period of the collection, future months included: the sum of
+   * each charge's `remaining`. Pending money does not reduce it. Null when every charge is exempt.
+   */
+  balance: Sen | null;
 };
 
 export type PaymentList = {
@@ -47,7 +52,7 @@ export function buildPaymentList(view: View, collection: Collection, today: Day,
   const columnIndex = new Map(periods.map((period, i) => [period.id, i]));
 
   const byMember = new Map<string, ListCell[]>();
-  const totals = new Map<string, { confirmed: Sen[]; allExempt: boolean }>();
+  const totals = new Map<string, { confirmed: Sen[]; remaining: Sen[]; allExempt: boolean }>();
   for (const charge of view.chargesByCollection.get(collection.id) ?? []) {
     const ledger = view.ledgers.get(charge.id);
     const at = charge.periodId ? columnIndex.get(charge.periodId) : undefined;
@@ -63,8 +68,9 @@ export function buildPaymentList(view: View, collection: Collection, today: Day,
             ? { kind: "partial" }
             : { kind: "blank" };
     byMember.set(charge.memberId, cells);
-    const total = totals.get(charge.memberId) ?? { confirmed: [], allExempt: true };
+    const total = totals.get(charge.memberId) ?? { confirmed: [], remaining: [], allExempt: true };
     total.confirmed.push(ledger.confirmed);
+    total.remaining.push(ledger.remaining);
     if (!charge.exempt) total.allExempt = false;
     totals.set(charge.memberId, total);
   }
@@ -80,6 +86,7 @@ export function buildPaymentList(view: View, collection: Collection, today: Day,
       category: member.category,
       cells,
       total: total.allExempt ? null : sum(total.confirmed),
+      balance: total.allExempt ? null : sum(total.remaining),
     });
   }
   rows.sort(
@@ -106,9 +113,10 @@ export type SheetOptions = {
   /** What a paid cell says: its date, or a tick. */
   cell: "date" | "tick";
   span: "year" | "month";
-  total: "show" | "hide";
+  /** Which money columns follow the months: Jumlah (paid), Baki (still owed), both or none. */
+  amounts: "both" | "paid" | "balance" | "none";
 };
-export const DEFAULT_SHEET_OPTIONS: SheetOptions = { cell: "date", span: "year", total: "show" };
+export const DEFAULT_SHEET_OPTIONS: SheetOptions = { cell: "date", span: "year", amounts: "both" };
 
 /** Every word on the sheet, already translated: the screen and the exports share it. */
 export type SheetTexts = {
@@ -116,6 +124,7 @@ export type SheetTexts = {
   asOf: string;
   nameHeader: string;
   totalHeader: string;
+  balanceHeader: string;
   partial: string;
   exempt: string;
   tick: string;
@@ -124,16 +133,20 @@ export type SheetTexts = {
 };
 
 export type SheetCell = { kind: ListCell["kind"]; text: string };
-export type SheetRow = { key: string; name: string; cells: SheetCell[]; total: string | null; totalSen: Sen | null };
+export type SheetAmountKind = "paid" | "balance";
+/** One money column after the months. Its header and per-row values share the index. */
+export type SheetAmountColumn = { kind: SheetAmountKind; header: string };
+/** `text` is null (shown as a dash) when every charge of the member is exempt. */
+export type SheetAmount = { text: string | null; sen: Sen | null };
+export type SheetRow = { key: string; name: string; cells: SheetCell[]; amounts: SheetAmount[] };
 export type SheetGroup = { label: string | null; rows: SheetRow[] };
 export type Sheet = {
   title: string;
   asOf: string;
   nameHeader: string;
-  totalHeader: string;
   month: boolean;
   columns: { label: string; future: boolean }[];
-  showTotal: boolean;
+  amountColumns: SheetAmountColumn[];
   groups: SheetGroup[];
   legend: { kind: ListCell["kind"]; label: string }[];
 };
@@ -148,13 +161,18 @@ export function buildSheet(list: PaymentList, options: SheetOptions, today: Day,
     if (cell.kind === "exempt") return texts.exempt;
     return "";
   };
+  const amountKinds: SheetAmountKind[] =
+    options.amounts === "both" ? ["paid", "balance"] : options.amounts === "none" ? [] : [options.amounts];
+  const amountColumns = amountKinds.map((kind) => ({ kind, header: kind === "paid" ? texts.totalHeader : texts.balanceHeader }));
   const rows: (SheetRow & { category: MemberCategory | null })[] = list.rows.map((row) => ({
     key: row.memberId,
     category: row.category,
     name: row.name,
     cells: at.map((i) => ({ kind: row.cells[i].kind, text: cellText(row.cells[i]) })),
-    total: row.total === null ? null : formatSen(row.total),
-    totalSen: row.total,
+    amounts: amountKinds.map((kind) => {
+      const sen = kind === "paid" ? row.total : row.balance;
+      return { sen, text: sen === null ? null : formatSen(sen) };
+    }),
   }));
   const categories = CATEGORY_ORDER.filter((category) => rows.some((row) => row.category === category));
   const groups: SheetGroup[] = categories.map((category) => ({
@@ -165,10 +183,9 @@ export function buildSheet(list: PaymentList, options: SheetOptions, today: Day,
     title: texts.title(month && only >= 0 ? formatMonth(list.columns[only].month) : null),
     asOf: texts.asOf,
     nameHeader: texts.nameHeader,
-    totalHeader: texts.totalHeader,
     month,
     columns: at.map((i) => ({ label: formatMonth(list.columns[i].month, false).toLocaleUpperCase(), future: list.columns[i].future })),
-    showTotal: options.total === "show",
+    amountColumns,
     groups,
     legend: [
       { kind: "paid", label: texts.legend.paid },

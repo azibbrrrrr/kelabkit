@@ -22,6 +22,7 @@ export function senaraiTexts(t: TFunction, collectionName: string, asOfDate: str
     asOf: t("reports.senarai.asOf", { date: asOfDate }),
     nameHeader: t("reports.senarai.nameHeader"),
     totalHeader: t("reports.senarai.totalHeader"),
+    balanceHeader: t("reports.senarai.balanceHeader"),
     partial: t("reports.senarai.partial"),
     exempt: t("reports.senarai.exempt"),
     tick: t("reports.senarai.tick"),
@@ -70,14 +71,16 @@ export function SenaraiControls({ options, onChange }: { options: SheetOptions; 
         />,
       )}
       {field(
-        t("reports.senarai.controls.total"),
-        <FilterPills<SheetOptions["total"]>
-          label={t("reports.senarai.controls.total")}
-          value={options.total}
-          onChange={(total) => onChange({ ...options, total })}
+        t("reports.senarai.controls.amounts"),
+        <FilterPills<SheetOptions["amounts"]>
+          label={t("reports.senarai.controls.amounts")}
+          value={options.amounts}
+          onChange={(amounts) => onChange({ ...options, amounts })}
           options={[
-            { value: "show", label: t("reports.senarai.controls.totalShow") },
-            { value: "hide", label: t("reports.senarai.controls.totalHide") },
+            { value: "both", label: t("reports.senarai.controls.amountsBoth") },
+            { value: "paid", label: t("reports.senarai.controls.amountsPaid") },
+            { value: "balance", label: t("reports.senarai.controls.amountsBalance") },
+            { value: "none", label: t("reports.senarai.controls.amountsNone") },
           ]}
         />,
       )}
@@ -227,7 +230,10 @@ export function SenaraiActions({ exporter, onCsv, csvReady }: { exporter: Senara
 export function SenaraiView({ sheet }: { sheet: Sheet }) {
   const t = useT();
   const empty = sheet.groups.length === 0;
-  const colWidth = sheet.month ? "w-full min-w-[576px] max-w-[720px]" : "w-full min-w-[996px]";
+  const twoAmounts = sheet.amountColumns.length > 1;
+  const colWidth = sheet.month
+    ? cn("w-full min-w-[576px]", twoAmounts ? "max-w-[800px]" : "max-w-[720px]")
+    : cn("w-full", twoAmounts ? "min-w-[1076px]" : "min-w-[996px]");
   const cellBase = "h-[30px] border border-border px-0.5 text-center whitespace-nowrap tabular-nums";
 
   return (
@@ -257,11 +263,11 @@ export function SenaraiView({ sheet }: { sheet: Sheet }) {
                       {column.label}
                     </th>
                   ))}
-                  {sheet.showTotal && (
-                    <th scope="col" className={cn(cellBase, "w-20 border-primary-fill bg-primary-fill font-semibold text-primary-foreground")}>
-                      {sheet.totalHeader}
+                  {sheet.amountColumns.map((column) => (
+                    <th key={column.kind} scope="col" className={cn(cellBase, "w-20 border-primary-fill bg-primary-fill font-semibold text-primary-foreground")}>
+                      {column.header}
                     </th>
-                  )}
+                  ))}
                 </tr>
               </thead>
               <tbody>
@@ -287,7 +293,7 @@ export function SenaraiView({ sheet }: { sheet: Sheet }) {
 }
 
 function GroupRows({ group, sheet, cellBase }: { group: Sheet["groups"][number]; sheet: Sheet; cellBase: string }) {
-  const span = 1 + sheet.columns.length + (sheet.showTotal ? 1 : 0);
+  const span = 1 + sheet.columns.length + sheet.amountColumns.length;
   return (
     <>
       {group.label && (
@@ -307,7 +313,11 @@ function GroupRows({ group, sheet, cellBase }: { group: Sheet["groups"][number];
               {cell.text}
             </td>
           ))}
-          {sheet.showTotal && <td className={cn(cellBase, "font-semibold", row.total === null && "text-muted-foreground")}>{row.total ?? "—"}</td>}
+          {row.amounts.map((amount, j) => (
+            <td key={sheet.amountColumns[j].kind} className={cn(cellBase, "font-semibold", amount.text === null && "text-muted-foreground")}>
+              {amount.text ?? "—"}
+            </td>
+          ))}
         </tr>
       ))}
     </>

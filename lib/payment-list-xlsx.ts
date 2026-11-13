@@ -1,6 +1,6 @@
 // Rows for the Excel export of the payment list, built from the same Sheet as the screen.
 // Pure: the library call (write-excel-file, loaded on click) stays in the component. The one
-// place sen become ringgit is the Jumlah cell, at this output boundary.
+// place sen become ringgit is the Jumlah and Baki cells, at this output boundary.
 
 import type { Sheet } from "@/lib/payment-list";
 import type { SheetData } from "write-excel-file/browser";
@@ -31,13 +31,13 @@ export type XlsxColors = {
 };
 
 export const RM_FORMAT = '"RM" #,##0.00';
-/** Characters wide: the name column, a month, the total. */
+/** Characters wide: the name column, a month, a money column. */
 const NAME_WIDTH = 34;
 const CELL_WIDTH = 9;
 const TOTAL_WIDTH = 13;
 
 export function buildXlsxRows(sheet: Sheet, colors: XlsxColors) {
-  const width = 1 + sheet.columns.length + (sheet.showTotal ? 1 : 0);
+  const width = 1 + sheet.columns.length + sheet.amountColumns.length;
   const pad = (cell: XlsxCell): XlsxCell[] => [cell, ...Array.from({ length: width - 1 }, () => null)];
   const data: XlsxCell[][] = [];
   data.push(pad({ value: sheet.title, fontWeight: "bold", columnSpan: width }));
@@ -51,9 +51,9 @@ export function buildXlsxRows(sheet: Sheet, colors: XlsxColors) {
       textColor: column.future ? colors.futureText : colors.headerText,
       backgroundColor: column.future ? colors.futureFill : colors.headerFill,
     })),
-    ...(sheet.showTotal
-      ? [{ value: sheet.totalHeader, fontWeight: "bold", align: "center", textColor: colors.headerText, backgroundColor: colors.headerFill } as XlsxCell]
-      : []),
+    ...sheet.amountColumns.map(
+      (column): XlsxCell => ({ value: column.header, fontWeight: "bold", align: "center", textColor: colors.headerText, backgroundColor: colors.headerFill }),
+    ),
   ]);
   for (const group of sheet.groups) {
     if (group.label) {
@@ -70,17 +70,16 @@ export function buildXlsxRows(sheet: Sheet, colors: XlsxColors) {
           const tone = colors[cell.kind];
           return { value: cell.text, align: "center", textColor: tone.text, backgroundColor: tone.fill, fontWeight: cell.kind === "partial" ? "bold" : undefined };
         }),
-        ...(sheet.showTotal
-          ? [
-              row.totalSen === null
-                ? ({ value: "—", align: "center", textColor: colors.muted } as XlsxCell)
-                : ({ value: row.totalSen / 100, type: Number, format: RM_FORMAT, fontWeight: "bold" } as XlsxCell),
-            ]
-          : []),
+        ...row.amounts.map(
+          (amount): XlsxCell =>
+            amount.sen === null
+              ? { value: "—", align: "center", textColor: colors.muted }
+              : { value: amount.sen / 100, type: Number, format: RM_FORMAT, fontWeight: "bold" },
+        ),
       ]);
     }
   }
-  const columns = [{ width: NAME_WIDTH }, ...sheet.columns.map(() => ({ width: CELL_WIDTH })), ...(sheet.showTotal ? [{ width: TOTAL_WIDTH }] : [])];
+  const columns = [{ width: NAME_WIDTH }, ...sheet.columns.map(() => ({ width: CELL_WIDTH })), ...sheet.amountColumns.map(() => ({ width: TOTAL_WIDTH }))];
   // Title, as-of line and header stay put while the list scrolls.
   return { data: data as SheetData, columns, stickyRowsCount: 3, stickyColumnsCount: 1 };
 }

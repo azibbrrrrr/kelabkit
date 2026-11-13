@@ -6,6 +6,7 @@
 import type { Sheet } from "@/lib/payment-list";
 import type { XlsxColors } from "@/lib/payment-list-xlsx";
 
+/** Logical width with one money column; each further money column adds TOTAL_W. */
 export const SHEET_WIDTH = { year: 1040, month: 620 } as const;
 const PAD = 22;
 const NAME_W = 270;
@@ -70,7 +71,8 @@ export function sheetHeight(sheet: Sheet) {
 
 /** Draws at `width`×`sheetHeight` logical pixels, scaled by min(2, what the device can hold). */
 export function drawSheet(sheet: Sheet, theme: SheetTheme): HTMLCanvasElement {
-  const width = sheet.month ? SHEET_WIDTH.month : SHEET_WIDTH.year;
+  const amounts = sheet.amountColumns.length;
+  const width = (sheet.month ? SHEET_WIDTH.month : SHEET_WIDTH.year) + Math.max(0, amounts - 1) * TOTAL_W;
   const height = sheetHeight(sheet);
   const scale = Math.min(2, Math.sqrt(MAX_PIXELS / (width * height)));
   const canvas = document.createElement("canvas");
@@ -95,10 +97,11 @@ export function drawSheet(sheet: Sheet, theme: SheetTheme): HTMLCanvasElement {
   ctx.fillText(fit(ctx, sheet.title, width - PAD * 2 - asOfW - 16), PAD, PAD + 14);
 
   const cols = sheet.columns.length;
-  const totalW = sheet.showTotal ? TOTAL_W : 0;
+  const totalW = amounts * TOTAL_W;
   const cellW = cols ? (width - PAD * 2 - NAME_W - totalW) / cols : 0;
   const x0 = PAD;
   const colX = (i: number) => x0 + NAME_W + i * cellW;
+  const amountX = (j: number) => colX(cols) + j * TOTAL_W;
   let y = PAD + TITLE_H;
 
   const box = (x: number, top: number, w: number, h: number, fill: string | null) => {
@@ -130,10 +133,10 @@ export function drawSheet(sheet: Sheet, theme: SheetTheme): HTMLCanvasElement {
     box(colX(i), y, cellW, ROW_H, column.future ? theme.futureFill : theme.headerFill);
     centred(column.label, colX(i), y, cellW, ROW_H, column.future ? theme.futureText : theme.headerText, 600);
   });
-  if (sheet.showTotal) {
-    box(colX(cols), y, TOTAL_W, ROW_H, theme.headerFill);
-    centred(sheet.totalHeader, colX(cols), y, TOTAL_W, ROW_H, theme.headerText, 600);
-  }
+  sheet.amountColumns.forEach((column, j) => {
+    box(amountX(j), y, TOTAL_W, ROW_H, theme.headerFill);
+    centred(column.header, amountX(j), y, TOTAL_W, ROW_H, theme.headerText, 600);
+  });
   y += ROW_H;
 
   for (const group of sheet.groups) {
@@ -150,10 +153,10 @@ export function drawSheet(sheet: Sheet, theme: SheetTheme): HTMLCanvasElement {
         box(colX(i), y, cellW, ROW_H, tone?.fill ?? null);
         if (tone) centred(cell.text, colX(i), y, cellW, ROW_H, tone.text, cell.kind === "partial" ? 600 : 500);
       });
-      if (sheet.showTotal) {
-        box(colX(cols), y, TOTAL_W, ROW_H, null);
-        centred(row.total ?? "—", colX(cols), y, TOTAL_W, ROW_H, row.total ? theme.foreground : theme.muted, 600);
-      }
+      row.amounts.forEach((amount, j) => {
+        box(amountX(j), y, TOTAL_W, ROW_H, null);
+        centred(amount.text ?? "—", amountX(j), y, TOTAL_W, ROW_H, amount.text ? theme.foreground : theme.muted, 600);
+      });
       y += ROW_H;
     }
   }

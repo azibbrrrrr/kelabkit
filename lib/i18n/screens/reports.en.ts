@@ -122,6 +122,7 @@ export const reportsEn: DeepStringify<typeof reportsMs> = {
   senarai: {
     nameHeader: "Name",
     totalHeader: "Total",
+    balanceHeader: "Balance",
     asOf: "As of {date}",
     monthTitle: "{name} · {month}",
     partial: "Part",
@@ -142,9 +143,11 @@ export const reportsEn: DeepStringify<typeof reportsMs> = {
       period: "Period",
       periodYear: "Full year",
       periodMonth: "This month",
-      total: "Total RM",
-      totalShow: "Show",
-      totalHide: "Hide",
+      amounts: "RM columns",
+      amountsBoth: "Total & Balance",
+      amountsPaid: "Total",
+      amountsBalance: "Balance",
+      amountsNone: "Hide",
     },
     actions: {
       share: "Share image",
